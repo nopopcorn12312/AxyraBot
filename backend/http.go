@@ -76,36 +76,15 @@ func handleAuthCallback(clientID, clientSecret string) http.HandlerFunc {
 			http.Error(w, "invalid token response", http.StatusInternalServerError)
 			return
 		}
-		// store tokens and user info minimal: need to fetch login
+		// store tokens and user info minimal: derive login using /oauth2/validate
 		access, _ := t["access_token"].(string)
 		refresh, _ := t["refresh_token"].(string)
-		// get user info
-		client := &http.Client{}
-		req, _ := http.NewRequest("GET", "https://api.twitch.tv/helix/users", nil)
-		req.Header.Set("Authorization", "Bearer "+access)
-		req.Header.Set("Client-Id", clientID)
-		q := req.URL.Query()
-		q.Set("after", "")
-		req.URL.RawQuery = q.Encode()
-		res, err := client.Do(req)
-		if err != nil {
-			log.Println("failed get user:", err)
-			http.Error(w, "failed get user", http.StatusInternalServerError)
-			return
-		}
-		defer res.Body.Close()
-		var u struct {
-			Data []struct {
-				Id    string `json:"id"`
-				Login string `json:"login"`
-			} `json:"data"`
-		}
-		if err := json.NewDecoder(res.Body).Decode(&u); err != nil || len(u.Data) == 0 {
-			log.Println("failed decode user or no data", err)
+		login, err := getLoginFromToken(access)
+		if err != nil || login == "" {
+			log.Println("failed to validate user token:", err)
 			http.Error(w, "failed get user info", http.StatusInternalServerError)
 			return
 		}
-		login := u.Data[0].Login
 		// store in DB: add channel and save tokens
 		if db != nil {
 			if err := AddOrUpdateChannel(login, login); err != nil {
@@ -114,6 +93,9 @@ func handleAuthCallback(clientID, clientSecret string) http.HandlerFunc {
 			if err := SaveUserTokens(login, access, refresh); err != nil {
 				log.Println("failed save user tokens:", err)
 			}
+			// Immediately ensure the bot joins this channel without waiting
+			// for the Postgres LISTEN/NOTIFY loop.
+			handleChannelsChanged(login)
 		}
 
 		// If a redirect URL was provided (and preserved through the Twitch OAuth
