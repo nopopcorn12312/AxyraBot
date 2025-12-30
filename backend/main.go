@@ -35,10 +35,6 @@ func main() {
 	clientID := os.Getenv("TWITCH_CLIENT_ID")
 	clientSecret := os.Getenv("TWITCH_CLIENT_SECRET")
 	channel := os.Getenv("TWITCH_CHANNEL")
-	if channel == "" {
-		// Default to joining nopopcorn's chat
-		channel = "nopopcorn"
-	}
 
 	if oauth == "" || clientID == "" || clientSecret == "" {
 		log.Println("Missing required env vars. See .env.example or README.md")
@@ -117,12 +113,20 @@ func main() {
 
 	// Start IRC WebSocket bot (reads channels from DB if present)
 	go func() {
+		chans := []string{}
 		// if DB present, join all channels marked joined
-		chans := []string{channel}
 		if db != nil {
 			if cs, err := GetJoinedChannels(); err == nil && len(cs) > 0 {
 				chans = cs
 			}
+		}
+		// if no DB channels yet but TWITCH_CHANNEL is set, fall back to it
+		if len(chans) == 0 && channel != "" {
+			chans = []string{channel}
+		}
+		if len(chans) == 0 {
+			log.Println("no channels configured to join yet; waiting for /auth/callback to add channels")
+			return
 		}
 		for _, ch := range chans {
 			go startIrcBot(botName, oauth, ch)
