@@ -1,10 +1,11 @@
-"use client";
+interface ConnectedPageProps {
+  searchParams?: {
+    login?: string;
+  };
+}
 
-import { useSearchParams } from "next/navigation";
-
-export default function ConnectedPage() {
-  const searchParams = useSearchParams();
-  const login = searchParams.get("login");
+export default function ConnectedPage({ searchParams }: ConnectedPageProps) {
+  const login = searchParams?.login;
 
   return (
     <main className="min-h-screen flex items-center justify-center px-4 bg-[radial-gradient(circle_at_top,_#1e293b,_#020617)]">
