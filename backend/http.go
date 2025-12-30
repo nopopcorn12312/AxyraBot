@@ -115,6 +115,20 @@ func handleAuthCallback(clientID, clientSecret string) http.HandlerFunc {
 				log.Println("failed save user tokens:", err)
 			}
 		}
+
+		// If a redirect URL was provided (and preserved through the Twitch OAuth
+		// roundtrip), send the user back to the frontend with the login attached
+		// as a query parameter.
+		if redir := r.URL.Query().Get("redirect"); redir != "" {
+			if dest, err := url.Parse(redir); err == nil {
+				q := dest.Query()
+				q.Set("login", login)
+				dest.RawQuery = q.Encode()
+				http.Redirect(w, r, dest.String(), http.StatusFound)
+				return
+			}
+		}
+
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintf(w, "success: %s", login)
 	}

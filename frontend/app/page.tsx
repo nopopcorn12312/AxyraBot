@@ -1,7 +1,11 @@
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://your-backend.onrender.com";
+const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL;
 
 export default function HomePage() {
-  const connectUrl = `${backendUrl}/auth/start`;
+  const redirectTarget = frontendUrl ? `${frontendUrl}/connected` : "";
+  const connectUrl = redirectTarget
+    ? `${backendUrl}/auth/start?redirect=${encodeURIComponent(redirectTarget)}`
+    : `${backendUrl}/auth/start`;
 
   return (
     <main className="min-h-screen flex items-center justify-center px-4 bg-[radial-gradient(circle_at_top,_#1e293b,_#020617)]">
