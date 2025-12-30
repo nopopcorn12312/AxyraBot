@@ -486,7 +486,10 @@ func createEventSubSubscription(authToken, clientID, subType string, condition m
 	return nil
 }
 
-// registerEventSubSubscriptions waits for an EventSub session and registers subscriptions for the given channel login
+// registerEventSubSubscriptions waits for an EventSub session and registers
+// subscriptions for one or more channel logins. Prefer channels from the
+// database (joined channels) and fall back to the TWITCH_CHANNEL env only if
+// the DB is not available or empty at startup.
 func registerEventSubSubscriptions(appToken, clientID, channel, tokensPath string) {
 	// Allow disabling EventSub registration entirely via env to avoid
 	// errors like "invalid transport and auth combination" when not
@@ -503,10 +506,18 @@ func registerEventSubSubscriptions(appToken, clientID, channel, tokensPath strin
 		sid := eventSubSessionID
 		eventSubMu.Unlock()
 		if sid != "" {
-			// resolve broadcaster id for channel
-			broadcasterID, err := getUserID(channel, appToken, clientID)
-			if err != nil {
-				log.Println("failed to resolve broadcaster id:", err)
+			// Determine list of channels to register EventSub for.
+			channels := []string{}
+			if db != nil {
+				if cs, err := GetJoinedChannels(); err == nil && len(cs) > 0 {
+					channels = cs
+				}
+			}
+			if len(channels) == 0 && channel != "" {
+				channels = []string{channel}
+			}
+			if len(channels) == 0 {
+				log.Println("no channels available for EventSub registration; skipping")
 				return
 			}
 
@@ -541,28 +552,37 @@ func registerEventSubSubscriptions(appToken, clientID, channel, tokensPath strin
 				broadToken = t.AccessToken
 			}
 
-			for _, st := range subs {
-				cond := map[string]string{"broadcaster_user_id": broadcasterID}
-				// choose auth: use broadcaster token if available for broadcaster-related events, otherwise app token
-				auth := appToken
-				if broadToken != "" {
-					auth = broadToken
+			// For each channel, resolve its broadcaster id and create subscriptions.
+			for _, ch := range channels {
+				broadcasterID, err := getUserID(ch, appToken, clientID)
+				if err != nil {
+					log.Println("failed to resolve broadcaster id for", ch, ":", err)
+					continue
 				}
 
-				// For channel.subscribe, prefer webhook transport if callback provided
-				if st == "channel.subscribe" && callback != "" {
-					if err := createEventSubSubscription(auth, clientID, st, cond, "", "webhook", callback, secret); err != nil {
-						log.Println("failed creating webhook subscription", st, err)
+				for _, st := range subs {
+					cond := map[string]string{"broadcaster_user_id": broadcasterID}
+					// choose auth: use broadcaster token if available for broadcaster-related events, otherwise app token
+					auth := appToken
+					if broadToken != "" {
+						auth = broadToken
 					}
-				} else {
-					// websocket transport for other events (requires session id)
-					if err := createEventSubSubscription(auth, clientID, st, cond, sid, "websocket", "", ""); err != nil {
-						log.Println("failed creating subscription", st, err)
-					}
-				}
 
-				// avoid hitting rate limits too quickly
-				time.Sleep(500 * time.Millisecond)
+					// For channel.subscribe, prefer webhook transport if callback provided
+					if st == "channel.subscribe" && callback != "" {
+						if err := createEventSubSubscription(auth, clientID, st, cond, "", "webhook", callback, secret); err != nil {
+							log.Println("failed creating webhook subscription", st, "for", ch, ":", err)
+						}
+					} else {
+						// websocket transport for other events (requires session id)
+						if err := createEventSubSubscription(auth, clientID, st, cond, sid, "websocket", "", ""); err != nil {
+							log.Println("failed creating subscription", st, "for", ch, ":", err)
+						}
+					}
+
+					// avoid hitting rate limits too quickly
+					time.Sleep(500 * time.Millisecond)
+				}
 			}
 			return
 		}
