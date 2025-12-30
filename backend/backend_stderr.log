@@ -1,0 +1,114 @@
+2025/12/29 23:02:56 Using bot login from token: axyrabot
+2025/12/29 23:02:56 Connecting to EventSub WebSocket...
+2025/12/29 23:02:56 EventSub session id set: AgoQV10linmmQc2Bq03KSNDt6RIGY2VsbC1h
+2025/12/29 23:02:56 [EventSub WS] {"metadata":{"message_id":"2bce7bc4-5baf-44c3-891c-8e7284b2d0ab","message_type":"session_welcome","message_timestamp":"2025-12-30T05:02:56.501904704Z"},"payload":{"session":{"id":"AgoQV10linmmQc2Bq03KSNDt6RIGY2VsbC1h","status":"connected","connected_at":"2025-12-30T05:02:56.498265395Z","keepalive_timeout_seconds":10,"reconnect_url":null,"recovery_url":null}}}
+2025/12/29 23:02:56 EventSub subscriptions response:
+2025/12/29 23:02:56 {"total":1,"data":[{"id":"a27518a8-3567-47ee-abb1-a1346fb49e8d","status":"webhook_callback_verification_failed","type":"channel.subscribe","version":"1","condition":{"broadcaster_user_id":"44077075"},"created_at":"2025-12-29T23:27:39.28011202Z","transport":{"method":"webhook","callback":"https://example.ngrok.io/webhook"},"cost":0}],"max_total_cost":10000,"total_cost":0,"pagination":{}}
+2025/12/29 23:02:56 starting HTTP server on :8080
+2025/12/29 23:02:56 Connecting to Twitch IRC WebSocket...
+2025/12/29 23:02:56 --- EventSub Request ---
+POST https://api.twitch.tv/helix/eventsub/subscriptions
+Content-Type: application/json
+Client-Id: 8ntdhbigsooa3gdey1v43hpkrf63my
+Authorization: Bearer yne2rnchxs2ypn2u1uo6l6lfe9egum
+
+{"condition":{"broadcaster_user_id":"44077075"},"transport":{"method":"websocket","session_id":"AgoQV10linmmQc2Bq03KSNDt6RIGY2VsbC1h"},"type":"stream.online","version":"1"}
+------------------------
+
+2025/12/29 23:02:56 --- EventSub Response ---
+202 Accepted
+Ratelimit-Remaining: 799
+Ratelimit-Reset: 1767070977
+Timing-Allow-Origin: https://www.twitch.tv
+Via: 1.1 686a5e8b0e5271b7f770b23414d5b80c.cloudfront.net (CloudFront)
+X-Amz-Cf-Pop: ATL59-P15
+Strict-Transport-Security: max-age=300; includeSubDomains
+Content-Length: 384
+Date: Tue, 30 Dec 2025 05:02:56 GMT
+Ratelimit-Limit: 800
+X-Cache: Miss from cloudfront
+X-Amz-Cf-Id: lhYva-EjA0HRY3qVhw5ORfJXQeNMAf2kzotdpjFYwG4Pu1BDsIEKvw==
+Content-Type: application/json; charset=utf-8
+Vary: Accept-Encoding,Origin
+
+{"data":[{"id":"cdf89c5e-c91c-45e0-b8a6-f4630a085eb5","status":"enabled","type":"stream.online","version":"1","condition":{"broadcaster_user_id":"44077075"},"created_at":"2025-12-30T05:02:56.966158536Z","transport":{"method":"websocket","session_id":"AgoQV10linmmQc2Bq03KSNDt6RIGY2VsbC1h","connected_at":"2025-12-30T05:02:56Z"},"cost":1}],"total":1,"max_total_cost":10,"total_cost":1}
+-------------------------
+
+2025/12/29 23:02:57 [IRC] :tmi.twitch.tv 001 axyrabot :Welcome, GLHF!
+2025/12/29 23:02:57 [IRC] :tmi.twitch.tv 002 axyrabot :Your host is tmi.twitch.tv
+2025/12/29 23:02:57 [IRC] :tmi.twitch.tv 003 axyrabot :This server is rather new
+2025/12/29 23:02:57 [IRC] :tmi.twitch.tv 004 axyrabot :-
+2025/12/29 23:02:57 [IRC] :tmi.twitch.tv 375 axyrabot :-
+2025/12/29 23:02:57 [IRC] :tmi.twitch.tv 372 axyrabot :You are in a maze of twisty passages, all alike.
+2025/12/29 23:02:57 [IRC] :tmi.twitch.tv 376 axyrabot :>
+2025/12/29 23:02:57 [IRC] :tmi.twitch.tv CAP * ACK :twitch.tv/tags twitch.tv/commands twitch.tv/membership
+2025/12/29 23:02:57 [IRC] :axyrabot!axyrabot@axyrabot.tmi.twitch.tv JOIN #nopopcorn
+2025/12/29 23:02:57 [SENT] PRIVMSG #nopopcorn :hello chat
+2025/12/29 23:02:57 [IRC] :axyrabot.tmi.twitch.tv 353 axyrabot = #nopopcorn :axyrabot
+2025/12/29 23:02:57 [IRC] :axyrabot.tmi.twitch.tv 366 axyrabot #nopopcorn :End of /NAMES list
+2025/12/29 23:02:57 [IRC] @badge-info=;badges=moderator/1;color=#8A2BE2;display-name=AxyraBot;emote-sets=0,300374282;mod=1;subscriber=0;user-type=mod :tmi.twitch.tv USERSTATE #nopopcorn
+2025/12/29 23:02:57 [IRC] @emote-only=0;followers-only=-1;r9k=0;room-id=44077075;slow=0;subs-only=0 :tmi.twitch.tv ROOMSTATE #nopopcorn
+2025/12/29 23:02:57 [IRC] @badge-info=;badges=moderator/1;color=#8A2BE2;display-name=AxyraBot;emote-sets=0,300374282;id=6a52776e-225c-4b3b-a34d-d5c3d3059b6d;mod=1;subscriber=0;user-type=mod :tmi.twitch.tv USERSTATE #nopopcorn
+2025/12/29 23:02:57 --- EventSub Request ---
+POST https://api.twitch.tv/helix/eventsub/subscriptions
+Authorization: Bearer yne2rnchxs2ypn2u1uo6l6lfe9egum
+Content-Type: application/json
+Client-Id: 8ntdhbigsooa3gdey1v43hpkrf63my
+
+{"condition":{"broadcaster_user_id":"44077075"},"transport":{"method":"websocket","session_id":"AgoQV10linmmQc2Bq03KSNDt6RIGY2VsbC1h"},"type":"stream.offline","version":"1"}
+------------------------
+
+2025/12/29 23:02:57 --- EventSub Response ---
+202 Accepted
+X-Cache: Miss from cloudfront
+X-Amz-Cf-Pop: ATL59-P15
+X-Amz-Cf-Id: EuQXAjaViZAUwSCKdfuHTIhlc2oFH_Dp0HODbOfTVIJ5r3QFy_nn4g==
+Content-Type: application/json; charset=utf-8
+Date: Tue, 30 Dec 2025 05:02:57 GMT
+Ratelimit-Remaining: 799
+Ratelimit-Reset: 1767070978
+Timing-Allow-Origin: https://www.twitch.tv
+Via: 1.1 686a5e8b0e5271b7f770b23414d5b80c.cloudfront.net (CloudFront)
+Strict-Transport-Security: max-age=300; includeSubDomains
+Content-Length: 385
+Vary: Accept-Encoding,Origin
+Ratelimit-Limit: 800
+
+{"data":[{"id":"3a32b6aa-72f4-429c-ae5e-d0b95a6e0e6d","status":"enabled","type":"stream.offline","version":"1","condition":{"broadcaster_user_id":"44077075"},"created_at":"2025-12-30T05:02:57.598400658Z","transport":{"method":"websocket","session_id":"AgoQV10linmmQc2Bq03KSNDt6RIGY2VsbC1h","connected_at":"2025-12-30T05:02:56Z"},"cost":1}],"total":1,"max_total_cost":10,"total_cost":2}
+-------------------------
+
+2025/12/29 23:02:58 --- EventSub Request ---
+POST https://api.twitch.tv/helix/eventsub/subscriptions
+Client-Id: 8ntdhbigsooa3gdey1v43hpkrf63my
+Authorization: Bearer yne2rnchxs2ypn2u1uo6l6lfe9egum
+Content-Type: application/json
+
+{"condition":{"broadcaster_user_id":"44077075"},"transport":{"method":"websocket","session_id":"AgoQV10linmmQc2Bq03KSNDt6RIGY2VsbC1h"},"type":"channel.update","version":"1"}
+------------------------
+
+2025/12/29 23:02:58 --- EventSub Response ---
+202 Accepted
+Ratelimit-Reset: 1767070979
+Timing-Allow-Origin: https://www.twitch.tv
+Strict-Transport-Security: max-age=300; includeSubDomains
+Vary: Accept-Encoding,Origin
+X-Cache: Miss from cloudfront
+Via: 1.1 686a5e8b0e5271b7f770b23414d5b80c.cloudfront.net (CloudFront)
+X-Amz-Cf-Pop: ATL59-P15
+X-Amz-Cf-Id: ClZiXkUQ8hTYFezanN40jBE2IeQ22mAAsLRKc-QJdPno1y6KTsAXZA==
+Content-Type: application/json; charset=utf-8
+Content-Length: 385
+Date: Tue, 30 Dec 2025 05:02:58 GMT
+Ratelimit-Limit: 800
+Ratelimit-Remaining: 799
+
+{"data":[{"id":"e7ad5565-8a6a-4bfc-82c8-627e1920d579","status":"enabled","type":"channel.update","version":"1","condition":{"broadcaster_user_id":"44077075"},"created_at":"2025-12-30T05:02:58.218268118Z","transport":{"method":"websocket","session_id":"AgoQV10linmmQc2Bq03KSNDt6RIGY2VsbC1h","connected_at":"2025-12-30T05:02:56Z"},"cost":1}],"total":3,"max_total_cost":10,"total_cost":3}
+-------------------------
+
+2025/12/29 23:03:06 [EventSub WS] {"metadata":{"message_id":"7a03a3f1-2be1-4eb2-a95d-aa0a9765cdaf","message_type":"session_keepalive","message_timestamp":"2025-12-30T05:03:06.502051681Z"},"payload":{}}
+2025/12/29 23:03:08 [IRC] @badge-info=subscriber/25;badges=broadcaster/1,subscriber/0,together-for-good-25---good-badge/1;client-nonce=1fc75395908ab4ecf53daceca3ad7401;color=#FF73E8;display-name=nopopcorn;emotes=;first-msg=0;flags=;id=28c44349-91e4-4b6f-b9e2-d741a057b400;mod=0;returning-chatter=0;room-id=44077075;subscriber=1;tmi-sent-ts=1767070988847;turbo=0;user-id=44077075;user-type= :nopopcorn!nopopcorn@nopopcorn.tmi.twitch.tv PRIVMSG #nopopcorn :!test
+2025/12/29 23:03:08 [PARSED] message="!test"
+2025/12/29 23:03:08 [SENT] PRIVMSG #nopopcorn :SUCCESS
+2025/12/29 23:03:09 [IRC] @badge-info=;badges=moderator/1;color=#8A2BE2;display-name=AxyraBot;emote-sets=0,300374282;id=2c6b7a65-2072-4424-9605-31a05aaa59cc;mod=1;subscriber=0;user-type=mod :tmi.twitch.tv USERSTATE #nopopcorn
+2025/12/29 23:03:16 [EventSub WS] {"metadata":{"message_id":"6b49e1ab-fabf-4105-8389-6df564c5d256","message_type":"session_keepalive","message_timestamp":"2025-12-30T05:03:16.502100827Z"},"payload":{}}
+2025/12/29 23:03:26 [EventSub WS] {"metadata":{"message_id":"d4047d38-0d7a-45a5-9419-56041fb22587","message_type":"session_keepalive","message_timestamp":"2025-12-30T05:03:26.502496664Z"},"payload":{}}

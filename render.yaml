@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: axyra-bot-backend
+    env: go
+    rootDirectory: backend
+    buildCommand: go build -o server .
+    startCommand: ./server
+    plan: free
+    envVars:
+      - key: TWITCH_BOT_USERNAME
+        value: AxyraBot
+      - key: TWITCH_BOT_OAUTH
+        value: "oauth:REPLACE_WITH_BOT_ACCESS_TOKEN"
+      - key: TWITCH_CLIENT_ID
+        value: "8ntdhbigsooa3gdey1v43hpkrf63my"
+      - key: TWITCH_CLIENT_SECRET
+        value: "kxywyl4dzkry13zpmmw6rlqmh7h9zz"
+      - key: TWITCH_CHANNEL
+        value: nopopcorn
+      - key: TWITCH_EVENTSUB_ENABLED
+        value: "0"
+      # Optional: Neon/Postgres connection string, if you want DB features
+      - key: DATABASE_URL
+        value: "postgres://user:password@host:5432/dbname?sslmode=require"
