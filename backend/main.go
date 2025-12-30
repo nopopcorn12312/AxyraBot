@@ -526,9 +526,14 @@ func registerEventSubSubscriptions(appToken, clientID, channel, tokensPath strin
 				subs = append(subs, "channel.subscribe")
 			}
 
-			// try to load broadcaster token from tokens.json; if present use it for broadcaster-scoped subscriptions
+			// choose broadcaster token for EventSub if provided explicitly; this must
+			// be a user access token for the broadcaster account with the proper
+			// EventSub scopes (e.g. channel:read:subscriptions for subscription events).
 			broadToken := ""
-			if t, err := loadTokens(tokensPath); err == nil && t.AccessToken != "" {
+			if bt := os.Getenv("TWITCH_EVENTSUB_BROADCASTER_TOKEN"); bt != "" {
+				broadToken = strings.TrimPrefix(bt, "oauth:")
+			} else if t, err := loadTokens(tokensPath); err == nil && t.AccessToken != "" {
+				// fallback to tokens.json if present (typically local/dev)
 				broadToken = t.AccessToken
 			}
 

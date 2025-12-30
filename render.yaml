@@ -19,6 +19,12 @@ services:
         value: nopopcorn
       - key: TWITCH_EVENTSUB_ENABLED
         value: "0"
+      # Optional: broadcaster user access token for EventSub (without oauth: prefix)
+      # e.g. generate via Twitch OAuth for your channel account with the
+      # necessary EventSub scopes and set: oauth:... in your own env, but here
+      # store only the raw token value.
+      # - key: TWITCH_EVENTSUB_BROADCASTER_TOKEN
+      #   value: "REPLACE_WITH_BROADCASTER_EVENTSUB_TOKEN"
       # Optional: Neon/Postgres connection string, if you want DB features
       - key: DATABASE_URL
         value: "postgres://user:password@host:5432/dbname?sslmode=require"
