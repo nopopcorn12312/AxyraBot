@@ -113,7 +113,7 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <div className="flex-1 flex w-full max-w-6xl mx-auto mt-8 gap-6">
+      <div className="flex-1 flex w-full mt-8 gap-6">
         <div
           className={`${sidebarOpen ? "w-60" : "w-16"} flex flex-col rounded-2xl border border-slate-800 bg-slate-900/80 p-3 transition-all duration-200`}
         >
