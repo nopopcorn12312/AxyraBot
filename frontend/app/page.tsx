@@ -15,6 +15,18 @@ export default function HomePage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+
+    // If we just came back from Twitch, capture any login/avatar params
+    const params = new URLSearchParams(window.location.search);
+    const loginFromQuery = params.get("login");
+    const avatarFromQuery = params.get("avatar");
+    if (loginFromQuery) {
+      window.localStorage.setItem("axyra.login", "1");
+    }
+    if (avatarFromQuery) {
+      window.localStorage.setItem("axyra.avatar", avatarFromQuery);
+    }
+
     const stored = window.localStorage.getItem("axyra.login");
     if (stored === "1") {
       setIsLoggedIn(true);
@@ -47,7 +59,9 @@ export default function HomePage() {
     setAvatarUrl(null);
     setMenuOpen(false);
   };
-  const redirectTarget = frontendUrl ? `${frontendUrl}/dashboard` : "";
+  // After Twitch auth, send users back to the homepage so we can update
+  // local state and show the Dashboard buttons/avatar.
+  const redirectTarget = frontendUrl ? `${frontendUrl}` : "";
   const connectUrl = redirectTarget
     ? `${backendUrl}/auth/start?redirect=${encodeURIComponent(redirectTarget)}`
     : `${backendUrl}/auth/start`;
