@@ -60,14 +60,54 @@ func handleChannelsChanged(payload string) {
 			return
 		}
 	}
-	// start a bot for any channel not active
+	// if IRC is enabled, start a bot for any channel not active (legacy mode)
+	if os.Getenv("TWITCH_IRC_ENABLED") == "1" {
+		for _, ch := range chans {
+			if !isActiveChannel(ch) {
+				log.Println("starting IRC bot for new channel:", ch)
+				botName := os.Getenv("TWITCH_BOT_USERNAME")
+				oauth := os.Getenv("TWITCH_BOT_OAUTH")
+				go startIrcBot(botName, oauth, ch)
+				markActiveChannel(ch)
+			}
+		}
+		return
+	}
+
+	// In the default path, we rely on EventSub channel.chat.message for chat reading.
+	// Mark new channels as active and (re)register EventSub subscriptions using the
+	// cached or freshly obtained app access token.
 	for _, ch := range chans {
 		if !isActiveChannel(ch) {
-			log.Println("starting bot for new channel:", ch)
-			botName := os.Getenv("TWITCH_BOT_USERNAME")
-			oauth := os.Getenv("TWITCH_BOT_OAUTH")
-			go startIrcBot(botName, oauth, ch)
+			log.Println("activating channel for EventSub chat:", ch)
 			markActiveChannel(ch)
 		}
 	}
+
+	clientID := os.Getenv("TWITCH_CLIENT_ID")
+	clientSecret := os.Getenv("TWITCH_CLIENT_SECRET")
+	if clientID == "" || clientSecret == "" {
+		return
+	}
+
+	go func() {
+		// ensure we have an app access token
+		helixChatMu.Lock()
+		token := appAccessToken
+		helixChatMu.Unlock()
+		if token == "" {
+			var err error
+			token, err = getAppAccessToken(clientID, clientSecret)
+			if err != nil {
+				log.Println("failed to get app token for EventSub after channels_changed:", err)
+				return
+			}
+			helixChatMu.Lock()
+			appAccessToken = token
+			helixChatMu.Unlock()
+		}
+
+		// Re-register EventSub subscriptions for all joined channels (database-driven).
+		registerEventSubSubscriptions(token, clientID, "", "")
+	}()
 }

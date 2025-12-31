@@ -123,29 +123,34 @@ func main() {
 		go registerEventSubSubscriptions(token, clientID, channel, tokensPath)
 	}
 
-	// Start IRC WebSocket bot (reads channels from DB if present)
-	go func() {
-		chans := []string{}
-		// if DB present, join all channels marked joined
-		if db != nil {
-			if cs, err := GetJoinedChannels(); err == nil && len(cs) > 0 {
-				chans = cs
+	// Optionally start IRC WebSocket bots for legacy chat reading if explicitly enabled.
+	// By default, chat is read via EventSub channel.chat.message instead.
+	if os.Getenv("TWITCH_IRC_ENABLED") == "1" {
+		go func() {
+			chans := []string{}
+			// if DB present, join all channels marked joined
+			if db != nil {
+				if cs, err := GetJoinedChannels(); err == nil && len(cs) > 0 {
+					chans = cs
+				}
 			}
-		}
-		// if no DB channels yet but TWITCH_CHANNEL is set, fall back to it
-		if len(chans) == 0 && channel != "" {
-			chans = []string{channel}
-		}
-		if len(chans) == 0 {
-			log.Println("no channels configured to join yet; waiting for /auth/callback to add channels")
-			return
-		}
-		for _, ch := range chans {
-			go startIrcBot(botName, oauth, ch)
-			markActiveChannel(ch)
-			time.Sleep(250 * time.Millisecond)
-		}
-	}()
+			// if no DB channels yet but TWITCH_CHANNEL is set, fall back to it
+			if len(chans) == 0 && channel != "" {
+				chans = []string{channel}
+			}
+			if len(chans) == 0 {
+				log.Println("no channels configured to join yet; waiting for /auth/callback to add channels")
+				return
+			}
+			for _, ch := range chans {
+				go startIrcBot(botName, oauth, ch)
+				markActiveChannel(ch)
+				time.Sleep(250 * time.Millisecond)
+			}
+		}()
+	} else {
+		log.Println("TWITCH_IRC_ENABLED is not set; using EventSub channel.chat.message for chat reading")
+	}
 
 	// Start HTTP server for OAuth + join endpoints
 	go startHTTPServer(clientID, clientSecret)
@@ -174,18 +179,42 @@ func startEventSubWS() {
 				c.Close()
 				break
 			}
-			// try to decode and capture session id from session_welcome
+			// try to decode and capture session id from session_welcome and handle notifications
 			var m map[string]interface{}
 			if err := json.Unmarshal(message, &m); err == nil {
 				if metadata, ok := m["metadata"].(map[string]interface{}); ok {
-					if mt, ok := metadata["message_type"].(string); ok && mt == "session_welcome" {
-						if payload, ok := m["payload"].(map[string]interface{}); ok {
-							if session, ok := payload["session"].(map[string]interface{}); ok {
-								if id, ok := session["id"].(string); ok {
-									eventSubMu.Lock()
-									eventSubSessionID = id
-									eventSubMu.Unlock()
-									log.Println("EventSub session id set:", id)
+					if mt, ok := metadata["message_type"].(string); ok {
+						switch mt {
+						case "session_welcome":
+							if payload, ok := m["payload"].(map[string]interface{}); ok {
+								if session, ok := payload["session"].(map[string]interface{}); ok {
+									if id, ok := session["id"].(string); ok {
+										eventSubMu.Lock()
+										eventSubSessionID = id
+										eventSubMu.Unlock()
+										log.Println("EventSub session id set:", id)
+									}
+								}
+							}
+						case "notification":
+							if payload, ok := m["payload"].(map[string]interface{}); ok {
+								if sub, ok := payload["subscription"].(map[string]interface{}); ok {
+									stype, _ := sub["type"].(string)
+									if stype == "channel.chat.message" {
+										if event, ok := payload["event"].(map[string]interface{}); ok {
+											channelLogin, _ := event["broadcaster_user_login"].(string)
+											chatterLogin, _ := event["chatter_user_login"].(string)
+											msgText := ""
+											if msgObj, ok := event["message"].(map[string]interface{}); ok {
+												if t, ok := msgObj["text"].(string); ok {
+													msgText = t
+												}
+											}
+											if channelLogin != "" && msgText != "" {
+												go handleChatMessageEvent(channelLogin, chatterLogin, msgText)
+											}
+										}
+									}
 								}
 							}
 						}
@@ -293,6 +322,30 @@ func writeIRC(c *websocket.Conn, line string) {
 	}
 	if err := c.WriteMessage(websocket.TextMessage, []byte(line)); err != nil {
 		log.Println("irc write error:", err)
+	}
+}
+
+// handleChatMessageEvent processes a chat message received via EventSub
+// channel.chat.message and runs simple command handlers.
+func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
+	channelLogin = strings.ToLower(channelLogin)
+	log.Printf("[CHAT] channel=%s user=%s msg=%q", channelLogin, chatterLogin, message)
+
+	botName := os.Getenv("TWITCH_BOT_USERNAME")
+	if botName == "" {
+		botName = "AxyraBot"
+	}
+
+	// basic commands migrated from IRC handler
+	if strings.HasPrefix(message, "!hello") {
+		if err := sendHelixChatMessage(channelLogin, fmt.Sprintf("Hello! I am %s", botName)); err != nil {
+			log.Println("failed to send !hello response:", err)
+		}
+	}
+	if strings.HasPrefix(message, "!test") {
+		if err := sendHelixChatMessage(channelLogin, "SUCCESS"); err != nil {
+			log.Println("failed to send !test response:", err)
+		}
 	}
 }
 
@@ -665,6 +718,7 @@ func registerEventSubSubscriptions(appToken, clientID, channel, tokensPath strin
 				"stream.online",
 				"stream.offline",
 				"channel.update",
+				"channel.chat.message",
 			}
 
 			// get webhook callback and secret from env (if provided)
@@ -684,9 +738,25 @@ func registerEventSubSubscriptions(appToken, clientID, channel, tokensPath strin
 			broadToken := ""
 			if bt := os.Getenv("TWITCH_EVENTSUB_BROADCASTER_TOKEN"); bt != "" {
 				broadToken = strings.TrimPrefix(bt, "oauth:")
-			} else if t, err := loadTokens(tokensPath); err == nil && t.AccessToken != "" {
-				// fallback to tokens.json if present (typically local/dev)
-				broadToken = t.AccessToken
+			} else if tokensPath != "" {
+				if t, err := loadTokens(tokensPath); err == nil && t.AccessToken != "" {
+					// fallback to tokens.json if present (typically local/dev)
+					broadToken = t.AccessToken
+				}
+			}
+
+			// resolve bot user id once for channel.chat.message subscriptions
+			botLogin := os.Getenv("TWITCH_BOT_USERNAME")
+			if botLogin == "" {
+				botLogin = "AxyraBot"
+			}
+			botID := ""
+			if appToken != "" {
+				if id, err := getUserID(strings.ToLower(botLogin), appToken, clientID); err != nil {
+					log.Println("failed to resolve bot id for channel.chat.message:", err)
+				} else {
+					botID = id
+				}
 			}
 
 			// For each channel, resolve its broadcaster id and create subscriptions.
@@ -699,9 +769,18 @@ func registerEventSubSubscriptions(appToken, clientID, channel, tokensPath strin
 
 				for _, st := range subs {
 					cond := map[string]string{"broadcaster_user_id": broadcasterID}
-					// choose auth: use broadcaster token if available for broadcaster-related events, otherwise app token
+					// channel.chat.message also requires the bot user id in the condition
+					if st == "channel.chat.message" {
+						if botID == "" {
+							log.Println("skipping channel.chat.message subscription; botID not available")
+							continue
+						}
+						cond["user_id"] = botID
+					}
+					// choose auth: for channel.chat.message, always use app token; for others, use
+					// broadcaster token if available, otherwise app token.
 					auth := appToken
-					if broadToken != "" {
+					if st != "channel.chat.message" && broadToken != "" {
 						auth = broadToken
 					}
 
