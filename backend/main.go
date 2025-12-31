@@ -347,6 +347,14 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 			log.Println("failed to send !test response:", err)
 		}
 	}
+	if strings.HasPrefix(message, "!testanc") {
+		// Send a Twitch announcement by issuing the /announce chat command.
+		// The bot account must be a moderator or broadcaster in the channel
+		// for this to succeed.
+		if err := sendHelixChatMessage(channelLogin, "/announce success"); err != nil {
+			log.Println("failed to send !testanc announcement:", err)
+		}
+	}
 }
 
 // active channel helpers
