@@ -29,9 +29,27 @@ func handleAuthStart(clientID string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		redirect := r.URL.Query().Get("redirect")
 		state := "state123" // TODO: generate/validate
-		// For broadcaster authorization, only request channel:bot so Twitch
-		// shows a single permission: "Join your channel's chat as a bot user."
-		scopes := "channel:bot"
+		// Broadcaster authorization scopes. This is intentionally expansive
+		// (Nightbot-style) so the app can perform many channel management
+		// tasks, including running commercials, managing Channel Points,
+		// moderators, clips, subscribers, and joining chat as a bot user.
+		// NOTE: Only request scopes your app actually uses in production.
+		scopes := strings.Join([]string{
+			"channel:edit:commercial",   // run commercials
+			"channel:manage:broadcast",  // update channel config / markers / tags
+			"channel:manage:moderators", // grant/remove moderator role
+			"channel:manage:redemptions", // manage Channel Points rewards
+			"channel:read:vips",         // read VIP list
+			"clips:edit",                // create clips
+			"channel:read:editors",      // get list of editors
+			"channel:read:redemptions",  // view Channel Points rewards
+			"channel:read:subscriptions", // view subscribers
+			"channel:bot",               // join channel chat as a bot user
+			"moderation:read",           // view moderation data
+			"moderator:manage:banned_users", // ban/unban users
+			"moderator:read:followers",  // read followers where mod
+			"user:read:email",           // read broadcaster email
+		}, " ")
 		u := url.URL{
 			Scheme: "https",
 			Host:   "id.twitch.tv",
