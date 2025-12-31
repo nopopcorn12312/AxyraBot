@@ -33,7 +33,7 @@ export default function HomePage() {
         <div className="flex items-center justify-end flex-1">
           <a
             href="/dashboard"
-            className="inline-flex items-center justify-center rounded-full bg-emerald-500 px-6 py-2 text-sm font-semibold text-white shadow-lg shadow-emerald-500/40 transition hover:bg-emerald-400"
+            className="inline-flex items-center justify-center rounded-full bg-accent px-6 py-2 text-sm font-semibold text-white shadow-lg shadow-sky-400/40 transition hover:bg-sky-500"
           >
             Dashboard
           </a>
