@@ -150,7 +150,7 @@ export default function DashboardPage() {
             <input
               type="text"
               readOnly
-              className="mb-5 w-full rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-base text-slate-100 placeholder-slate-500 focus:outline-none"
+              className="mb-5 w-full rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none"
               placeholder="Current stream title"
             />
             <label className="block text-sm font-semibold text-slate-300 mb-2 mt-1">
@@ -159,7 +159,7 @@ export default function DashboardPage() {
             <input
               type="text"
               readOnly
-              className="w-full rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-base text-slate-100 placeholder-slate-500 focus:outline-none"
+              className="w-full rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none"
               placeholder="Current stream category"
             />
           </div>
