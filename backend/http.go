@@ -29,7 +29,13 @@ func startHTTPServer(clientID, clientSecret string) {
 func handleAuthStart(clientID string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		redirect := r.URL.Query().Get("redirect")
-		state := "state123" // TODO: generate/validate
+		state := "state123" // TODO: generate/validate and include CSRF protection
+		// If the frontend provided a redirect target, encode it into the state
+		// parameter so it survives the Twitch OAuth roundtrip and can be used in
+		// the callback handler.
+		if redirect != "" {
+			state = "redir:" + url.QueryEscape(redirect)
+		}
 		// Broadcaster authorization scopes. This is intentionally expansive
 		// (Nightbot-style) so the app can perform many channel management
 		// tasks, including running commercials, managing Channel Points,
@@ -77,6 +83,7 @@ func handleAuthCallback(clientID, clientSecret string) http.HandlerFunc {
 			http.Error(w, "missing code", http.StatusBadRequest)
 			return
 		}
+		state := r.URL.Query().Get("state")
 		// exchange code for token
 		v := url.Values{}
 		v.Set("client_id", clientID)
@@ -119,16 +126,17 @@ func handleAuthCallback(clientID, clientSecret string) http.HandlerFunc {
 			handleChannelsChanged(login)
 		}
 
-		// If a redirect URL was provided (and preserved through the Twitch OAuth
-		// roundtrip), send the user back to the frontend with the login attached
-		// as a query parameter.
-		if redir := r.URL.Query().Get("redirect"); redir != "" {
-			if dest, err := url.Parse(redir); err == nil {
-				q := dest.Query()
-				q.Set("login", login)
-				dest.RawQuery = q.Encode()
-				http.Redirect(w, r, dest.String(), http.StatusFound)
-				return
+		// If a redirect URL was provided via the state parameter, send the user
+		// back to the frontend with the login attached as a query parameter.
+		if strings.HasPrefix(state, "redir:") {
+			if raw, err := url.QueryUnescape(strings.TrimPrefix(state, "redir:")); err == nil {
+				if dest, err := url.Parse(raw); err == nil {
+					q := dest.Query()
+					q.Set("login", login)
+					dest.RawQuery = q.Encode()
+					http.Redirect(w, r, dest.String(), http.StatusFound)
+					return
+				}
 			}
 		}
 
