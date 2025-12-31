@@ -89,16 +89,6 @@ export default function DashboardPage() {
 
   const handleLogout = () => {
     if (typeof window !== "undefined") {
-      const storedLogin = window.localStorage.getItem("axyra.login");
-      if (storedLogin) {
-        fetch(`${backendUrl}/user/logout`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ login: storedLogin }),
-        }).catch((err) => {
-          console.error("logout api error", err);
-        });
-      }
       window.localStorage.removeItem("axyra.login");
       window.localStorage.removeItem("axyra.avatar");
     }

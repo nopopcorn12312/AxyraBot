@@ -54,32 +54,23 @@ func GetJoinedChannels() ([]string, error) {
 }
 
 func AddOrUpdateChannel(login, owner string) error {
-	// insert or update
+	// insert or update and mark as joined
 	_, err := db.Exec(`INSERT INTO channels (login, owner_user, joined, joined_at) VALUES ($1,$2,true,now()) ON CONFLICT (login) DO UPDATE SET owner_user=EXCLUDED.owner_user, joined=true, joined_at=now()`, login, owner)
 	return err
 }
 
-// SetChannelJoined updates (or creates) a channel row and sets its joined flag.
-func SetChannelJoined(login, owner string, joined bool) error {
+// SetChannelJoined flips the joined flag for an existing channel.
+func SetChannelJoined(login string, joined bool) error {
 	if db == nil {
 		return fmt.Errorf("db not initialized")
 	}
-	_, err := db.Exec(`INSERT INTO channels (login, owner_user, joined, joined_at) VALUES ($1,$2,$3,now()) ON CONFLICT (login) DO UPDATE SET owner_user=EXCLUDED.owner_user, joined=EXCLUDED.joined, joined_at=now()`, login, owner, joined)
+	_, err := db.Exec(`UPDATE channels SET joined=$2, joined_at=now() WHERE login=$1`, login, joined)
 	return err
 }
 
 func SaveUserTokens(login, access, refresh string) error {
 	// upsert user tokens
 	_, err := db.Exec(`INSERT INTO users (login, access_token, refresh_token) VALUES ($1,$2,$3) ON CONFLICT (login) DO UPDATE SET access_token=EXCLUDED.access_token, refresh_token=EXCLUDED.refresh_token`, login, access, refresh)
-	return err
-}
-
-// DeleteUser removes a user row entirely from the users table.
-func DeleteUser(login string) error {
-	if db == nil {
-		return fmt.Errorf("db not initialized")
-	}
-	_, err := db.Exec(`DELETE FROM users WHERE login = $1`, login)
 	return err
 }
 

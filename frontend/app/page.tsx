@@ -27,6 +27,13 @@ export default function HomePage() {
       window.localStorage.setItem("axyra.avatar", avatarFromQuery);
     }
 
+    // Strip login/avatar from the URL after first use so a refresh
+    // doesn't immediately log the user back in after they log out.
+    if (loginFromQuery || avatarFromQuery) {
+      const newUrl = window.location.pathname + window.location.hash;
+      window.history.replaceState(null, "", newUrl);
+    }
+
     const storedLogin = window.localStorage.getItem("axyra.login");
     if (storedLogin) {
       setIsLoggedIn(true);
@@ -52,17 +59,6 @@ export default function HomePage() {
 
   const handleLogout = () => {
     if (typeof window !== "undefined") {
-      const login = window.localStorage.getItem("axyra.login");
-      if (login) {
-        // fire-and-forget request to remove the user from the backend
-        fetch(`${backendUrl}/user/logout`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ login }),
-        }).catch((err) => {
-          console.error("logout api error", err);
-        });
-      }
       window.localStorage.removeItem("axyra.login");
       window.localStorage.removeItem("axyra.avatar");
     }

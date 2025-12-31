@@ -18,7 +18,6 @@ func startHTTPServer(clientID, clientSecret string) {
 	mux.HandleFunc("/join", handleJoin)
 	mux.HandleFunc("/part", handlePart)
 	mux.HandleFunc("/channels", handleChannels)
-	mux.HandleFunc("/user/logout", handleUserLogout)
 	mux.HandleFunc("/stream/info", handleStreamInfo(clientID))
 	mux.HandleFunc("/stream/update", handleStreamUpdate(clientID))
 	addr := ":8080"
@@ -167,9 +166,9 @@ func handleJoin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if db != nil {
-		// Mark the channel as joined; Postgres triggers will notify the bot
-		// to start listening for this channel.
-		if err := SetChannelJoined(body.Login, body.Login, true); err != nil {
+		// Use the original AddOrUpdateChannel helper so the row appears
+		// in the channels table and is marked joined=true.
+		if err := AddOrUpdateChannel(body.Login, body.Login); err != nil {
 			http.Error(w, "db error", http.StatusInternalServerError)
 			return
 		}
@@ -194,38 +193,13 @@ func handlePart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if db != nil {
-		if err := SetChannelJoined(body.Login, body.Login, false); err != nil {
+		if err := SetChannelJoined(body.Login, false); err != nil {
 			http.Error(w, "db error", http.StatusInternalServerError)
 			return
 		}
 	}
 	// active channel bookkeeping for EventSub-based chat handling
 	unmarkActiveChannel(body.Login)
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprint(w, "ok")
-}
-
-// handleUserLogout deletes the user record for a given login so it no longer
-// appears in the users list.
-func handleUserLogout(w http.ResponseWriter, r *http.Request) {
-	var body struct {
-		Login string `json:"login"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "bad json", http.StatusBadRequest)
-		return
-	}
-	if body.Login == "" {
-		http.Error(w, "missing login", http.StatusBadRequest)
-		return
-	}
-	if db != nil {
-		if err := DeleteUser(body.Login); err != nil {
-			log.Println("failed delete user:", err)
-			http.Error(w, "db error", http.StatusInternalServerError)
-			return
-		}
-	}
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, "ok")
 }
