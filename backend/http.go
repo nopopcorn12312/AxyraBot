@@ -196,6 +196,10 @@ func handleJoin(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "db error", http.StatusInternalServerError)
 			return
 		}
+		// Immediately refresh active channels and EventSub subscriptions so the
+		// bot joins this channel without requiring a redeploy or waiting for the
+		// Postgres LISTEN/NOTIFY loop.
+		handleChannelsChanged(body.Login)
 	}
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, "ok")
