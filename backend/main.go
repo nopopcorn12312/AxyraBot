@@ -29,7 +29,7 @@ var (
 	helixChatMu         sync.Mutex
 	helixBotUserID      string
 	helixBroadcasterIDs = map[string]string{}
-	appAccessToken     string
+	appAccessToken      string
 )
 
 func main() {
@@ -711,26 +711,10 @@ func registerEventSubSubscriptions(appToken, clientID, channel, tokensPath strin
 				return
 			}
 
-			// list of subscription types that require broadcaster_user_id
-			// Note: some legacy types (e.g. channel.follow via websocket) are no longer
-			// available and will return 410 Gone. We avoid requesting those here.
-			subs := []string{
-				"stream.online",
-				"stream.offline",
-				"channel.update",
-				"channel.chat.message",
-			}
-
-			// get webhook callback and secret from env (if provided)
-			callback := os.Getenv("TWITCH_EVENTSUB_CALLBACK")
-			secret := os.Getenv("TWITCH_EVENTSUB_SECRET")
-
-			// channel.subscribe is only valid with certain transports; prefer webhook
-			// when a callback is configured, and avoid attempting it over websocket
-			// without a callback to prevent "invalid transport and auth combination".
-			if callback != "" {
-				subs = append(subs, "channel.subscribe")
-			}
+			// For now, only subscribe to channel.chat.message to avoid complex
+			// transport/auth combinations on other subscription types while we
+			// focus on EventSub-based chat reading.
+			subs := []string{"channel.chat.message"}
 
 			// choose broadcaster token for EventSub if provided explicitly; this must
 			// be a user access token for the broadcaster account with the proper
@@ -743,6 +727,12 @@ func registerEventSubSubscriptions(appToken, clientID, channel, tokensPath strin
 					// fallback to tokens.json if present (typically local/dev)
 					broadToken = t.AccessToken
 				}
+			}
+
+			// bot user access token for chat-related EventSub (channel.chat.message)
+			botToken := ""
+			if bt := os.Getenv("TWITCH_BOT_OAUTH"); bt != "" {
+				botToken = strings.TrimPrefix(bt, "oauth:")
 			}
 
 			// resolve bot user id once for channel.chat.message subscriptions
@@ -771,16 +761,19 @@ func registerEventSubSubscriptions(appToken, clientID, channel, tokensPath strin
 					cond := map[string]string{"broadcaster_user_id": broadcasterID}
 					// channel.chat.message also requires the bot user id in the condition
 					if st == "channel.chat.message" {
-						if botID == "" {
-							log.Println("skipping channel.chat.message subscription; botID not available")
+						if botID == "" || botToken == "" {
+							log.Println("skipping channel.chat.message subscription; botID or botToken not available")
 							continue
 						}
 						cond["user_id"] = botID
 					}
-					// choose auth: for channel.chat.message, always use app token; for others, use
-					// broadcaster token if available, otherwise app token.
+					// choose auth: for channel.chat.message, use the bot's user token so the
+					// user_id condition matches the token's user. For other subscriptions, use
+					// the broadcaster token if available, otherwise app token.
 					auth := appToken
-					if st != "channel.chat.message" && broadToken != "" {
+					if st == "channel.chat.message" {
+						auth = botToken
+					} else if broadToken != "" {
 						auth = broadToken
 					}
 
