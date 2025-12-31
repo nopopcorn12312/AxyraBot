@@ -688,6 +688,8 @@ func registerEventSubSubscriptions(appToken, clientID, channel, tokensPath strin
 		log.Println("EventSub registration disabled; set TWITCH_EVENTSUB_ENABLED=1 to enable")
 		return
 	}
+	// tokensPath is currently unused but kept for compatibility with callers.
+	_ = tokensPath
 
 	// wait for session id to be set
 	deadline := time.Now().Add(20 * time.Second)
@@ -715,19 +717,6 @@ func registerEventSubSubscriptions(appToken, clientID, channel, tokensPath strin
 			// transport/auth combinations on other subscription types while we
 			// focus on EventSub-based chat reading.
 			subs := []string{"channel.chat.message"}
-
-			// choose broadcaster token for EventSub if provided explicitly; this must
-			// be a user access token for the broadcaster account with the proper
-			// EventSub scopes (e.g. channel:read:subscriptions for subscription events).
-			broadToken := ""
-			if bt := os.Getenv("TWITCH_EVENTSUB_BROADCASTER_TOKEN"); bt != "" {
-				broadToken = strings.TrimPrefix(bt, "oauth:")
-			} else if tokensPath != "" {
-				if t, err := loadTokens(tokensPath); err == nil && t.AccessToken != "" {
-					// fallback to tokens.json if present (typically local/dev)
-					broadToken = t.AccessToken
-				}
-			}
 
 			// bot user access token for chat-related EventSub (channel.chat.message)
 			botToken := ""
@@ -767,26 +756,11 @@ func registerEventSubSubscriptions(appToken, clientID, channel, tokensPath strin
 						}
 						cond["user_id"] = botID
 					}
-					// choose auth: for channel.chat.message, use the bot's user token so the
-					// user_id condition matches the token's user. For other subscriptions, use
-					// the broadcaster token if available, otherwise app token.
-					auth := appToken
-					if st == "channel.chat.message" {
-						auth = botToken
-					} else if broadToken != "" {
-						auth = broadToken
-					}
-
-					// For channel.subscribe, prefer webhook transport if callback provided
-					if st == "channel.subscribe" && callback != "" {
-						if err := createEventSubSubscription(auth, clientID, st, cond, "", "webhook", callback, secret); err != nil {
-							log.Println("failed creating webhook subscription", st, "for", ch, ":", err)
-						}
-					} else {
-						// websocket transport for other events (requires session id)
-						if err := createEventSubSubscription(auth, clientID, st, cond, sid, "websocket", "", ""); err != nil {
-							log.Println("failed creating subscription", st, "for", ch, ":", err)
-						}
+					// for our current use case, all subs are channel.chat.message, which
+					// must use the bot's user token with websocket transport.
+					auth := botToken
+					if err := createEventSubSubscription(auth, clientID, st, cond, sid, "websocket", "", ""); err != nil {
+						log.Println("failed creating subscription", st, "for", ch, ":", err)
 					}
 
 					// avoid hitting rate limits too quickly
