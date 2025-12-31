@@ -64,26 +64,92 @@ func handleAuthStart(clientID string) http.HandlerFunc {
 		if redirect != "" {
 			state = "redir:" + url.QueryEscape(redirect)
 		}
-		// Broadcaster authorization scopes. This is intentionally expansive
-		// (Nightbot-style) so the app can perform many channel management
-		// tasks, including running commercials, managing Channel Points,
-		// moderators, clips, subscribers, and joining chat as a bot user.
-		// NOTE: Only request scopes your app actually uses in production.
+		// Broadcaster authorization scopes. This is intentionally expansive so
+		// that when a broadcaster authorizes the app, the token can manage and
+		// read most aspects of their channel. Bot/chat identity scopes are
+		// deliberately excluded here; those are handled by the separate bot
+		// token you generated earlier.
 		scopes := strings.Join([]string{
-			"channel:edit:commercial",       // run commercials
-			"channel:manage:broadcast",      // update channel config / markers / tags
-			"channel:manage:moderators",     // grant/remove moderator role
-			"channel:manage:redemptions",    // manage Channel Points rewards
-			"channel:read:vips",             // read VIP list
-			"clips:edit",                    // create clips
-			"channel:read:editors",          // get list of editors
-			"channel:read:redemptions",      // view Channel Points rewards
-			"channel:read:subscriptions",    // view subscribers
-			"channel:bot",                   // join channel chat as a bot user
-			"moderation:read",               // view moderation data
-			"moderator:manage:banned_users", // ban/unban users
-			"moderator:read:followers",      // read followers where mod
-			"user:read:email",               // read broadcaster email
+			// Channel / stream management
+			"channel:manage:ads",
+			"channel:manage:broadcast",
+			"channel:manage:extensions",
+			"channel:manage:guest_star",
+			"channel:manage:moderators",
+			"channel:manage:polls",
+			"channel:manage:predictions",
+			"channel:manage:raids",
+			"channel:manage:redemptions",
+			"channel:manage:schedule",
+			"channel:manage:videos",
+			"channel:manage:vips",
+
+			// Channel read / analytics
+			"channel:read:ads",
+			"channel:read:charity",
+			"channel:read:editors",
+			"channel:read:goals",
+			"channel:read:guest_star",
+			"channel:read:hype_train",
+			"channel:read:polls",
+			"channel:read:predictions",
+			"channel:read:redemptions",
+			"channel:read:stream_key",
+			"channel:read:subscriptions",
+			"channel:read:vips",
+			"analytics:read:extensions",
+			"analytics:read:games",
+			"bits:read",
+			"channel:moderate",
+
+			// Moderation / VIP / warnings
+			"moderation:read",
+			"moderator:manage:announcements",
+			"moderator:manage:automod",
+			"moderator:manage:automod_settings",
+			"moderator:manage:banned_users",
+			"moderator:manage:blocked_terms",
+			"moderator:manage:chat_messages",
+			"moderator:manage:chat_settings",
+			"moderator:manage:guest_star",
+			"moderator:manage:shield_mode",
+			"moderator:manage:shoutouts",
+			"moderator:manage:unban_requests",
+			"moderator:manage:warnings",
+			"moderator:read:blocked_terms",
+			"moderator:read:chat_settings",
+			"moderator:read:followers",
+			"moderator:read:automod_settings",
+			"moderator:read:shield_mode",
+			"moderator:read:unban_requests",
+			"moderator:read:suspicious_users",
+			"moderator:read:warnings",
+			"moderator:read:moderators",
+			"moderator:read:vips",
+			"moderator:read:banned_users",
+			"moderator:read:chat_messages",
+			"moderator:read:guest_star",
+
+			// Channel points / polls / predictions / goals / charity
+			"channel:read:redemptions",
+			"channel:manage:redemptions",
+			"channel:read:polls",
+			"channel:manage:polls",
+			"channel:read:predictions",
+			"channel:manage:predictions",
+			"channel:read:goals",
+			"channel:read:charity",
+
+			// User/account-level (broadcaster account)
+			"user:edit",
+			"user:manage:blocked_users",
+			"user:manage:chat_color",
+			"user:manage:whispers",
+			"user:read:blocked_users",
+			"user:read:broadcast",
+			"user:read:email",
+			"user:read:follows",
+			"clips:edit",
 		}, " ")
 		u := url.URL{
 			Scheme: "https",
