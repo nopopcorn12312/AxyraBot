@@ -59,6 +59,15 @@ func AddOrUpdateChannel(login, owner string) error {
 	return err
 }
 
+// SetChannelJoined updates (or creates) a channel row and sets its joined flag.
+func SetChannelJoined(login, owner string, joined bool) error {
+	if db == nil {
+		return fmt.Errorf("db not initialized")
+	}
+	_, err := db.Exec(`INSERT INTO channels (login, owner_user, joined, joined_at) VALUES ($1,$2,$3,now()) ON CONFLICT (login) DO UPDATE SET owner_user=EXCLUDED.owner_user, joined=EXCLUDED.joined, joined_at=now()`, login, owner, joined)
+	return err
+}
+
 func SaveUserTokens(login, access, refresh string) error {
 	// upsert user tokens
 	_, err := db.Exec(`INSERT INTO users (login, access_token, refresh_token) VALUES ($1,$2,$3) ON CONFLICT (login) DO UPDATE SET access_token=EXCLUDED.access_token, refresh_token=EXCLUDED.refresh_token`, login, access, refresh)

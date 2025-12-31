@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -75,14 +76,16 @@ func handleChannelsChanged(payload string) {
 	}
 
 	// In the default path, we rely on EventSub channel.chat.message for chat reading.
-	// Mark new channels as active and (re)register EventSub subscriptions using the
-	// cached or freshly obtained app access token.
+	// Rebuild the active channel set from the current joined channels so that
+	// channels that were parted are no longer considered active.
+	newActive := map[string]bool{}
 	for _, ch := range chans {
-		if !isActiveChannel(ch) {
-			log.Println("activating channel for EventSub chat:", ch)
-			markActiveChannel(ch)
-		}
+		log.Println("activating channel for EventSub chat:", ch)
+		newActive[strings.ToLower(ch)] = true
 	}
+	activeMu.Lock()
+	activeChannels = newActive
+	activeMu.Unlock()
 
 	clientID := os.Getenv("TWITCH_CLIENT_ID")
 	clientSecret := os.Getenv("TWITCH_CLIENT_SECRET")

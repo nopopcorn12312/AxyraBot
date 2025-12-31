@@ -18,6 +18,8 @@ export default function DashboardPage() {
   const [loadingStream, setLoadingStream] = useState(false);
   const [savingStream, setSavingStream] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [joined, setJoined] = useState(false);
+  const [joining, setJoining] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -70,6 +72,21 @@ export default function DashboardPage() {
       .finally(() => setLoadingStream(false));
   }, [login]);
 
+  // Determine whether the current channel is already joined
+  useEffect(() => {
+    if (!login) return;
+    fetch(`${backendUrl}/channels`)
+      .then((res) => res.json())
+      .then((data) => {
+        const chans: string[] = data.channels || [];
+        const lower = login.toLowerCase();
+        setJoined(chans.some((c) => c.toLowerCase() === lower));
+      })
+      .catch((err) => {
+        console.error(err);
+      });
+  }, [login]);
+
   const handleLogout = () => {
     if (typeof window !== "undefined") {
       window.localStorage.removeItem("axyra.login");
@@ -83,20 +100,30 @@ export default function DashboardPage() {
 
   const handleJoinChannel = async () => {
     if (!login) return;
+    setJoining(true);
     setStatusMessage(null);
+    const endpoint = joined ? "/part" : "/join";
+    const verb = joined ? "part" : "join";
     try {
-      const res = await fetch(`${backendUrl}/join`, {
+      const res = await fetch(`${backendUrl}${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ login }),
       });
       if (!res.ok) {
-        throw new Error("Join failed");
+        throw new Error(`${verb} failed`);
       }
-      setStatusMessage("Channel joined successfully.");
+      setJoined(!joined);
+      setStatusMessage(
+        verb === "join" ? "Channel joined successfully." : "Channel parted.",
+      );
     } catch (err) {
       console.error(err);
-      setStatusMessage("Could not join channel.");
+      setStatusMessage(
+        verb === "join" ? "Could not join channel." : "Could not part channel.",
+      );
+    } finally {
+      setJoining(false);
     }
   };
 
@@ -230,7 +257,17 @@ export default function DashboardPage() {
           </div>
           <div className="w-full lg:basis-1/3 h-72 rounded-2xl border border-slate-800 bg-slate-900/80 p-6 flex flex-col justify-between">
             <div>
-              <h2 className="text-xl font-semibold mb-4">Stream Details</h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold">Stream Details</h2>
+                <div className="flex items-center gap-2 text-xs text-slate-300">
+                  <span
+                    className={`h-2 w-2 rounded-full ${
+                      joined ? "bg-emerald-400" : "bg-red-500"
+                    }`}
+                  />
+                  <span>{joined ? "Bot is connected" : "Bot is not connected"}</span>
+                </div>
+              </div>
               <label className="block text-sm font-semibold text-slate-300 mb-2">
                 Stream Title
               </label>
@@ -258,10 +295,20 @@ export default function DashboardPage() {
               <div className="flex gap-2">
                 <button
                   onClick={handleJoinChannel}
-                  disabled={!login}
-                  className="flex-1 inline-flex items-center justify-center rounded-md bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-emerald-500/40 hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  disabled={!login || joining}
+                  className={`flex-1 inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-semibold text-white shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition ${
+                    joined
+                      ? "bg-red-500 hover:bg-red-400 shadow-red-500/40"
+                      : "bg-emerald-500 hover:bg-emerald-400 shadow-emerald-500/40"
+                  }`}
                 >
-                  Join channel
+                  {joining
+                    ? joined
+                      ? "Parting..."
+                      : "Joining..."
+                    : joined
+                    ? "Part channel"
+                    : "Join channel"}
                 </button>
                 <button
                   onClick={handleConfirmChanges}

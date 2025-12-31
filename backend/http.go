@@ -16,6 +16,7 @@ func startHTTPServer(clientID, clientSecret string) {
 	mux.HandleFunc("/auth/start", handleAuthStart(clientID))
 	mux.HandleFunc("/auth/callback", handleAuthCallback(clientID, clientSecret))
 	mux.HandleFunc("/join", handleJoin)
+	mux.HandleFunc("/part", handlePart)
 	mux.HandleFunc("/channels", handleChannels)
 	mux.HandleFunc("/stream/info", handleStreamInfo(clientID))
 	mux.HandleFunc("/stream/update", handleStreamUpdate(clientID))
@@ -120,17 +121,12 @@ func handleAuthCallback(clientID, clientSecret string) http.HandlerFunc {
 		// it when the user is logged in.
 		avatarURL, _ := getUserProfileImage(access, clientID)
 
-		// store in DB: add channel and save tokens
+		// store in DB: save user tokens only. Joining the channel is controlled
+		// explicitly from the dashboard "Join channel" button.
 		if db != nil {
-			if err := AddOrUpdateChannel(login, login); err != nil {
-				log.Println("failed add channel to db:", err)
-			}
 			if err := SaveUserTokens(login, access, refresh); err != nil {
 				log.Println("failed save user tokens:", err)
 			}
-			// Immediately ensure the bot joins this channel without waiting
-			// for the Postgres LISTEN/NOTIFY loop.
-			handleChannelsChanged(login)
 		}
 
 		// If a redirect URL was provided via the state parameter, send the user
@@ -170,16 +166,40 @@ func handleJoin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if db != nil {
-		if err := AddOrUpdateChannel(body.Login, "web"); err != nil {
+		// Mark the channel as joined; Postgres triggers will notify the bot
+		// to start listening for this channel.
+		if err := SetChannelJoined(body.Login, body.Login, true); err != nil {
 			http.Error(w, "db error", http.StatusInternalServerError)
 			return
 		}
 	}
-	// signal bot to join: for simplicity, spawn a goroutine
-	// NOTE: this creates a new bot connection per channel
-	botName := os.Getenv("TWITCH_BOT_USERNAME")
-	oauth := os.Getenv("TWITCH_BOT_OAUTH")
-	go startIrcBot(botName, oauth, body.Login)
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprint(w, "ok")
+}
+
+// handlePart marks a channel as parted (joined=false) so the bot leaves the
+// chat for that channel.
+func handlePart(w http.ResponseWriter, r *http.Request) {
+	// expects JSON {"login":"channel"}
+	var body struct {
+		Login string `json:"login"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "bad json", http.StatusBadRequest)
+		return
+	}
+	if body.Login == "" {
+		http.Error(w, "missing login", http.StatusBadRequest)
+		return
+	}
+	if db != nil {
+		if err := SetChannelJoined(body.Login, body.Login, false); err != nil {
+			http.Error(w, "db error", http.StatusInternalServerError)
+			return
+		}
+	}
+	// active channel bookkeeping for EventSub-based chat handling
+	unmarkActiveChannel(body.Login)
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, "ok")
 }
