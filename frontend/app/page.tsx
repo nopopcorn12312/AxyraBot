@@ -22,7 +22,7 @@ export default function HomePage() {
             className="rounded-xl"
           />
           <div className="text-lg font-semibold tracking-tight">
-            <span className="text-purple-400">Axyra</span>
+	            <span className="text-accent">Axyra</span>
             <span className="text-white">Bot</span>
           </div>
         </div>
@@ -48,7 +48,7 @@ export default function HomePage() {
           </div>
 
           <div className="relative w-full max-w-2xl rounded-3xl border border-slate-800 bg-slate-900/70 p-8 shadow-glow backdrop-blur-md">
-            <div className="absolute inset-x-12 -top-24 -z-10 h-48 rounded-full bg-purple-500/20 blur-3xl" />
+	            <div className="absolute inset-x-12 -top-24 -z-10 h-48 rounded-full bg-sky-500/20 blur-3xl" />
 
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight text-slate-50">
               Level up your Twitch chat with
@@ -60,11 +60,11 @@ export default function HomePage() {
               custom commands and listens to Twitch events so your community always feels engaged.
             </p>
 
-            <div className="mt-8 flex flex-col items-center justify-center gap-3">
-              <a
-                  href={connectUrl}
-                  className="inline-flex items-center justify-center rounded-full bg-accent px-8 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-500/40 transition hover:bg-purple-500"
-                >
+              <div className="mt-8 flex flex-col items-center justify-center gap-3">
+                <a
+                    href={connectUrl}
+                    className="inline-flex items-center justify-center rounded-full bg-accent px-8 py-3 text-sm font-semibold text-white shadow-lg shadow-sky-400/40 transition hover:bg-sky-500"
+                  >
                   Login with Twitch
                 </a>
               <p className="text-xs text-slate-400 max-w-xs text-center">

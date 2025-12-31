@@ -10,11 +10,12 @@ const config: Config = {
       colors: {
         background: "#020617",
         surface: "#020617",
-        accent: "#a855f7",
+        // Light blue accent to match the profile picture
+        accent: "#38bdf8",
         accentSoft: "#1e293b",
       },
       boxShadow: {
-        glow: "0 0 80px rgba(168, 85, 247, 0.4)",
+        glow: "0 0 80px rgba(56, 189, 248, 0.4)",
       },
     },
   },
