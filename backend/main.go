@@ -408,9 +408,9 @@ func sendHelixChatMessage(channelLogin, message string) error {
 	helixChatMu.Unlock()
 
 	body := map[string]interface{}{
-		"broadcaster_id":  broadcasterID,
-		"sender_id":       botID,
-		"message":         message,
+		"broadcaster_id": broadcasterID,
+		"sender_id":      botID,
+		"message":        message,
 	}
 	b, _ := json.Marshal(body)
 	req, err := http.NewRequest("POST", "https://api.twitch.tv/helix/chat/messages", bytes.NewReader(b))

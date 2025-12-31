@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 )
 
 func startHTTPServer(clientID, clientSecret string) {
@@ -35,20 +36,20 @@ func handleAuthStart(clientID string) http.HandlerFunc {
 		// moderators, clips, subscribers, and joining chat as a bot user.
 		// NOTE: Only request scopes your app actually uses in production.
 		scopes := strings.Join([]string{
-			"channel:edit:commercial",   // run commercials
-			"channel:manage:broadcast",  // update channel config / markers / tags
-			"channel:manage:moderators", // grant/remove moderator role
-			"channel:manage:redemptions", // manage Channel Points rewards
-			"channel:read:vips",         // read VIP list
-			"clips:edit",                // create clips
-			"channel:read:editors",      // get list of editors
-			"channel:read:redemptions",  // view Channel Points rewards
-			"channel:read:subscriptions", // view subscribers
-			"channel:bot",               // join channel chat as a bot user
-			"moderation:read",           // view moderation data
+			"channel:edit:commercial",       // run commercials
+			"channel:manage:broadcast",      // update channel config / markers / tags
+			"channel:manage:moderators",     // grant/remove moderator role
+			"channel:manage:redemptions",    // manage Channel Points rewards
+			"channel:read:vips",             // read VIP list
+			"clips:edit",                    // create clips
+			"channel:read:editors",          // get list of editors
+			"channel:read:redemptions",      // view Channel Points rewards
+			"channel:read:subscriptions",    // view subscribers
+			"channel:bot",                   // join channel chat as a bot user
+			"moderation:read",               // view moderation data
 			"moderator:manage:banned_users", // ban/unban users
-			"moderator:read:followers",  // read followers where mod
-			"user:read:email",           // read broadcaster email
+			"moderator:read:followers",      // read followers where mod
+			"user:read:email",               // read broadcaster email
 		}, " ")
 		u := url.URL{
 			Scheme: "https",
