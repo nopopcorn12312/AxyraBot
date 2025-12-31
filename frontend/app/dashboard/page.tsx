@@ -80,17 +80,7 @@ export default function DashboardPage() {
             <span className="text-white">Bot</span>
           </div>
         </div>
-        <nav className="flex items-center justify-center gap-8 text-base text-slate-300">
-          <button className="transition hover:text-white">Features</button>
-          <button className="transition hover:text-white">Support</button>
-        </nav>
         <div ref={menuRef} className="relative flex items-center justify-end flex-1 gap-3">
-          <a
-            href={primaryHref}
-            className="inline-flex items-center justify-center rounded-full bg-accent px-6 py-2 text-sm font-semibold text-white shadow-lg shadow-sky-400/40 transition hover:bg-sky-500"
-          >
-            {primaryLabel}
-          </a>
           {isLoggedIn && avatarUrl && (
             <button
               type="button"
@@ -144,7 +134,7 @@ export default function DashboardPage() {
           </nav>
         </div>
         <div className="flex-1 flex flex-col lg:flex-row gap-6 text-slate-50">
-          <div className="flex-1 h-64 rounded-2xl border border-slate-800 bg-slate-900/80 p-6">
+          <div className="flex-1 lg:basis-2/3 h-64 rounded-2xl border border-slate-800 bg-slate-900/80 p-6">
             <h1 className="text-2xl font-semibold mb-2">Dashboard</h1>
             <p className="text-sm text-slate-400">
               This area will show your channel overview, stats, and recent
@@ -152,7 +142,7 @@ export default function DashboardPage() {
               interacting with your stream.
             </p>
           </div>
-          <div className="w-full lg:w-80 xl:w-96 h-64 rounded-2xl border border-slate-800 bg-slate-900/80 p-6">
+          <div className="w-full lg:basis-1/3 h-64 rounded-2xl border border-slate-800 bg-slate-900/80 p-6">
             <h2 className="text-lg font-semibold mb-4">Stream Details</h2>
             <label className="block text-xs font-medium text-slate-300 mb-1">
               Stream Title
