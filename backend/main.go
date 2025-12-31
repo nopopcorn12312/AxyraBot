@@ -200,7 +200,8 @@ func startEventSubWS() {
 							if payload, ok := m["payload"].(map[string]interface{}); ok {
 								if sub, ok := payload["subscription"].(map[string]interface{}); ok {
 									stype, _ := sub["type"].(string)
-									if stype == "channel.chat.message" {
+									switch stype {
+									case "channel.chat.message":
 										if event, ok := payload["event"].(map[string]interface{}); ok {
 											channelLogin, _ := event["broadcaster_user_login"].(string)
 											chatterLogin, _ := event["chatter_user_login"].(string)
@@ -212,6 +213,30 @@ func startEventSubWS() {
 											}
 											if channelLogin != "" && msgText != "" {
 												go handleChatMessageEvent(channelLogin, chatterLogin, msgText)
+											}
+										}
+									case "channel.follow":
+										if event, ok := payload["event"].(map[string]interface{}); ok {
+											channelLogin, _ := event["broadcaster_user_login"].(string)
+											followerName, _ := event["user_name"].(string)
+											broadcasterID, _ := event["broadcaster_user_id"].(string)
+											if channelLogin != "" && followerName != "" {
+												go func(ch, follower, bID string) {
+													msg := ""
+													if bID != "" {
+														if total, err := getFollowerCount(bID); err != nil {
+															log.Println("failed to get follower count:", err)
+															msg = fmt.Sprintf("Thank you for the follow %s! <3", follower)
+														} else {
+															msg = fmt.Sprintf("Thank you for the follow %s! <3 Channel total: %d", follower, total)
+														}
+													} else {
+														msg = fmt.Sprintf("Thank you for the follow %s! <3", follower)
+													}
+													if err := sendHelixChatMessage(ch, msg); err != nil {
+														log.Println("failed to send follow thank-you message:", err)
+													}
+												}(channelLogin, followerName, broadcasterID)
 											}
 										}
 									}
@@ -608,6 +633,50 @@ func sendHelixChatAnnouncement(channelLogin, message, color string) error {
 	return nil
 }
 
+// getFollowerCount returns the total number of followers for the given
+// broadcaster using Twitch's Helix Get Channel Followers endpoint.
+// It uses the bot's user access token from TWITCH_BOT_OAUTH, which must
+// include the moderator:read:followers scope and have moderator or
+// broadcaster privileges in the channel.
+func getFollowerCount(broadcasterID string) (int, error) {
+	clientID := os.Getenv("TWITCH_CLIENT_ID")
+	if clientID == "" {
+		return 0, fmt.Errorf("TWITCH_CLIENT_ID not set")
+	}
+	botOAuth := os.Getenv("TWITCH_BOT_OAUTH")
+	accessToken := strings.TrimPrefix(botOAuth, "oauth:")
+	if accessToken == "" {
+		return 0, fmt.Errorf("TWITCH_BOT_OAUTH not set or empty")
+	}
+	if broadcasterID == "" {
+		return 0, fmt.Errorf("empty broadcaster id")
+	}
+	endpoint := fmt.Sprintf("https://api.twitch.tv/helix/channels/followers?broadcaster_id=%s", url.QueryEscape(broadcasterID))
+	req, err := http.NewRequest("GET", endpoint, nil)
+	if err != nil {
+		return 0, err
+	}
+	req.Header.Set("Client-ID", clientID)
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(resp.Body)
+		return 0, fmt.Errorf("helix followers status %s: %s", resp.Status, string(b))
+	}
+	var res struct {
+		Total int `json:"total"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+		return 0, err
+	}
+	return res.Total, nil
+}
+
 // getLoginFromToken calls Twitch's /validate endpoint to resolve the login
 // associated with a user access token.
 func getLoginFromToken(accessToken string) (string, error) {
@@ -781,8 +850,11 @@ func getUserID(login, appToken, clientID string) (string, error) {
 	return res.Data[0].ID, nil
 }
 
-// createEventSubSubscription creates a single EventSub subscription using websocket transport
-func createEventSubSubscription(authToken, clientID, subType string, condition map[string]string, sessionID string, transportMethod string, callbackURL string, secret string) error {
+// createEventSubSubscription creates a single EventSub subscription using the
+// specified transport. For websocket transport, a valid sessionID must be
+// provided. The version parameter should match the EventSub type's required
+// version (e.g., "1" for channel.chat.message, "2" for channel.follow).
+func createEventSubSubscription(authToken, clientID, subType, version string, condition map[string]string, sessionID string, transportMethod string, callbackURL string, secret string) error {
 	transport := map[string]interface{}{}
 	if transportMethod == "webhook" {
 		transport["method"] = "webhook"
@@ -796,7 +868,7 @@ func createEventSubSubscription(authToken, clientID, subType string, condition m
 	}
 	body := map[string]interface{}{
 		"type":      subType,
-		"version":   "1",
+		"version":   version,
 		"condition": condition,
 		"transport": transport,
 	}
@@ -866,7 +938,7 @@ func registerEventSubSubscriptions(appToken, clientID, channel, tokensPath strin
 		eventSubMu.Lock()
 		sid := eventSubSessionID
 		eventSubMu.Unlock()
-		if sid != "" {
+				if sid != "" {
 			// Determine list of channels to register EventSub for.
 			channels := []string{}
 			if db != nil {
@@ -882,10 +954,9 @@ func registerEventSubSubscriptions(appToken, clientID, channel, tokensPath strin
 				return
 			}
 
-			// For now, only subscribe to channel.chat.message to avoid complex
-			// transport/auth combinations on other subscription types while we
-			// focus on EventSub-based chat reading.
-			subs := []string{"channel.chat.message"}
+					// Subscribe to chat messages and follows so we can both read chat
+					// and thank users when they follow the channel.
+					subs := []string{"channel.chat.message", "channel.follow"}
 
 			// bot user access token for chat-related EventSub (channel.chat.message)
 			botToken := ""
@@ -907,7 +978,7 @@ func registerEventSubSubscriptions(appToken, clientID, channel, tokensPath strin
 				}
 			}
 
-			// For each channel, resolve its broadcaster id and create subscriptions.
+					// For each channel, resolve its broadcaster id and create subscriptions.
 			for _, ch := range channels {
 				broadcasterID, err := getUserID(ch, appToken, clientID)
 				if err != nil {
@@ -917,18 +988,29 @@ func registerEventSubSubscriptions(appToken, clientID, channel, tokensPath strin
 
 				for _, st := range subs {
 					cond := map[string]string{"broadcaster_user_id": broadcasterID}
-					// channel.chat.message also requires the bot user id in the condition
-					if st == "channel.chat.message" {
-						if botID == "" || botToken == "" {
-							log.Println("skipping channel.chat.message subscription; botID or botToken not available")
-							continue
-						}
-						cond["user_id"] = botID
-					}
-					// for our current use case, all subs are channel.chat.message, which
-					// must use the bot's user token with websocket transport.
-					auth := botToken
-					if err := createEventSubSubscription(auth, clientID, st, cond, sid, "websocket", "", ""); err != nil {
+							// channel.chat.message also requires the bot user id in the condition
+							// and uses version 1 of the subscription type. channel.follow uses
+							// version 2 and requires moderator_user_id in the condition.
+							version := "1"
+							if st == "channel.chat.message" {
+								if botID == "" || botToken == "" {
+									log.Println("skipping channel.chat.message subscription; botID or botToken not available")
+									continue
+								}
+								cond["user_id"] = botID
+							} else if st == "channel.follow" {
+								// channel.follow requires version 2 and moderator_user_id.
+								version = "2"
+								if botID == "" || botToken == "" {
+									log.Println("skipping channel.follow subscription; botID or botToken not available")
+									continue
+								}
+								cond["moderator_user_id"] = botID
+							}
+							// for our current use case, all subs use the bot's user token
+							// with websocket transport.
+							auth := botToken
+							if err := createEventSubSubscription(auth, clientID, st, version, cond, sid, "websocket", "", ""); err != nil {
 						log.Println("failed creating subscription", st, "for", ch, ":", err)
 					}
 
