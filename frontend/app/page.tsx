@@ -2,7 +2,7 @@ const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://your-backend.
 const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL;
 
 export default function HomePage() {
-  const redirectTarget = frontendUrl ? `${frontendUrl}/connected` : "";
+  const redirectTarget = frontendUrl ? `${frontendUrl}/dashboard` : "";
   const connectUrl = redirectTarget
     ? `${backendUrl}/auth/start?redirect=${encodeURIComponent(redirectTarget)}`
     : `${backendUrl}/auth/start`;
