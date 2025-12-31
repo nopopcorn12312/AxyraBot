@@ -532,6 +532,41 @@ func getLoginFromToken(accessToken string) (string, error) {
 	return v.Login, nil
 }
 
+// getUserProfileImageFetches the profile_image_url for the user associated with
+// the given access token using Twitch's Helix /users endpoint.
+func getUserProfileImage(accessToken, clientID string) (string, error) {
+	if accessToken == "" || clientID == "" {
+		return "", fmt.Errorf("missing access token or client id")
+	}
+	req, err := http.NewRequest("GET", "https://api.twitch.tv/helix/users", nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Client-ID", clientID)
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("helix users status %s", resp.Status)
+	}
+	var res struct {
+		Data []struct {
+			ProfileImageURL string `json:"profile_image_url"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+		return "", err
+	}
+	if len(res.Data) == 0 {
+		return "", fmt.Errorf("no user data returned")
+	}
+	return res.Data[0].ProfileImageURL, nil
+}
+
 // getAppAccessToken obtains an app access token using client credentials grant
 func getAppAccessToken(clientID, clientSecret string) (string, error) {
 	if clientID == "" || clientSecret == "" {
@@ -717,7 +752,7 @@ func registerEventSubSubscriptions(appToken, clientID, channel, tokensPath strin
 			// transport/auth combinations on other subscription types while we
 			// focus on EventSub-based chat reading.
 			subs := []string{"channel.chat.message"}
-
+			
 			// bot user access token for chat-related EventSub (channel.chat.message)
 			botToken := ""
 			if bt := os.Getenv("TWITCH_BOT_OAUTH"); bt != "" {

@@ -7,8 +7,12 @@ export default function DashboardPage() {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     const login = params.get("login");
+    const avatar = params.get("avatar");
     if (login) {
       window.localStorage.setItem("axyra.login", "1");
+    }
+    if (avatar) {
+      window.localStorage.setItem("axyra.avatar", avatar);
     }
   }, []);
 

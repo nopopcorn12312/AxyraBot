@@ -9,12 +9,17 @@ const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL;
 
 export default function HomePage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     const stored = window.localStorage.getItem("axyra.login");
     if (stored === "1") {
       setIsLoggedIn(true);
+    }
+    const storedAvatar = window.localStorage.getItem("axyra.avatar");
+    if (storedAvatar) {
+      setAvatarUrl(storedAvatar);
     }
   }, []);
   const redirectTarget = frontendUrl ? `${frontendUrl}/dashboard` : "";
@@ -45,13 +50,22 @@ export default function HomePage() {
           <button className="transition hover:text-white">Features</button>
           <button className="transition hover:text-white">Support</button>
         </nav>
-        <div className="flex items-center justify-end flex-1">
+        <div className="flex items-center justify-end flex-1 gap-3">
           <a
             href={primaryHref}
             className="inline-flex items-center justify-center rounded-full bg-accent px-6 py-2 text-sm font-semibold text-white shadow-lg shadow-sky-400/40 transition hover:bg-sky-500"
           >
             {primaryLabel}
           </a>
+          {isLoggedIn && avatarUrl && (
+            <Image
+              src={avatarUrl}
+              alt="Twitch profile picture"
+              width={36}
+              height={36}
+              className="rounded-full border border-slate-700"
+            />
+          )}
         </div>
       </header>
 

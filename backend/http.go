@@ -113,6 +113,10 @@ func handleAuthCallback(clientID, clientSecret string) http.HandlerFunc {
 			http.Error(w, "failed get user info", http.StatusInternalServerError)
 			return
 		}
+		// Optionally fetch the user's Twitch profile image so the frontend can show
+		// it when the user is logged in.
+		avatarURL, _ := getUserProfileImage(access, clientID)
+
 		// store in DB: add channel and save tokens
 		if db != nil {
 			if err := AddOrUpdateChannel(login, login); err != nil {
@@ -127,12 +131,16 @@ func handleAuthCallback(clientID, clientSecret string) http.HandlerFunc {
 		}
 
 		// If a redirect URL was provided via the state parameter, send the user
-		// back to the frontend with the login attached as a query parameter.
+		// back to the frontend with the login (and avatar, when available)
+		// attached as query parameters.
 		if strings.HasPrefix(state, "redir:") {
 			if raw, err := url.QueryUnescape(strings.TrimPrefix(state, "redir:")); err == nil {
 				if dest, err := url.Parse(raw); err == nil {
 					q := dest.Query()
 					q.Set("login", login)
+					if avatarURL != "" {
+						q.Set("avatar", avatarURL)
+					}
 					dest.RawQuery = q.Encode()
 					http.Redirect(w, r, dest.String(), http.StatusFound)
 					return
