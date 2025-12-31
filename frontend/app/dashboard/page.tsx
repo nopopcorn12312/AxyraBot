@@ -144,12 +144,36 @@ export default function DashboardPage() {
             </button>
           </nav>
         </div>
-        <div className="flex-1 rounded-2xl border border-slate-800 bg-slate-900/80 p-6 text-slate-50">
-          <h1 className="text-2xl font-semibold mb-2">Dashboard</h1>
-          <p className="text-sm text-slate-400">
-            Your AxyraBot dashboard will live here. Sidebar items are placeholders
-            for future sections like commands, settings, and integrations.
-          </p>
+        <div className="flex-1 flex flex-col lg:flex-row gap-6 text-slate-50">
+          <div className="flex-1 rounded-2xl border border-slate-800 bg-slate-900/80 p-6">
+            <h1 className="text-2xl font-semibold mb-2">Dashboard</h1>
+            <p className="text-sm text-slate-400">
+              This area will show your channel overview, stats, and recent
+              activity. Use it to get a quick snapshot of how AxyraBot is
+              interacting with your stream.
+            </p>
+          </div>
+          <div className="w-full lg:w-80 xl:w-96 rounded-2xl border border-slate-800 bg-slate-900/80 p-6">
+            <h2 className="text-lg font-semibold mb-4">Stream Details</h2>
+            <label className="block text-xs font-medium text-slate-300 mb-1">
+              Stream Title
+            </label>
+            <input
+              type="text"
+              readOnly
+              className="mb-4 w-full rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none"
+              placeholder="Current stream title"
+            />
+            <label className="block text-xs font-medium text-slate-300 mb-1">
+              Stream Category
+            </label>
+            <input
+              type="text"
+              readOnly
+              className="w-full rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none"
+              placeholder="Current stream category"
+            />
+          </div>
         </div>
       </div>
     </main>
