@@ -1,17 +1,16 @@
 "use client";
 
 import { useEffect } from "react";
-import { useSearchParams } from "next/navigation";
 
 export default function DashboardPage() {
-  const searchParams = useSearchParams();
-
   useEffect(() => {
-    const login = searchParams.get("login");
-    if (typeof window !== "undefined" && login) {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const login = params.get("login");
+    if (login) {
       window.localStorage.setItem("axyra.login", "1");
     }
-  }, [searchParams]);
+  }, []);
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-[radial-gradient(circle_at_top,_#1e293b,_#020617)]">
