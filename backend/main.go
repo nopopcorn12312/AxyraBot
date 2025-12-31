@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -23,6 +24,11 @@ var (
 	eventSubMu        sync.Mutex
 	activeMu          sync.Mutex
 	activeChannels    = map[string]bool{}
+
+	// caches for Helix send chat message API
+	helixChatMu         sync.Mutex
+	helixBotUserID      string
+	helixBroadcasterIDs = map[string]string{}
 )
 
 func main() {
@@ -306,11 +312,127 @@ func unmarkActiveChannel(ch string) {
 	activeMu.Unlock()
 }
 
-// sendChat sends a visible chat message as a PRIVMSG and logs the outgoing line
+// sendChat sends a visible chat message using the Helix Send Chat Message API.
+// If the Helix call fails for any reason, it falls back to the legacy IRC
+// PRIVMSG so the bot continues to function.
 func sendChat(c *websocket.Conn, channel, msg string) {
-	line := fmt.Sprintf("PRIVMSG #%s :%s", channel, msg)
-	log.Printf("[SENT] %s\n", line)
-	writeIRC(c, line)
+	if err := sendHelixChatMessage(channel, msg); err != nil {
+		log.Println("helix send chat failed, falling back to IRC:", err)
+		line := fmt.Sprintf("PRIVMSG #%s :%s", channel, msg)
+		log.Printf("[SENT-IRC] %s\n", line)
+		writeIRC(c, line)
+	}
+}
+
+// sendHelixChatMessage calls Twitch's Helix /helix/chat/messages endpoint to
+// send a message into the specified channel. It uses the bot's user access
+// token from TWITCH_BOT_OAUTH (without the "oauth:" prefix). This token must
+// include the new chat scopes (e.g. user:write:chat and the required bot
+// scopes) for the request to succeed.
+func sendHelixChatMessage(channelLogin, message string) error {
+	channelLogin = strings.ToLower(channelLogin)
+	clientID := os.Getenv("TWITCH_CLIENT_ID")
+	if clientID == "" {
+		return fmt.Errorf("TWITCH_CLIENT_ID not set")
+	}
+
+	oauth := os.Getenv("TWITCH_BOT_OAUTH")
+	accessToken := strings.TrimPrefix(oauth, "oauth:")
+	if accessToken == "" {
+		return fmt.Errorf("TWITCH_BOT_OAUTH not set or empty")
+	}
+
+	botLogin := os.Getenv("TWITCH_BOT_USERNAME")
+	if botLogin == "" {
+		botLogin = "AxyraBot"
+	}
+
+	// Resolve and cache sender (bot) user id and broadcaster id for the channel.
+	helixChatMu.Lock()
+	botID := helixBotUserID
+	broadcasterID := helixBroadcasterIDs[channelLogin]
+	helixChatMu.Unlock()
+
+	// helper to resolve a login to user id with the given token
+	resolveID := func(login string) (string, error) {
+		if login == "" {
+			return "", fmt.Errorf("empty login for id resolution")
+		}
+		req, err := http.NewRequest("GET", "https://api.twitch.tv/helix/users?login="+url.QueryEscape(login), nil)
+		if err != nil {
+			return "", err
+		}
+		req.Header.Set("Client-ID", clientID)
+		req.Header.Set("Authorization", "Bearer "+accessToken)
+		client := &http.Client{Timeout: 10 * time.Second}
+		resp, err := client.Do(req)
+		if err != nil {
+			return "", err
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			b, _ := io.ReadAll(resp.Body)
+			return "", fmt.Errorf("get users status %s: %s", resp.Status, string(b))
+		}
+		var res struct {
+			Data []struct {
+				ID string `json:"id"`
+			} `json:"data"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+			return "", err
+		}
+		if len(res.Data) == 0 {
+			return "", fmt.Errorf("user not found: %s", login)
+		}
+		return res.Data[0].ID, nil
+	}
+
+	var err error
+	if botID == "" {
+		botID, err = resolveID(botLogin)
+		if err != nil {
+			return fmt.Errorf("resolve bot id failed: %w", err)
+		}
+	}
+	if broadcasterID == "" {
+		broadcasterID, err = resolveID(channelLogin)
+		if err != nil {
+			return fmt.Errorf("resolve broadcaster id failed: %w", err)
+		}
+	}
+
+	helixChatMu.Lock()
+	helixBotUserID = botID
+	helixBroadcasterIDs[channelLogin] = broadcasterID
+	helixChatMu.Unlock()
+
+	body := map[string]interface{}{
+		"broadcaster_id":  broadcasterID,
+		"sender_id":       botID,
+		"message":         message,
+		"for_source_only": true,
+	}
+	b, _ := json.Marshal(body)
+	req, err := http.NewRequest("POST", "https://api.twitch.tv/helix/chat/messages", bytes.NewReader(b))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Client-ID", clientID)
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	req.Header.Set("Content-Type", "application/json")
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode/100 != 2 {
+		respBody, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("helix chat status %s: %s", resp.Status, string(respBody))
+	}
+	log.Printf("[SENT-HELIX] channel=%s msg=%q\n", channelLogin, message)
+	return nil
 }
 
 // getLoginFromToken calls Twitch's /validate endpoint to resolve the login
