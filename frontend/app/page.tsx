@@ -1,14 +1,29 @@
+"use client";
+
 import Image from "next/image";
 import AxyraBotPFP from "./images/AxyraBotPFP.png";
+import { useEffect, useState } from "react";
 
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://your-backend.onrender.com";
 const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL;
 
 export default function HomePage() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const stored = window.localStorage.getItem("axyra.login");
+    if (stored === "1") {
+      setIsLoggedIn(true);
+    }
+  }, []);
   const redirectTarget = frontendUrl ? `${frontendUrl}/dashboard` : "";
   const connectUrl = redirectTarget
     ? `${backendUrl}/auth/start?redirect=${encodeURIComponent(redirectTarget)}`
     : `${backendUrl}/auth/start`;
+
+  const primaryHref = isLoggedIn ? "/dashboard" : connectUrl;
+  const primaryLabel = isLoggedIn ? "Dashboard" : "Login with Twitch";
 
   return (
     <main className="min-h-screen flex flex-col px-4 bg-[radial-gradient(circle_at_top,_#1e293b,_#020617)]">
@@ -32,10 +47,10 @@ export default function HomePage() {
         </nav>
         <div className="flex items-center justify-end flex-1">
           <a
-            href={connectUrl}
+            href={primaryHref}
             className="inline-flex items-center justify-center rounded-full bg-accent px-6 py-2 text-sm font-semibold text-white shadow-lg shadow-sky-400/40 transition hover:bg-sky-500"
           >
-            Login with Twitch
+            {primaryLabel}
           </a>
         </div>
       </header>
@@ -62,11 +77,11 @@ export default function HomePage() {
 
               <div className="mt-8 flex flex-col items-center justify-center gap-3">
                 <a
-                    href={connectUrl}
-                    className="inline-flex items-center justify-center rounded-full bg-accent px-8 py-3 text-sm font-semibold text-white shadow-lg shadow-sky-400/40 transition hover:bg-sky-500"
-                  >
-                  Login with Twitch
-                </a>
+                      href={primaryHref}
+                      className="inline-flex items-center justify-center rounded-full bg-accent px-8 py-3 text-sm font-semibold text-white shadow-lg shadow-sky-400/40 transition hover:bg-sky-500"
+                    >
+                    {primaryLabel}
+                  </a>
               <p className="text-xs text-slate-400 max-w-xs text-center">
                 You&apos;ll be redirected to Twitch to authorize the bot.
               </p>
