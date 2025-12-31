@@ -9,7 +9,7 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen flex flex-col px-4 bg-[radial-gradient(circle_at_top,_#1e293b,_#020617)]">
-      <header className="w-full max-w-5xl mx-auto mt-4 flex items-center justify-between rounded-2xl border border-slate-800 bg-slate-900/80 px-4 py-2 backdrop-blur-md">
+      <header className="w-full max-w-6xl mx-auto mt-4 flex items-center justify-between rounded-2xl border border-slate-800 bg-slate-900/80 px-4 py-2 backdrop-blur-md">
         <div className="flex items-center gap-4">
           {/* Logo placeholder */}
           <div className="h-9 w-9 rounded-xl bg-slate-800/80" />
