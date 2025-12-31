@@ -143,23 +143,23 @@ export default function DashboardPage() {
             </p>
           </div>
           <div className="w-full lg:basis-1/3 h-64 rounded-2xl border border-slate-800 bg-slate-900/80 p-6">
-            <h2 className="text-lg font-semibold mb-4">Stream Details</h2>
-            <label className="block text-xs font-semibold text-slate-300 mb-2">
+            <h2 className="text-xl font-semibold mb-4">Stream Details</h2>
+            <label className="block text-sm font-semibold text-slate-300 mb-2">
               Stream Title
             </label>
             <input
               type="text"
               readOnly
-              className="mb-5 w-full rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none"
+              className="mb-5 w-full rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-base text-slate-100 placeholder-slate-500 focus:outline-none"
               placeholder="Current stream title"
             />
-            <label className="block text-xs font-semibold text-slate-300 mb-2 mt-1">
+            <label className="block text-sm font-semibold text-slate-300 mb-2 mt-1">
               Stream Category
             </label>
             <input
               type="text"
               readOnly
-              className="w-full rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none"
+              className="w-full rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-base text-slate-100 placeholder-slate-500 focus:outline-none"
               placeholder="Current stream category"
             />
           </div>
