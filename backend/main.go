@@ -29,6 +29,7 @@ var (
 	helixChatMu         sync.Mutex
 	helixBotUserID      string
 	helixBroadcasterIDs = map[string]string{}
+	appAccessToken     string
 )
 
 func main() {
@@ -109,6 +110,11 @@ func main() {
 	if err != nil {
 		log.Println("failed to get app token:", err)
 	} else {
+		// cache app access token for Helix chat API usage
+		helixChatMu.Lock()
+		appAccessToken = token
+		helixChatMu.Unlock()
+
 		if err := listEventSubSubscriptions(token, clientID); err != nil {
 			log.Println("failed listing subscriptions:", err)
 		}
@@ -335,11 +341,9 @@ func sendHelixChatMessage(channelLogin, message string) error {
 	if clientID == "" {
 		return fmt.Errorf("TWITCH_CLIENT_ID not set")
 	}
-
-	oauth := os.Getenv("TWITCH_BOT_OAUTH")
-	accessToken := strings.TrimPrefix(oauth, "oauth:")
-	if accessToken == "" {
-		return fmt.Errorf("TWITCH_BOT_OAUTH not set or empty")
+	clientSecret := os.Getenv("TWITCH_CLIENT_SECRET")
+	if clientSecret == "" {
+		return fmt.Errorf("TWITCH_CLIENT_SECRET not set")
 	}
 
 	botLogin := os.Getenv("TWITCH_BOT_USERNAME")
@@ -351,7 +355,19 @@ func sendHelixChatMessage(channelLogin, message string) error {
 	helixChatMu.Lock()
 	botID := helixBotUserID
 	broadcasterID := helixBroadcasterIDs[channelLogin]
+	accessToken := appAccessToken
 	helixChatMu.Unlock()
+	if accessToken == "" {
+		// lazily obtain an app access token for Helix chat
+		var err error
+		accessToken, err = getAppAccessToken(clientID, clientSecret)
+		if err != nil {
+			return fmt.Errorf("failed to get app access token: %w", err)
+		}
+		helixChatMu.Lock()
+		appAccessToken = accessToken
+		helixChatMu.Unlock()
+	}
 
 	// helper to resolve a login to user id with the given token
 	resolveID := func(login string) (string, error) {
