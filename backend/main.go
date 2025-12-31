@@ -411,7 +411,6 @@ func sendHelixChatMessage(channelLogin, message string) error {
 		"broadcaster_id":  broadcasterID,
 		"sender_id":       botID,
 		"message":         message,
-		"for_source_only": true,
 	}
 	b, _ := json.Marshal(body)
 	req, err := http.NewRequest("POST", "https://api.twitch.tv/helix/chat/messages", bytes.NewReader(b))

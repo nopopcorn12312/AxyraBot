@@ -29,7 +29,10 @@ func handleAuthStart(clientID string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		redirect := r.URL.Query().Get("redirect")
 		state := "state123" // TODO: generate/validate
-		scopes := "chat:read chat:edit"
+		// Request modern chat scopes so issued tokens work with the Helix
+		// Send Chat Message API and bot permissions. Including channel:bot
+		// lets Twitch show "Join the channel as a bot" to broadcasters.
+		scopes := "chat:read chat:edit user:write:chat user:bot channel:bot"
 		u := url.URL{
 			Scheme: "https",
 			Host:   "id.twitch.tv",
