@@ -74,13 +74,11 @@ func handleAuthStart(clientID string) http.HandlerFunc {
 			"channel:manage:ads",
 			"channel:manage:broadcast",
 			"channel:manage:extensions",
-			"channel:manage:guest_star",
 			"channel:manage:moderators",
 			"channel:manage:polls",
 			"channel:manage:predictions",
 			"channel:manage:raids",
 			"channel:manage:redemptions",
-			"channel:manage:schedule",
 			"channel:manage:videos",
 			"channel:manage:vips",
 
@@ -89,7 +87,6 @@ func handleAuthStart(clientID string) http.HandlerFunc {
 			"channel:read:charity",
 			"channel:read:editors",
 			"channel:read:goals",
-			"channel:read:guest_star",
 			"channel:read:hype_train",
 			"channel:read:polls",
 			"channel:read:predictions",
@@ -110,7 +107,6 @@ func handleAuthStart(clientID string) http.HandlerFunc {
 			"moderator:manage:blocked_terms",
 			"moderator:manage:chat_messages",
 			"moderator:manage:chat_settings",
-			"moderator:manage:guest_star",
 			"moderator:manage:shield_mode",
 			"moderator:manage:shoutouts",
 			"moderator:manage:unban_requests",
@@ -127,7 +123,6 @@ func handleAuthStart(clientID string) http.HandlerFunc {
 			"moderator:read:vips",
 			"moderator:read:banned_users",
 			"moderator:read:chat_messages",
-			"moderator:read:guest_star",
 
 			// Channel points / polls / predictions / goals / charity
 			"channel:read:redemptions",
@@ -140,11 +135,6 @@ func handleAuthStart(clientID string) http.HandlerFunc {
 			"channel:read:charity",
 
 			// User/account-level (broadcaster account)
-			"user:edit",
-			"user:manage:blocked_users",
-			"user:manage:chat_color",
-			"user:manage:whispers",
-			"user:read:blocked_users",
 			"user:read:broadcast",
 			"user:read:email",
 			"user:read:follows",
