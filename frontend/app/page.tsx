@@ -35,7 +35,7 @@ export default function HomePage() {
             href="/dashboard"
             className="inline-flex items-center justify-center rounded-full bg-accent px-6 py-2 text-sm font-semibold text-white shadow-lg shadow-sky-400/40 transition hover:bg-sky-500"
           >
-            Dashboard
+            Login with Twitch
           </a>
         </div>
       </header>
