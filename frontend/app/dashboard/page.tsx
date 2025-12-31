@@ -113,7 +113,7 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <div className="flex-1 flex w-full mt-8 gap-6">
+      <div className="flex-1 flex w-full mt-8 gap-6 items-start">
         <div
           className={`${sidebarOpen ? "w-60" : "w-16"} flex flex-col rounded-2xl border border-slate-800 bg-slate-900/80 p-3 transition-all duration-200`}
         >
@@ -145,7 +145,7 @@ export default function DashboardPage() {
           </nav>
         </div>
         <div className="flex-1 flex flex-col lg:flex-row gap-6 text-slate-50">
-          <div className="flex-1 rounded-2xl border border-slate-800 bg-slate-900/80 p-6">
+          <div className="flex-1 h-64 rounded-2xl border border-slate-800 bg-slate-900/80 p-6">
             <h1 className="text-2xl font-semibold mb-2">Dashboard</h1>
             <p className="text-sm text-slate-400">
               This area will show your channel overview, stats, and recent
@@ -153,7 +153,7 @@ export default function DashboardPage() {
               interacting with your stream.
             </p>
           </div>
-          <div className="w-full lg:w-80 xl:w-96 rounded-2xl border border-slate-800 bg-slate-900/80 p-6">
+          <div className="w-full lg:w-80 xl:w-96 h-64 rounded-2xl border border-slate-800 bg-slate-900/80 p-6">
             <h2 className="text-lg font-semibold mb-4">Stream Details</h2>
             <label className="block text-xs font-medium text-slate-300 mb-1">
               Stream Title
