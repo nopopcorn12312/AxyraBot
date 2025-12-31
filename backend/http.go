@@ -94,7 +94,6 @@ func handleAuthStart(clientID string) http.HandlerFunc {
 			"channel:read:polls",
 			"channel:read:predictions",
 			"channel:read:redemptions",
-			"channel:read:stream_key",
 			"channel:read:subscriptions",
 			"channel:read:vips",
 			"analytics:read:extensions",
@@ -149,7 +148,6 @@ func handleAuthStart(clientID string) http.HandlerFunc {
 			"user:read:broadcast",
 			"user:read:email",
 			"user:read:follows",
-			"clips:edit",
 		}, " ")
 		u := url.URL{
 			Scheme: "https",
