@@ -1,3 +1,6 @@
+import Image from "next/image";
+import AxyraBotPFP from "./images/AxyraBotPFP.png";
+
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://your-backend.onrender.com";
 const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL;
 
@@ -11,8 +14,13 @@ export default function HomePage() {
     <main className="min-h-screen flex flex-col px-4 bg-[radial-gradient(circle_at_top,_#1e293b,_#020617)]">
       <header className="w-full max-w-6xl mx-auto mt-4 flex items-center px-4">
         <div className="flex items-center gap-3 flex-1">
-          {/* Logo placeholder */}
-          <div className="h-9 w-9 rounded-xl bg-slate-800/80" />
+          <Image
+            src={AxyraBotPFP}
+            alt="AxyraBot profile picture"
+            width={36}
+            height={36}
+            className="rounded-xl"
+          />
           <div className="text-lg font-semibold tracking-tight">
             <span className="text-purple-400">Axyra</span>
             <span className="text-white">Bot</span>
