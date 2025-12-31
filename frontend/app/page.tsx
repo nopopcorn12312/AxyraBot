@@ -52,14 +52,14 @@ export default function HomePage() {
               custom commands and listens to Twitch events so your community always feels engaged.
             </p>
 
-            <div className="mt-8 flex flex-row items-center justify-center gap-6">
+            <div className="mt-8 flex flex-col items-center justify-center gap-3">
               <a
                   href={connectUrl}
                   className="inline-flex items-center justify-center rounded-full bg-accent px-8 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-500/40 transition hover:bg-purple-500"
                 >
                   Connect my Twitch
                 </a>
-              <p className="text-xs text-slate-400 max-w-xs text-left">
+              <p className="text-xs text-slate-400 max-w-xs text-center">
                 You&apos;ll be redirected to Twitch to authorize the bot. No passwords
                 are ever stored.
               </p>
