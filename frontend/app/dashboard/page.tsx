@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import AxyraBotPFP from "../images/AxyraBotPFP.png";
 
@@ -20,6 +21,7 @@ export default function DashboardPage() {
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [joined, setJoined] = useState(false);
   const [joining, setJoining] = useState(false);
+  const [changesConfirmed, setChangesConfirmed] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -145,6 +147,8 @@ export default function DashboardPage() {
         throw new Error("Update failed");
       }
       setStatusMessage("Stream updated.");
+      setChangesConfirmed(true);
+      setTimeout(() => setChangesConfirmed(false), 3000);
     } catch (err) {
       console.error(err);
       setStatusMessage("Could not update stream.");
@@ -259,9 +263,9 @@ export default function DashboardPage() {
             <div>
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-semibold">Stream Details</h2>
-                <div className="flex items-center gap-2 text-xs text-slate-300">
+                <div className="flex items-center gap-2 text-sm md:text-base font-medium text-slate-200">
                   <span
-                    className={`h-2 w-2 rounded-full ${
+                    className={`h-3 w-3 rounded-full ${
                       joined ? "bg-emerald-400" : "bg-red-500"
                     }`}
                   />
@@ -276,7 +280,9 @@ export default function DashboardPage() {
                 className="mb-5 w-full rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent/70"
                 placeholder="Current stream title"
                 value={streamTitle}
-                onChange={(e) => setStreamTitle(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setStreamTitle(e.target.value)
+                }
                 disabled={!login || loadingStream}
               />
               <label className="block text-sm font-semibold text-slate-300 mb-2 mt-1">
@@ -287,7 +293,9 @@ export default function DashboardPage() {
                 className="w-full rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent/70"
                 placeholder="Current stream category"
                 value={streamCategory}
-                onChange={(e) => setStreamCategory(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setStreamCategory(e.target.value)
+                }
                 disabled={!login || loadingStream}
               />
             </div>
@@ -313,14 +321,19 @@ export default function DashboardPage() {
                 <button
                   onClick={handleConfirmChanges}
                   disabled={!login || savingStream}
-                  className="flex-1 inline-flex items-center justify-center rounded-md bg-accent px-4 py-2 text-sm font-semibold text-slate-900 shadow-md shadow-sky-500/40 hover:bg-sky-400 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  className={`flex-1 inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-semibold shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition ${
+                    changesConfirmed
+                      ? "bg-emerald-500 text-white shadow-emerald-500/40 hover:bg-emerald-400"
+                      : "bg-accent text-slate-900 shadow-sky-500/40 hover:bg-sky-400"
+                  }`}
                 >
-                  {savingStream ? "Saving..." : "Confirm Changes"}
+                  {savingStream
+                    ? "Saving..."
+                    : changesConfirmed
+                    ? "Changed Confirmed"
+                    : "Confirm Changes"}
                 </button>
               </div>
-              {statusMessage && (
-                <div className="text-xs text-slate-300">{statusMessage}</div>
-              )}
             </div>
           </div>
         </div>
