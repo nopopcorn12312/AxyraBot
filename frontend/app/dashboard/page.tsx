@@ -228,7 +228,7 @@ export default function DashboardPage() {
               interacting with your stream.
             </p>
           </div>
-          <div className="w-full lg:basis-1/3 h-64 rounded-2xl border border-slate-800 bg-slate-900/80 p-6 flex flex-col justify-between">
+          <div className="w-full lg:basis-1/3 h-72 rounded-2xl border border-slate-800 bg-slate-900/80 p-6 flex flex-col justify-between">
             <div>
               <h2 className="text-xl font-semibold mb-4">Stream Details</h2>
               <label className="block text-sm font-semibold text-slate-300 mb-2">
