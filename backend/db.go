@@ -55,6 +55,9 @@ func GetJoinedChannels() ([]string, error) {
 
 func AddOrUpdateChannel(login, owner string) error {
 	// insert or update and mark as joined
+	if db == nil {
+		return fmt.Errorf("db not initialized")
+	}
 	_, err := db.Exec(`INSERT INTO channels (login, owner_user, joined, joined_at) VALUES ($1,$2,true,now()) ON CONFLICT (login) DO UPDATE SET owner_user=EXCLUDED.owner_user, joined=true, joined_at=now()`, login, owner)
 	return err
 }
