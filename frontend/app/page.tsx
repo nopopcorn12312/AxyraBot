@@ -36,7 +36,7 @@ export default function HomePage() {
         <div className="max-w-3xl w-full flex flex-col items-center text-center space-y-10">
           <div className="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900/70 px-4 py-1 text-xs text-slate-300">
             <span className="h-2 w-2 rounded-full bg-emerald-400" />
-            <span>AxyraBot is live</span>
+            <span>AxyraBot is online</span>
           </div>
 
           <div className="relative w-full max-w-2xl rounded-3xl border border-slate-800 bg-slate-900/70 p-8 shadow-glow backdrop-blur-md">
@@ -57,23 +57,15 @@ export default function HomePage() {
                   href={connectUrl}
                   className="inline-flex items-center justify-center rounded-full bg-accent px-8 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-500/40 transition hover:bg-purple-500"
                 >
-                  Connect my Twitch
+                  Login with Twitch
                 </a>
               <p className="text-xs text-slate-400 max-w-xs text-center">
-                You&apos;ll be redirected to Twitch to authorize the bot. No passwords
-                are ever stored.
+                You&apos;ll be redirected to Twitch to authorize the bot.
               </p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-slate-400">
-            <span className="rounded-full border border-slate-800 bg-slate-900/60 px-3 py-1">
-              Powered by Next.js &amp; Vercel
-            </span>
-            <span className="rounded-full border border-slate-800 bg-slate-900/60 px-3 py-1">
-              Backend: Go + Render
-            </span>
-          </div>
+
         </div>
       </div>
     </main>
