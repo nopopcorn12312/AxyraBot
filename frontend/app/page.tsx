@@ -21,14 +21,14 @@ export default function HomePage() {
     const loginFromQuery = params.get("login");
     const avatarFromQuery = params.get("avatar");
     if (loginFromQuery) {
-      window.localStorage.setItem("axyra.login", "1");
+      window.localStorage.setItem("axyra.login", loginFromQuery);
     }
     if (avatarFromQuery) {
       window.localStorage.setItem("axyra.avatar", avatarFromQuery);
     }
 
-    const stored = window.localStorage.getItem("axyra.login");
-    if (stored === "1") {
+    const storedLogin = window.localStorage.getItem("axyra.login");
+    if (storedLogin) {
       setIsLoggedIn(true);
     }
     const storedAvatar = window.localStorage.getItem("axyra.avatar");
