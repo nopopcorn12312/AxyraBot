@@ -12,28 +12,28 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen flex flex-col px-4 bg-[radial-gradient(circle_at_top,_#1e293b,_#020617)]">
-      <header className="w-full max-w-6xl mx-auto mt-4 flex items-center px-4">
-        <div className="flex items-center gap-3 flex-1">
+      <header className="w-full max-w-6xl mx-auto mt-6 flex items-center px-6">
+        <div className="flex items-center gap-4 flex-1">
           <Image
             src={AxyraBotPFP}
             alt="AxyraBot profile picture"
-            width={36}
-            height={36}
-            className="rounded-xl"
+            width={44}
+            height={44}
+            className="rounded-2xl"
           />
-          <div className="text-lg font-semibold tracking-tight">
+          <div className="text-2xl font-semibold tracking-tight">
 	            <span className="text-accent">Axyra</span>
             <span className="text-white">Bot</span>
           </div>
         </div>
-        <nav className="flex items-center justify-center gap-6 text-sm text-slate-300">
+        <nav className="flex items-center justify-center gap-8 text-base text-slate-300">
           <button className="transition hover:text-white">Features</button>
           <button className="transition hover:text-white">Support</button>
         </nav>
         <div className="flex items-center justify-end flex-1">
           <a
             href="/dashboard"
-            className="inline-flex items-center justify-center rounded-full bg-emerald-500 px-4 py-1.5 text-xs font-semibold text-white shadow-lg shadow-emerald-500/40 transition hover:bg-emerald-400"
+            className="inline-flex items-center justify-center rounded-full bg-emerald-500 px-6 py-2 text-sm font-semibold text-white shadow-lg shadow-emerald-500/40 transition hover:bg-emerald-400"
           >
             Dashboard
           </a>
