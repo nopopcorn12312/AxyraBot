@@ -10,6 +10,7 @@ const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL;
 export default function HomePage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -22,6 +23,16 @@ export default function HomePage() {
       setAvatarUrl(storedAvatar);
     }
   }, []);
+
+  const handleLogout = () => {
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem("axyra.login");
+      window.localStorage.removeItem("axyra.avatar");
+    }
+    setIsLoggedIn(false);
+    setAvatarUrl(null);
+    setMenuOpen(false);
+  };
   const redirectTarget = frontendUrl ? `${frontendUrl}/dashboard` : "";
   const connectUrl = redirectTarget
     ? `${backendUrl}/auth/start?redirect=${encodeURIComponent(redirectTarget)}`
@@ -50,7 +61,7 @@ export default function HomePage() {
           <button className="transition hover:text-white">Features</button>
           <button className="transition hover:text-white">Support</button>
         </nav>
-        <div className="flex items-center justify-end flex-1 gap-3">
+        <div className="relative flex items-center justify-end flex-1 gap-3">
           <a
             href={primaryHref}
             className="inline-flex items-center justify-center rounded-full bg-accent px-6 py-2 text-sm font-semibold text-white shadow-lg shadow-sky-400/40 transition hover:bg-sky-500"
@@ -58,13 +69,30 @@ export default function HomePage() {
             {primaryLabel}
           </a>
           {isLoggedIn && avatarUrl && (
-            <Image
-              src={avatarUrl}
-              alt="Twitch profile picture"
-              width={36}
-              height={36}
-              className="rounded-full border border-slate-700"
-            />
+            <button
+              type="button"
+              onClick={() => setMenuOpen((open) => !open)}
+              className="relative flex items-center focus:outline-none"
+            >
+              <Image
+                src={avatarUrl}
+                alt="Twitch profile picture"
+                width={36}
+                height={36}
+                className="rounded-full border border-slate-700"
+              />
+            </button>
+          )}
+          {isLoggedIn && menuOpen && (
+            <div className="absolute right-0 top-full mt-2 w-28 rounded-lg border border-slate-700 bg-slate-900/95 py-1 shadow-lg">
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="w-full px-3 py-1.5 text-xs text-left text-slate-200 hover:bg-slate-800"
+              >
+                Log out
+              </button>
+            </div>
           )}
         </div>
       </header>
