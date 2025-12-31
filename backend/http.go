@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -16,6 +17,8 @@ func startHTTPServer(clientID, clientSecret string) {
 	mux.HandleFunc("/auth/callback", handleAuthCallback(clientID, clientSecret))
 	mux.HandleFunc("/join", handleJoin)
 	mux.HandleFunc("/channels", handleChannels)
+	mux.HandleFunc("/stream/info", handleStreamInfo(clientID))
+	mux.HandleFunc("/stream/update", handleStreamUpdate(clientID))
 	addr := ":8080"
 	if p := os.Getenv("PORT"); p != "" {
 		addr = ":" + p
@@ -189,6 +192,155 @@ func handleChannels(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	json.NewEncoder(w).Encode(map[string]interface{}{"channels": chans})
+}
+
+// handleStreamInfo returns the current stream title and category for a
+// broadcaster, using the stored user access token.
+func handleStreamInfo(clientID string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		login := r.URL.Query().Get("login")
+		if login == "" {
+			http.Error(w, "missing login", http.StatusBadRequest)
+			return
+		}
+		access, err := GetUserAccessToken(login)
+		if err != nil || access == "" {
+			log.Println("GetUserAccessToken failed:", err)
+			http.Error(w, "no user token", http.StatusInternalServerError)
+			return
+		}
+		userID, err := getUserIDFromToken(access)
+		if err != nil {
+			log.Println("getUserIDFromToken failed:", err)
+			http.Error(w, "validate token failed", http.StatusInternalServerError)
+			return
+		}
+		req, err := http.NewRequest("GET", "https://api.twitch.tv/helix/channels?broadcaster_id="+url.QueryEscape(userID), nil)
+		if err != nil {
+			http.Error(w, "request build failed", http.StatusInternalServerError)
+			return
+		}
+		req.Header.Set("Client-ID", clientID)
+		req.Header.Set("Authorization", "Bearer "+access)
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			log.Println("helix channels get failed:", err)
+			http.Error(w, "helix error", http.StatusInternalServerError)
+			return
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode/100 != 2 {
+			log.Println("helix channels status:", resp.Status)
+			http.Error(w, "helix error", http.StatusBadGateway)
+			return
+		}
+		var data struct {
+			Data []struct {
+				Title    string `json:"title"`
+				GameName string `json:"game_name"`
+			} `json:"data"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+			log.Println("decode channels response:", err)
+			http.Error(w, "decode error", http.StatusInternalServerError)
+			return
+		}
+		out := map[string]string{"title": "", "category": ""}
+		if len(data.Data) > 0 {
+			out["title"] = data.Data[0].Title
+			out["category"] = data.Data[0].GameName
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(out)
+	}
+}
+
+// handleStreamUpdate updates a channel's stream title and category using the
+// broadcaster's stored user access token.
+func handleStreamUpdate(clientID string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Login    string `json:"login"`
+			Title    string `json:"title"`
+			Category string `json:"category"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "bad json", http.StatusBadRequest)
+			return
+		}
+		if body.Login == "" {
+			http.Error(w, "missing login", http.StatusBadRequest)
+			return
+		}
+		access, err := GetUserAccessToken(body.Login)
+		if err != nil || access == "" {
+			log.Println("GetUserAccessToken failed:", err)
+			http.Error(w, "no user token", http.StatusInternalServerError)
+			return
+		}
+		userID, err := getUserIDFromToken(access)
+		if err != nil {
+			log.Println("getUserIDFromToken failed:", err)
+			http.Error(w, "validate token failed", http.StatusInternalServerError)
+			return
+		}
+
+		payload := map[string]string{}
+		if strings.TrimSpace(body.Title) != "" {
+			payload["title"] = body.Title
+		}
+		// Resolve category name to game_id if provided.
+		if strings.TrimSpace(body.Category) != "" {
+			req, err := http.NewRequest("GET", "https://api.twitch.tv/helix/games?name="+url.QueryEscape(body.Category), nil)
+			if err == nil {
+				req.Header.Set("Client-ID", clientID)
+				req.Header.Set("Authorization", "Bearer "+access)
+				resp, err := http.DefaultClient.Do(req)
+				if err == nil {
+					defer resp.Body.Close()
+					if resp.StatusCode/100 == 2 {
+						var g struct {
+							Data []struct {
+								ID string `json:"id"`
+							} `json:"data"`
+						}
+						if err := json.NewDecoder(resp.Body).Decode(&g); err == nil {
+							if len(g.Data) > 0 {
+								payload["game_id"] = g.Data[0].ID
+							}
+						}
+					}
+				}
+			}
+		}
+
+		if len(payload) == 0 {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		buf, _ := json.Marshal(payload)
+		req, err := http.NewRequest("PATCH", "https://api.twitch.tv/helix/channels?broadcaster_id="+url.QueryEscape(userID), bytes.NewReader(buf))
+		if err != nil {
+			http.Error(w, "request build failed", http.StatusInternalServerError)
+			return
+		}
+		req.Header.Set("Client-ID", clientID)
+		req.Header.Set("Authorization", "Bearer "+access)
+		req.Header.Set("Content-Type", "application/json")
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			log.Println("helix channels patch failed:", err)
+			http.Error(w, "helix error", http.StatusInternalServerError)
+			return
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode/100 != 2 {
+			log.Println("helix channels patch status:", resp.Status)
+			http.Error(w, "helix error", http.StatusBadGateway)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
 }
 
 func getRedirectURI(r *http.Request) string {

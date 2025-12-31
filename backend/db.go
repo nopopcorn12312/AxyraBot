@@ -65,6 +65,19 @@ func SaveUserTokens(login, access, refresh string) error {
 	return err
 }
 
+// GetUserAccessToken returns the stored access token for a given Twitch login.
+func GetUserAccessToken(login string) (string, error) {
+	if db == nil {
+		return "", fmt.Errorf("db not initialized")
+	}
+	var token string
+	row := db.QueryRow(`SELECT access_token FROM users WHERE login = $1`, login)
+	if err := row.Scan(&token); err != nil {
+		return "", err
+	}
+	return token, nil
+}
+
 func EnsureSchema() error {
 	// create simple tables if not exist
 	_, err := db.Exec(`

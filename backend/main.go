@@ -532,6 +532,35 @@ func getLoginFromToken(accessToken string) (string, error) {
 	return v.Login, nil
 }
 
+// getUserIDFromToken calls /validate and returns the user_id associated with
+// a user access token.
+func getUserIDFromToken(accessToken string) (string, error) {
+	if accessToken == "" {
+		return "", fmt.Errorf("empty access token")
+	}
+	req, err := http.NewRequest("GET", "https://id.twitch.tv/oauth2/validate", nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Authorization", "OAuth "+accessToken)
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("validate status %s", resp.Status)
+	}
+	var v struct {
+		UserID string `json:"user_id"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&v); err != nil {
+		return "", err
+	}
+	return v.UserID, nil
+}
+
 // getUserProfileImageFetches the profile_image_url for the user associated with
 // the given access token using Twitch's Helix /users endpoint.
 func getUserProfileImage(accessToken, clientID string) (string, error) {
@@ -752,7 +781,7 @@ func registerEventSubSubscriptions(appToken, clientID, channel, tokensPath strin
 			// transport/auth combinations on other subscription types while we
 			// focus on EventSub-based chat reading.
 			subs := []string{"channel.chat.message"}
-			
+
 			// bot user access token for chat-related EventSub (channel.chat.message)
 			botToken := ""
 			if bt := os.Getenv("TWITCH_BOT_OAUTH"); bt != "" {

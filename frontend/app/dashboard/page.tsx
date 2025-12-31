@@ -1,8 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import AxyraBotPFP from "../images/AxyraBotPFP.png";
 import { useEffect, useRef, useState } from "react";
+import AxyraBotPFP from "../images/AxyraBotPFP.png";
 
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://your-backend.onrender.com";
 const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL;
@@ -12,15 +12,22 @@ export default function DashboardPage() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [login, setLogin] = useState<string | null>(null);
+  const [streamTitle, setStreamTitle] = useState("");
+  const [streamCategory, setStreamCategory] = useState("");
+  const [loadingStream, setLoadingStream] = useState(false);
+  const [savingStream, setSavingStream] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const stored = window.localStorage.getItem("axyra.login");
-    if (stored === "1") {
-      setIsLoggedIn(true);
-    }
+    const storedLogin = window.localStorage.getItem("axyra.login");
     const storedAvatar = window.localStorage.getItem("axyra.avatar");
+    if (storedLogin) {
+      setIsLoggedIn(true);
+      setLogin(storedLogin);
+    }
     if (storedAvatar) {
       setAvatarUrl(storedAvatar);
     }
@@ -34,10 +41,34 @@ export default function DashboardPage() {
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [menuOpen]);
+
+  useEffect(() => {
+    if (!login) return;
+    setLoadingStream(true);
+    setStatusMessage(null);
+    fetch(
+      `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080"}/stream/info?login=${encodeURIComponent(
+        login
+      )}`,
+    )
+      .then(async (res) => {
+        if (!res.ok) {
+          throw new Error("Failed to load stream info");
+        }
+        return res.json();
+      })
+      .then((data) => {
+        setStreamTitle(data.title || "");
+        setStreamCategory(data.category || "");
+      })
+      .catch((err) => {
+        console.error(err);
+        setStatusMessage("Could not load stream info.");
+      })
+      .finally(() => setLoadingStream(false));
+  }, [login]);
 
   const handleLogout = () => {
     if (typeof window !== "undefined") {
@@ -46,14 +77,59 @@ export default function DashboardPage() {
     }
     setIsLoggedIn(false);
     setAvatarUrl(null);
+    setLogin(null);
     setMenuOpen(false);
   };
 
-  const redirectTarget = frontendUrl ? `${frontendUrl}` : "";
-  const connectUrl = redirectTarget
-    ? `${backendUrl}/auth/start?redirect=${encodeURIComponent(redirectTarget)}`
-    : `${backendUrl}/auth/start`;
+  const handleJoinChannel = async () => {
+    if (!login) return;
+    setStatusMessage(null);
+    try {
+      const res = await fetch(`${backendUrl}/join`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ login }),
+      });
+      if (!res.ok) {
+        throw new Error("Join failed");
+      }
+      setStatusMessage("Channel joined successfully.");
+    } catch (err) {
+      console.error(err);
+      setStatusMessage("Could not join channel.");
+    }
+  };
 
+  const handleConfirmChanges = async () => {
+    if (!login) return;
+    setSavingStream(true);
+    setStatusMessage(null);
+    try {
+      const res = await fetch(`${backendUrl}/stream/update`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          login,
+          title: streamTitle,
+          category: streamCategory,
+        }),
+      });
+      if (!res.ok && res.status !== 204) {
+        throw new Error("Update failed");
+      }
+      setStatusMessage("Stream updated.");
+    } catch (err) {
+      console.error(err);
+      setStatusMessage("Could not update stream.");
+    } finally {
+      setSavingStream(false);
+    }
+  };
+
+  const redirectTarget = frontendUrl || "http://localhost:3000";
+  const connectUrl = `${backendUrl}/auth/start?redirect=${encodeURIComponent(
+    redirectTarget,
+  )}`;
   const primaryHref = isLoggedIn ? "/dashboard" : connectUrl;
   const primaryLabel = isLoggedIn ? "Dashboard" : "Login with Twitch";
 
@@ -70,41 +146,51 @@ export default function DashboardPage() {
           </button>
           <Image
             src={AxyraBotPFP}
-            alt="AxyraBot profile picture"
-            width={44}
-            height={44}
-            className="rounded-2xl"
+            alt="AxyraBot logo"
+            width={32}
+            height={32}
+            className="rounded-full border border-slate-700 shadow-sm shadow-sky-500/40"
           />
           <div className="text-2xl font-semibold tracking-tight">
             <span className="text-accent">Axyra</span>
             <span className="text-white">Bot</span>
           </div>
         </div>
-        <div ref={menuRef} className="relative flex items-center justify-end flex-1 gap-3">
-          {isLoggedIn && avatarUrl && (
-            <button
-              type="button"
-              onClick={() => setMenuOpen((open) => !open)}
-              className="relative flex items-center focus:outline-none"
-            >
-              <Image
-                src={avatarUrl}
-                alt="Twitch profile picture"
-                width={36}
-                height={36}
-                className="rounded-full border border-slate-700"
-              />
-            </button>
-          )}
-          {isLoggedIn && menuOpen && (
-            <div className="absolute right-0 top-full mt-2 w-36 rounded-lg border border-slate-700 bg-slate-900/95 py-2 shadow-lg">
+        <div className="flex items-center gap-4">
+          <a
+            href={primaryHref}
+            className="hidden" // header CTA hidden on dashboard, but href kept for consistency
+          >
+            {primaryLabel}
+          </a>
+          {isLoggedIn && (
+            <div className="relative" ref={menuRef}>
               <button
                 type="button"
-                onClick={handleLogout}
-                className="w-full px-4 py-2 text-sm text-left text-slate-200 hover:bg-slate-800"
+                onClick={() => setMenuOpen((open) => !open)}
+                className="flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900/80 px-1.5 py-1 hover:bg-slate-800 transition"
               >
-                Log out
+                {avatarUrl && (
+                  <Image
+                    src={avatarUrl}
+                    alt="Twitch profile picture"
+                    width={32}
+                    height={32}
+                    className="rounded-full border border-slate-700"
+                  />
+                )}
               </button>
+              {menuOpen && (
+                <div className="absolute right-0 top-full mt-2 w-36 rounded-lg border border-slate-700 bg-slate-900/95 py-2 shadow-lg">
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="w-full px-4 py-2 text-sm text-left text-slate-200 hover:bg-slate-800"
+                  >
+                    Log out
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -142,26 +228,51 @@ export default function DashboardPage() {
               interacting with your stream.
             </p>
           </div>
-          <div className="w-full lg:basis-1/3 h-64 rounded-2xl border border-slate-800 bg-slate-900/80 p-6">
-            <h2 className="text-xl font-semibold mb-4">Stream Details</h2>
-            <label className="block text-sm font-semibold text-slate-300 mb-2">
-              Stream Title
-            </label>
-            <input
-              type="text"
-              readOnly
-              className="mb-5 w-full rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none"
-              placeholder="Current stream title"
-            />
-            <label className="block text-sm font-semibold text-slate-300 mb-2 mt-1">
-              Stream Category
-            </label>
-            <input
-              type="text"
-              readOnly
-              className="w-full rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none"
-              placeholder="Current stream category"
-            />
+          <div className="w-full lg:basis-1/3 h-64 rounded-2xl border border-slate-800 bg-slate-900/80 p-6 flex flex-col justify-between">
+            <div>
+              <h2 className="text-xl font-semibold mb-4">Stream Details</h2>
+              <label className="block text-sm font-semibold text-slate-300 mb-2">
+                Stream Title
+              </label>
+              <input
+                type="text"
+                className="mb-5 w-full rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent/70"
+                placeholder="Current stream title"
+                value={streamTitle}
+                onChange={(e) => setStreamTitle(e.target.value)}
+                disabled={!login || loadingStream}
+              />
+              <label className="block text-sm font-semibold text-slate-300 mb-2 mt-1">
+                Stream Category
+              </label>
+              <input
+                type="text"
+                className="w-full rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent/70"
+                placeholder="Current stream category"
+                value={streamCategory}
+                onChange={(e) => setStreamCategory(e.target.value)}
+                disabled={!login || loadingStream}
+              />
+            </div>
+            <div className="mt-4 flex flex-col gap-2">
+              <button
+                onClick={handleJoinChannel}
+                disabled={!login}
+                className="w-full inline-flex items-center justify-center rounded-md bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-emerald-500/40 hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed transition"
+              >
+                Join channel
+              </button>
+              <button
+                onClick={handleConfirmChanges}
+                disabled={!login || savingStream}
+                className="w-full inline-flex items-center justify-center rounded-md bg-accent px-4 py-2 text-sm font-semibold text-slate-900 shadow-md shadow-sky-500/40 hover:bg-sky-400 disabled:opacity-50 disabled:cursor-not-allowed transition"
+              >
+                {savingStream ? "Saving..." : "Confirm Changes"}
+              </button>
+              {statusMessage && (
+                <div className="text-xs text-slate-300">{statusMessage}</div>
+              )}
+            </div>
           </div>
         </div>
       </div>
