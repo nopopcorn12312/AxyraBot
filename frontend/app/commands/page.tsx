@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import AxyraBotPFP from "../images/AxyraBotPFP.png";
 
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://your-backend.onrender.com";
@@ -28,7 +28,6 @@ export default function CommandsPage() {
   const [view, setView] = useState<"default" | "custom">("default");
   const menuRef = useRef<HTMLDivElement | null>(null);
   const pathname = usePathname();
-  const searchParams = useSearchParams();
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -43,13 +42,15 @@ export default function CommandsPage() {
   }, []);
 
   useEffect(() => {
-    const fromQuery = searchParams.get("view");
-    if (fromQuery === "custom") {
-      setView("custom");
-    } else if (fromQuery === "default") {
-      setView("default");
-    }
-  }, [searchParams]);
+  if (typeof window === "undefined") return;
+  const params = new URLSearchParams(window.location.search);
+  const fromQuery = params.get("view");
+  if (fromQuery === "custom") {
+    setView("custom");
+  } else if (fromQuery === "default") {
+    setView("default");
+  }
+  }, []);
 
   useEffect(() => {
     if (!menuOpen) return;
