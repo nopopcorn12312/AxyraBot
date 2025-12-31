@@ -348,10 +348,10 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 		}
 	}
 	if strings.HasPrefix(message, "!testanc") {
-		// Send a Twitch announcement by issuing the /announce chat command.
+		// Send a Twitch announcement using the Helix Chat Announcement API.
 		// The bot account must be a moderator or broadcaster in the channel
-		// for this to succeed.
-		if err := sendHelixChatMessage(channelLogin, "/announce success"); err != nil {
+		// and its token must include moderator:manage:announcements.
+		if err := sendHelixChatAnnouncement(channelLogin, "success", ""); err != nil {
 			log.Println("failed to send !testanc announcement:", err)
 		}
 	}
@@ -508,6 +508,103 @@ func sendHelixChatMessage(channelLogin, message string) error {
 		return fmt.Errorf("helix chat status %s: %s", resp.Status, string(respBody))
 	}
 	log.Printf("[SENT-HELIX] channel=%s msg=%q\n", channelLogin, message)
+	return nil
+}
+
+// sendHelixChatAnnouncement calls Twitch's Helix /helix/chat/announcements endpoint
+// to send a highlighted announcement into the specified channel. It uses the bot's
+// user access token from TWITCH_BOT_OAUTH (without the "oauth:" prefix). This
+// token must include the moderator:manage:announcements scope, and the bot user
+// must be a moderator or the broadcaster in the target channel.
+func sendHelixChatAnnouncement(channelLogin, message, color string) error {
+	channelLogin = strings.ToLower(channelLogin)
+	clientID := os.Getenv("TWITCH_CLIENT_ID")
+	if clientID == "" {
+		return fmt.Errorf("TWITCH_CLIENT_ID not set")
+	}
+
+	botOAuth := os.Getenv("TWITCH_BOT_OAUTH")
+	accessToken := strings.TrimPrefix(botOAuth, "oauth:")
+	if accessToken == "" {
+		return fmt.Errorf("TWITCH_BOT_OAUTH not set or empty")
+	}
+
+	// Resolve and cache bot (moderator) user id and broadcaster id for the channel.
+	helixChatMu.Lock()
+	botID := helixBotUserID
+	broadcasterID := helixBroadcasterIDs[channelLogin]
+	helixChatMu.Unlock()
+
+	var err error
+	if botID == "" {
+		botID, err = getUserIDFromToken(accessToken)
+		if err != nil {
+			return fmt.Errorf("resolve bot id from token failed: %w", err)
+		}
+	}
+	if broadcasterID == "" {
+		// Lookup broadcaster id via Helix /users using the bot's user access token.
+		req, err := http.NewRequest("GET", "https://api.twitch.tv/helix/users?login="+url.QueryEscape(channelLogin), nil)
+		if err != nil {
+			return err
+		}
+		req.Header.Set("Client-ID", clientID)
+		req.Header.Set("Authorization", "Bearer "+accessToken)
+		client := &http.Client{Timeout: 10 * time.Second}
+		resp, err := client.Do(req)
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			b, _ := io.ReadAll(resp.Body)
+			return fmt.Errorf("helix users status %s: %s", resp.Status, string(b))
+		}
+		var res struct {
+			Data []struct {
+				ID string `json:"id"`
+			} `json:"data"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+			return err
+		}
+		if len(res.Data) == 0 {
+			return fmt.Errorf("user not found: %s", channelLogin)
+		}
+		broadcasterID = res.Data[0].ID
+	}
+
+	helixChatMu.Lock()
+	helixBotUserID = botID
+	helixBroadcasterIDs[channelLogin] = broadcasterID
+	helixChatMu.Unlock()
+
+	body := map[string]interface{}{
+		"message": message,
+	}
+	if color != "" {
+		body["color"] = color
+	}
+	b, _ := json.Marshal(body)
+	endpoint := fmt.Sprintf("https://api.twitch.tv/helix/chat/announcements?broadcaster_id=%s&moderator_id=%s", url.QueryEscape(broadcasterID), url.QueryEscape(botID))
+	req, err := http.NewRequest("POST", endpoint, bytes.NewReader(b))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Client-ID", clientID)
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	req.Header.Set("Content-Type", "application/json")
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusNoContent {
+		respBody, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("helix announcement status %s: %s", resp.Status, string(respBody))
+	}
+	log.Printf("[SENT-ANNOUNCEMENT] channel=%s msg=%q\n", channelLogin, message)
 	return nil
 }
 
