@@ -9,29 +9,26 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen flex flex-col px-4 bg-[radial-gradient(circle_at_top,_#1e293b,_#020617)]">
-      <header className="w-full max-w-6xl mx-auto mt-4 flex items-center justify-between rounded-2xl border border-slate-800 bg-slate-900/80 px-4 py-2 backdrop-blur-md">
-        <div className="flex items-center gap-4">
+      <header className="w-full max-w-6xl mx-auto mt-4 flex items-center px-4">
+        <div className="flex items-center gap-3 flex-1">
           {/* Logo placeholder */}
           <div className="h-9 w-9 rounded-xl bg-slate-800/80" />
-          <nav className="flex items-center gap-4 text-sm text-slate-300">
-            <button className="transition hover:text-white">Features</button>
-            <button className="transition hover:text-white">Support</button>
-          </nav>
+          <div className="text-lg font-semibold tracking-tight">
+            <span className="text-purple-400">Axyra</span>
+            <span className="text-white">Bot</span>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-full bg-slate-800/80" />
+        <nav className="flex items-center justify-center gap-6 text-sm text-slate-300">
+          <button className="transition hover:text-white">Features</button>
+          <button className="transition hover:text-white">Support</button>
+        </nav>
+        <div className="flex items-center justify-end flex-1">
           <a
             href="/dashboard"
             className="inline-flex items-center justify-center rounded-full bg-emerald-500 px-4 py-1.5 text-xs font-semibold text-white shadow-lg shadow-emerald-500/40 transition hover:bg-emerald-400"
           >
             Dashboard
           </a>
-          <div className="h-8 w-8 rounded-xl bg-indigo-600 flex items-center justify-center text-[10px] font-semibold text-white">
-            DC
-          </div>
-          <button className="h-8 w-8 rounded-xl border border-slate-700 flex items-center justify-center text-slate-400 transition hover:bg-slate-800 hover:text-slate-100">
-            ×
-          </button>
         </div>
       </header>
 
