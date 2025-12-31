@@ -15,11 +15,11 @@ func startHTTPServer(clientID, clientSecret string) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/auth/start", handleAuthStart(clientID))
 	mux.HandleFunc("/auth/callback", handleAuthCallback(clientID, clientSecret))
-	mux.HandleFunc("/join", handleJoin)
-	mux.HandleFunc("/part", handlePart)
-	mux.HandleFunc("/channels", handleChannels)
-	mux.HandleFunc("/stream/info", handleStreamInfo(clientID))
-	mux.HandleFunc("/stream/update", handleStreamUpdate(clientID))
+	mux.HandleFunc("/join", withCORS(handleJoin))
+	mux.HandleFunc("/part", withCORS(handlePart))
+	mux.HandleFunc("/channels", withCORS(handleChannels))
+	mux.HandleFunc("/stream/info", withCORS(handleStreamInfo(clientID)))
+	mux.HandleFunc("/stream/update", withCORS(handleStreamUpdate(clientID)))
 	addr := ":8080"
 	if p := os.Getenv("PORT"); p != "" {
 		addr = ":" + p
@@ -27,6 +27,30 @@ func startHTTPServer(clientID, clientSecret string) {
 	log.Println("starting HTTP server on", addr)
 	if err := http.ListenAndServe(addr, mux); err != nil {
 		log.Println("http server error:", err)
+	}
+}
+
+// withCORS wraps an HTTP handler and adds CORS headers so that the frontend
+// hosted on a different origin (e.g. Vercel) can call the Render backend.
+// If FRONTEND_ORIGIN is set, only that origin is allowed; otherwise any
+// origin is permitted.
+func withCORS(h http.HandlerFunc) http.HandlerFunc {
+	allowedOrigin := os.Getenv("FRONTEND_ORIGIN")
+	return func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
+		if origin != "" {
+			if allowedOrigin == "" || origin == allowedOrigin {
+				w.Header().Set("Access-Control-Allow-Origin", origin)
+				w.Header().Set("Vary", "Origin")
+			}
+		}
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		h(w, r)
 	}
 }
 
