@@ -2,7 +2,9 @@
 
 import Image from "next/image";
 import type React from "react";
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import AxyraBotPFP from "../images/AxyraBotPFP.png";
 
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://your-backend.onrender.com";
@@ -22,7 +24,9 @@ export default function DashboardPage() {
   const [joined, setJoined] = useState(false);
   const [joining, setJoining] = useState(false);
   const [changesConfirmed, setChangesConfirmed] = useState(false);
+  const [commandsOpen, setCommandsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const pathname = usePathname();
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -229,26 +233,115 @@ export default function DashboardPage() {
 
       <div className="flex flex-1 w-full gap-6 px-4 pb-6 items-stretch">
         <div
-          className={`${sidebarOpen ? "w-60" : "w-16"} flex flex-col rounded-2xl border border-slate-800 bg-slate-900/80 p-3 transition-all duration-200`}
+      className={`${sidebarOpen ? "w-60" : "w-16"} flex flex-col rounded-2xl border border-slate-800 bg-slate-900/80 p-3 transition-all duration-200`}
         >
-          <nav className="mt-1 flex flex-col gap-2 text-sm text-slate-300">
-            <button className="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-slate-800 text-left">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-              {sidebarOpen && <span>Overview</span>}
-            </button>
-            <button className="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-slate-800 text-left">
-              <span className="h-1.5 w-1.5 rounded-full bg-sky-400" />
-              {sidebarOpen && <span>Commands</span>}
-            </button>
-            <button className="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-slate-800 text-left">
-              <span className="h-1.5 w-1.5 rounded-full bg-violet-400" />
-              {sidebarOpen && <span>Settings</span>}
-            </button>
-            <button className="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-slate-800 text-left">
-              <span className="h-1.5 w-1.5 rounded-full bg-pink-400" />
-              {sidebarOpen && <span>Integrations</span>}
-            </button>
-          </nav>
+      <nav className="mt-1 flex flex-col gap-2 text-sm text-slate-200">
+      {/** Home */}
+      <Link
+        href="/"
+        className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+        pathname === "/"
+          ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
+          : "text-slate-200 hover:bg-slate-800/80"
+        }`}
+      >
+        <span className="text-lg">🏠</span>
+        {sidebarOpen && <span>Home</span>}
+      </Link>
+
+      {/** Dashboard */}
+      <Link
+        href="/dashboard"
+        className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+        pathname === "/dashboard"
+          ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
+          : "text-slate-200 hover:bg-slate-800/80"
+        }`}
+      >
+        <span className="text-lg">📊</span>
+        {sidebarOpen && <span>Dashboard</span>}
+      </Link>
+
+      {/** Privacy */}
+      <Link
+        href="/privacy"
+        className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+        pathname === "/privacy"
+          ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
+          : "text-slate-200 hover:bg-slate-800/80"
+        }`}
+      >
+        <span className="text-lg">🔒</span>
+        {sidebarOpen && <span>Privacy</span>}
+      </Link>
+
+      {/** Terms */}
+      <Link
+        href="/terms"
+        className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+        pathname === "/terms"
+          ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
+          : "text-slate-200 hover:bg-slate-800/80"
+        }`}
+      >
+        <span className="text-lg">📜</span>
+        {sidebarOpen && <span>Terms</span>}
+      </Link>
+
+      {/** API Docs */}
+      <Link
+        href="/api-docs"
+        className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+        pathname === "/api-docs"
+          ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
+          : "text-slate-200 hover:bg-slate-800/80"
+        }`}
+      >
+        <span className="text-lg">📘</span>
+        {sidebarOpen && <span>API Docs</span>}
+      </Link>
+
+      {/** Commands dropdown */}
+      <button
+        type="button"
+        onClick={() => setCommandsOpen((open) => !open)}
+        className={`flex items-center justify-between gap-3 rounded-xl px-3 py-2 text-left font-medium text-slate-200 hover:bg-slate-800/80 transition`}
+      >
+        <div className="flex items-center gap-3">
+        <span className="text-lg">❓</span>
+        {sidebarOpen && <span>Commands</span>}
+        </div>
+        {sidebarOpen && (
+        <span className="text-xs text-slate-400">
+          {commandsOpen ? "▾" : "▸"}
+        </span>
+        )}
+      </button>
+      {commandsOpen && (
+        <div className="mt-1 ml-6 flex flex-col gap-1 text-xs text-slate-200">
+        <Link
+          href="/commands?view=default"
+          className={`rounded-lg px-3 py-1.5 transition ${
+          pathname === "/commands"
+            ? "bg-slate-800/80 text-slate-50"
+            : "hover:bg-slate-800/60"
+          }`}
+        >
+          Default commands
+        </Link>
+        <Link
+          href="/commands?view=custom"
+          className={`rounded-lg px-3 py-1.5 transition ${
+          pathname === "/commands"
+            ? "bg-slate-800/80 text-slate-50"
+            : "hover:bg-slate-800/60"
+          }`}
+        >
+          Custom commands
+        </Link>
+        </div>
+      )}
+      </nav>
         </div>
         <div className="flex-1 flex flex-col lg:flex-row gap-6 text-slate-50">
           <div className="flex-1 lg:basis-2/3 h-64 rounded-2xl border border-slate-800 bg-slate-900/80 p-6">
