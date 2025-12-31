@@ -74,6 +74,15 @@ func SaveUserTokens(login, access, refresh string) error {
 	return err
 }
 
+// DeleteUser removes a user row entirely from the users table.
+func DeleteUser(login string) error {
+	if db == nil {
+		return fmt.Errorf("db not initialized")
+	}
+	_, err := db.Exec(`DELETE FROM users WHERE login = $1`, login)
+	return err
+}
+
 // GetUserAccessToken returns the stored access token for a given Twitch login.
 func GetUserAccessToken(login string) (string, error) {
 	if db == nil {
