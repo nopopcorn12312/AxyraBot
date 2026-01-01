@@ -238,6 +238,28 @@ func startEventSubWS() {
 													}
 												}(channelLogin, followerName, broadcasterID)
 											}
+										case "stream.online":
+											if event, ok := payload["event"].(map[string]interface{}); ok {
+												channelLogin, _ := event["broadcaster_user_login"].(string)
+												if channelLogin != "" {
+													go func(ch string) {
+														title, game, err := getChannelTitleAndGame(ch)
+														if err != nil {
+															log.Println("failed to fetch title/game for stream.online:", err)
+														}
+														if title == "" {
+															title = "Untitled stream"
+														}
+														if game == "" {
+															game = "Just Chatting"
+														}
+														msg := fmt.Sprintf("%s is now live! Streaming %s | %s", ch, game, title)
+														if err := sendHelixChatMessage(ch, msg); err != nil {
+															log.Println("failed to send stream.online live message:", err)
+														}
+													}(channelLogin)
+												}
+											}
 										}
 									}
 								}
@@ -1025,6 +1047,55 @@ func getFollowAgeString(broadcasterLogin, followerLogin string) (string, error) 
 	), nil
 }
 
+// getChannelTitleAndGame fetches the current title and category (game name)
+// for the given broadcaster login using their stored user access token.
+func getChannelTitleAndGame(login string) (string, string, error) {
+	login = strings.ToLower(login)
+	clientID := os.Getenv("TWITCH_CLIENT_ID")
+	if clientID == "" {
+		return "", "", fmt.Errorf("TWITCH_CLIENT_ID not set")
+	}
+	if db == nil {
+		return "", "", fmt.Errorf("db not initialized")
+	}
+	access, err := GetUserAccessToken(login)
+	if err != nil || access == "" {
+		return "", "", fmt.Errorf("no user token for channel %s: %w", login, err)
+	}
+	userID, err := getUserIDFromToken(access)
+	if err != nil {
+		return "", "", fmt.Errorf("getUserIDFromToken failed: %w", err)
+	}
+	req, err := http.NewRequest("GET", "https://api.twitch.tv/helix/channels?broadcaster_id="+url.QueryEscape(userID), nil)
+	if err != nil {
+		return "", "", err
+	}
+	req.Header.Set("Client-ID", clientID)
+	req.Header.Set("Authorization", "Bearer "+access)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode/100 != 2 {
+		b, _ := io.ReadAll(resp.Body)
+		return "", "", fmt.Errorf("helix channels status %s: %s", resp.Status, string(b))
+	}
+	var data struct {
+		Data []struct {
+			Title    string `json:"title"`
+			GameName string `json:"game_name"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return "", "", err
+	}
+	if len(data.Data) == 0 {
+		return "", "", nil
+	}
+	return data.Data[0].Title, data.Data[0].GameName, nil
+}
+
 // getStreamUptimeString returns how long the broadcaster has been live this
 // session by querying Helix Get Streams and formatting the duration.
 func getStreamUptimeString(channelLogin string) (string, error) {
@@ -1725,7 +1796,7 @@ func registerEventSubSubscriptions(appToken, clientID, channel, tokensPath strin
 		eventSubMu.Lock()
 		sid := eventSubSessionID
 		eventSubMu.Unlock()
-		if sid != "" {
+				if sid != "" {
 			// Determine list of channels to register EventSub for.
 			channels := []string{}
 			if db != nil {
@@ -1741,9 +1812,10 @@ func registerEventSubSubscriptions(appToken, clientID, channel, tokensPath strin
 				return
 			}
 
-			// Subscribe to chat messages and follows so we can both read chat
-			// and thank users when they follow the channel.
-			subs := []string{"channel.chat.message", "channel.follow"}
+					// Subscribe to chat messages and follows so we can both read chat
+					// and thank users when they follow the channel. Separately, we
+					// subscribe to stream.online events to announce when channels go live.
+					subs := []string{"channel.chat.message", "channel.follow"}
 
 			// bot user access token for chat-related EventSub (channel.chat.message)
 			botToken := ""
@@ -1765,15 +1837,15 @@ func registerEventSubSubscriptions(appToken, clientID, channel, tokensPath strin
 				}
 			}
 
-			// For each channel, resolve its broadcaster id and create subscriptions.
-			for _, ch := range channels {
-				broadcasterID, err := getUserID(ch, appToken, clientID)
+					// For each channel, resolve its broadcaster id and create subscriptions.
+					for _, ch := range channels {
+						broadcasterID, err := getUserID(ch, appToken, clientID)
 				if err != nil {
 					log.Println("failed to resolve broadcaster id for", ch, ":", err)
 					continue
 				}
 
-				for _, st := range subs {
+						for _, st := range subs {
 					cond := map[string]string{"broadcaster_user_id": broadcasterID}
 					// channel.chat.message also requires the bot user id in the condition
 					// and uses version 1 of the subscription type. channel.follow uses
@@ -1794,16 +1866,23 @@ func registerEventSubSubscriptions(appToken, clientID, channel, tokensPath strin
 						}
 						cond["moderator_user_id"] = botID
 					}
-					// for our current use case, all subs use the bot's user token
-					// with websocket transport.
-					auth := botToken
+							// chat-related subs use the bot's user token; stream.online
+							// will use the app token below.
+							auth := botToken
 					if err := createEventSubSubscription(auth, clientID, st, version, cond, sid, "websocket", "", ""); err != nil {
 						log.Println("failed creating subscription", st, "for", ch, ":", err)
 					}
 
 					// avoid hitting rate limits too quickly
 					time.Sleep(500 * time.Millisecond)
-				}
+						}
+
+						// Additionally subscribe to stream.online using the app access token
+						// so we can announce when the broadcaster goes live.
+						streamCond := map[string]string{"broadcaster_user_id": broadcasterID}
+						if err := createEventSubSubscription(appToken, clientID, "stream.online", "1", streamCond, sid, "websocket", "", ""); err != nil {
+							log.Println("failed creating stream.online subscription for", ch, ":", err)
+						}
 			}
 			return
 		}
