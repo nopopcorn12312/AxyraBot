@@ -1617,7 +1617,12 @@ func canUseCustomCommand(channelLogin, chatterLogin, role string) bool {
 	case "moderator":
 		ok, err := isBroadcasterOrModerator(channelLogin, chatterLogin)
 		if err != nil {
-			log.Println("canUseCustomCommand moderator check failed:", err)
+			// If the error is due to missing moderation scopes on the bot token,
+			// we've already logged that in isBroadcasterOrModerator; just treat
+			// the user as not a moderator without spamming logs here.
+			if !strings.Contains(err.Error(), "Missing scope") {
+				log.Println("canUseCustomCommand moderator check failed:", err)
+			}
 		}
 		return ok
 	case "vip":
@@ -1627,7 +1632,10 @@ func canUseCustomCommand(channelLogin, chatterLogin, role string) bool {
 		}
 		ok, err := isChannelVIP(channelLogin, chatterLogin)
 		if err != nil {
-			log.Println("canUseCustomCommand vip check failed:", err)
+			// Likewise, avoid double-logging missing-scope errors for VIP checks.
+			if !strings.Contains(err.Error(), "Missing scope") {
+				log.Println("canUseCustomCommand vip check failed:", err)
+			}
 		}
 		return ok
 	default:
