@@ -788,6 +788,27 @@ func updateStreamInfoFromChat(channelLogin, title, category string) error {
 	return nil
 }
 
+// durationUnit and formatDurationUnits are helpers to build human-readable
+// duration strings without including components that are zero.
+type durationUnit struct {
+	value int
+	label string
+}
+
+func formatDurationUnits(units ...durationUnit) string {
+	parts := []string{}
+	for _, u := range units {
+		if u.value != 0 {
+			parts = append(parts, fmt.Sprintf("%d %s", u.value, u.label))
+		}
+	}
+	if len(parts) == 0 {
+		// Fallback when everything is zero; minutes is the smallest unit we use
+		return "0 minutes"
+	}
+	return strings.Join(parts, ", ")
+}
+
 // getAccountAgeString retrieves a Twitch user's creation time and returns
 // a human-readable age in years, months, days, and hours.
 func getAccountAgeString(login string) (string, error) {
@@ -863,7 +884,12 @@ func getAccountAgeString(login string) (string, error) {
 	days := remainingDays % 30
 	hours := totalHours % 24
 
-	return fmt.Sprintf("%d years, %d months, %d days, %d hours", years, months, days, hours), nil
+	return formatDurationUnits(
+		durationUnit{value: years, label: "years"},
+		durationUnit{value: months, label: "months"},
+		durationUnit{value: days, label: "days"},
+		durationUnit{value: hours, label: "hours"},
+	), nil
 }
 
 // getFollowAgeString retrieves how long followerLogin has been following
@@ -990,7 +1016,13 @@ func getFollowAgeString(broadcasterLogin, followerLogin string) (string, error) 
 	hours := (totalMinutes / 60) % 24
 	minutes := totalMinutes % 60
 
-	return fmt.Sprintf("%d years, %d months, %d days, %d hours, %d minutes", years, months, days, hours, minutes), nil
+	return formatDurationUnits(
+		durationUnit{value: years, label: "years"},
+		durationUnit{value: months, label: "months"},
+		durationUnit{value: days, label: "days"},
+		durationUnit{value: hours, label: "hours"},
+		durationUnit{value: minutes, label: "minutes"},
+	), nil
 }
 
 // getStreamUptimeString returns how long the broadcaster has been live this
@@ -1101,7 +1133,13 @@ func getStreamUptimeString(channelLogin string) (string, error) {
 	hours := (totalMinutes / 60) % 24
 	minutes := totalMinutes % 60
 
-	return fmt.Sprintf("%d years, %d months, %d days, %d hours, %d minutes", years, months, days, hours, minutes), nil
+	return formatDurationUnits(
+		durationUnit{value: years, label: "years"},
+		durationUnit{value: months, label: "months"},
+		durationUnit{value: days, label: "days"},
+		durationUnit{value: hours, label: "hours"},
+		durationUnit{value: minutes, label: "minutes"},
+	), nil
 }
 
 // getWatchTimeString converts stored watch time seconds into a
@@ -1122,7 +1160,13 @@ func getWatchTimeString(broadcasterLogin, viewerLogin string) (string, error) {
 	hours := (totalMinutes / 60) % 24
 	minutes := totalMinutes % 60
 
-	return fmt.Sprintf("%d years, %d months, %d days, %d hours, %d minutes", years, months, days, hours, minutes), nil
+	return formatDurationUnits(
+		durationUnit{value: years, label: "years"},
+		durationUnit{value: months, label: "months"},
+		durationUnit{value: days, label: "days"},
+		durationUnit{value: hours, label: "hours"},
+		durationUnit{value: minutes, label: "minutes"},
+	), nil
 }
 
 // active channel helpers
