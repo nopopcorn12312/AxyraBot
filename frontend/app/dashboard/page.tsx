@@ -25,6 +25,11 @@ export default function DashboardPage() {
   const [joining, setJoining] = useState(false);
   const [changesConfirmed, setChangesConfirmed] = useState(false);
   const [commandsOpen, setCommandsOpen] = useState(false);
+  const [activity, setActivity] = useState<
+    { source: string; category: string; description: string; timestamp: string }[]
+  >([]);
+  const [loadingActivity, setLoadingActivity] = useState(false);
+  const [activityError, setActivityError] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const pathname = usePathname();
 
@@ -76,6 +81,36 @@ export default function DashboardPage() {
         setStatusMessage("Could not load stream info.");
       })
       .finally(() => setLoadingStream(false));
+  }, [login]);
+
+  // Load recent activity for the logged-in channel.
+  useEffect(() => {
+    if (!login) return;
+    setLoadingActivity(true);
+    setActivityError(null);
+    fetch(
+      `${backendUrl}/audit/logs?login=${encodeURIComponent(login)}&limit=20`,
+    )
+      .then(async (res) => {
+        if (!res.ok) {
+          throw new Error("Failed to load activity");
+        }
+        return res.json();
+      })
+      .then((data) => {
+        const logs = (data.logs || []) as {
+          source: string;
+          category: string;
+          description: string;
+          timestamp: string;
+        }[];
+        setActivity(logs);
+      })
+      .catch((err) => {
+        console.error(err);
+        setActivityError("Could not load recent activity.");
+      })
+      .finally(() => setLoadingActivity(false));
   }, [login]);
 
   // Determine whether the current channel is already joined
@@ -167,6 +202,20 @@ export default function DashboardPage() {
   )}`;
   const primaryHref = isLoggedIn ? "/dashboard" : connectUrl;
   const primaryLabel = isLoggedIn ? "Dashboard" : "Login with Twitch";
+
+  const formatTimeAgo = (iso: string) => {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "";
+    const diffMs = Date.now() - d.getTime();
+    const seconds = Math.floor(diffMs / 1000);
+    if (seconds < 60) return `${seconds}s ago`;
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+  };
 
   return (
     <main className="min-h-screen flex flex-col bg-[radial-gradient(circle_at_top,_#1e293b,_#020617)]">
@@ -357,13 +406,69 @@ export default function DashboardPage() {
       </nav>
         </div>
         <div className="flex-1 flex flex-col lg:flex-row gap-6 text-slate-50">
-          <div className="flex-1 lg:basis-2/3 h-64 rounded-2xl border border-slate-800 bg-slate-900/80 p-6">
-            <h1 className="text-2xl font-semibold mb-2">Dashboard</h1>
-            <p className="text-sm text-slate-400">
-              This area will show your channel overview, stats, and recent
-              activity. Use it to get a quick snapshot of how AxyraBot is
-              interacting with your stream.
-            </p>
+          <div className="flex-1 lg:basis-2/3 max-h-80 rounded-2xl border border-slate-800 bg-slate-900/80 p-6 flex flex-col">
+            <div className="flex items-center justify-between mb-3">
+              <h1 className="text-2xl font-semibold">Recent Activity</h1>
+              <span className="text-xs text-slate-400">Latest changes from Twitch &amp; AxyraBot</span>
+            </div>
+            {!login && (
+              <p className="text-sm text-slate-400">
+                Connect with Twitch to see recent activity for your channel.
+              </p>
+            )}
+            {login && (
+              <div className="flex-1 flex flex-col overflow-y-auto pr-1">
+                {loadingActivity && (
+                  <p className="text-sm text-slate-400">Loading activity…</p>
+                )}
+                {activityError && !loadingActivity && (
+                  <p className="text-sm text-rose-400">{activityError}</p>
+                )}
+                {!loadingActivity && !activityError && activity.length === 0 && (
+                  <p className="text-sm text-slate-400">
+                    No recent activity yet. Changes you make with AxyraBot and
+                    certain Twitch events (like follows and going live) will
+                    appear here.
+                  </p>
+                )}
+                {!loadingActivity && !activityError && activity.length > 0 && (
+                  <ul className="mt-1 space-y-3 text-sm">
+                    {activity.map((item, idx) => {
+                      const source = item.source?.toLowerCase();
+                      const isTwitch = source === "twitch";
+                      const badgeClasses = isTwitch
+                        ? "bg-violet-600/80 text-violet-50 border-violet-400/60"
+                        : "bg-sky-600/80 text-sky-50 border-sky-400/60";
+                      const badgeLabel = isTwitch ? "Twitch" : "AxyraBot";
+                      return (
+                        <li key={`${item.timestamp}-${idx}`} className="flex items-start gap-3">
+                          <span
+                            className={`mt-1 h-2 w-2 rounded-full ${
+                              isTwitch ? "bg-violet-400" : "bg-sky-400"
+                            }`}
+                          />
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <span
+                                className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${badgeClasses}`}
+                              >
+                                {badgeLabel}
+                              </span>
+                              <span className="text-[11px] text-slate-500">
+                                {formatTimeAgo(item.timestamp)}
+                              </span>
+                            </div>
+                            <p className="text-slate-200 leading-snug">
+                              {item.description}
+                            </p>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            )}
           </div>
           <div className="w-full lg:basis-1/3 h-72 rounded-2xl border border-slate-800 bg-slate-900/80 p-6 flex flex-col justify-between">
             <div>

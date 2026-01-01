@@ -281,6 +281,15 @@ type CustomCommand struct {
 	Role      string
 }
 
+// AuditLogEntry represents a single channel activity entry used for the
+// dashboard's recent activity feed.
+type AuditLogEntry struct {
+	Source      string
+	Category    string
+	Description string
+	CreatedAt   time.Time
+}
+
 // ListCustomCommands returns all custom commands for a broadcaster.
 func ListCustomCommands(broadcasterLogin string) ([]CustomCommand, error) {
 	res := []CustomCommand{}
@@ -343,6 +352,58 @@ func UpdateCustomCommand(broadcasterLogin, oldName, newName, response, role stri
 	return err
 }
 
+// InsertAuditLog writes a single audit log entry for a broadcaster. It is
+// best-effort and will silently return on missing DB or empty input.
+func InsertAuditLog(broadcasterLogin, source, category, description string) error {
+	if db == nil {
+		return nil
+	}
+	broadcasterLogin = strings.ToLower(strings.TrimSpace(broadcasterLogin))
+	source = strings.ToLower(strings.TrimSpace(source))
+	category = strings.ToLower(strings.TrimSpace(category))
+	description = strings.TrimSpace(description)
+	if broadcasterLogin == "" || description == "" {
+		return nil
+	}
+	_, err := db.Exec(`
+	INSERT INTO channel_audit_logs (broadcaster_login, source, category, description)
+	VALUES ($1, $2, $3, $4);
+	`, broadcasterLogin, source, category, description)
+	return err
+}
+
+// GetRecentAuditLogs returns the most recent N audit log entries for a
+// broadcaster, ordered from newest to oldest.
+func GetRecentAuditLogs(broadcasterLogin string, limit int) ([]AuditLogEntry, error) {
+	logs := []AuditLogEntry{}
+	if db == nil {
+		return logs, nil
+	}
+	if limit <= 0 {
+		limit = 20
+	}
+	broadcasterLogin = strings.ToLower(strings.TrimSpace(broadcasterLogin))
+	rows, err := db.Query(`
+	SELECT source, category, description, created_at
+	FROM channel_audit_logs
+	WHERE broadcaster_login=$1
+	ORDER BY created_at DESC
+	LIMIT $2;
+	`, broadcasterLogin, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var e AuditLogEntry
+		if err := rows.Scan(&e.Source, &e.Category, &e.Description, &e.CreatedAt); err != nil {
+			return nil, err
+		}
+		logs = append(logs, e)
+	}
+	return logs, nil
+}
+
 func EnsureSchema() error {
 	// create simple tables if not exist
 	_, err := db.Exec(`
@@ -394,6 +455,15 @@ func EnsureSchema() error {
 	 last_seen_at TIMESTAMPTZ,
 	 UNIQUE (broadcaster_login, viewer_login)
 	);
+	CREATE TABLE IF NOT EXISTS channel_audit_logs (
+	 id SERIAL PRIMARY KEY,
+	 broadcaster_login TEXT NOT NULL,
+	 source TEXT NOT NULL,
+	 category TEXT NOT NULL,
+	 description TEXT NOT NULL,
+	 created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+	);
+	CREATE INDEX IF NOT EXISTS idx_channel_audit_logs_login_created_at ON channel_audit_logs (broadcaster_login, created_at DESC);
 	`)
 	if err != nil {
 		return err

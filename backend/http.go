@@ -8,7 +8,9 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
+	"time"
 )
 
 func startHTTPServer(clientID, clientSecret string) {
@@ -25,6 +27,7 @@ func startHTTPServer(clientID, clientSecret string) {
 	mux.HandleFunc("/commands/custom/update", withCORS(handleCustomCommandsUpdate))
 	mux.HandleFunc("/commands/custom/delete", withCORS(handleCustomCommandsDelete))
 	mux.HandleFunc("/modules/settings", withCORS(handleModuleSettings))
+	mux.HandleFunc("/audit/logs", withCORS(handleAuditLogs))
 	addr := ":8080"
 	if p := os.Getenv("PORT"); p != "" {
 		addr = ":" + p
@@ -93,6 +96,14 @@ func handleDefaultCommandSettings(w http.ResponseWriter, r *http.Request) {
 			log.Println("failed to save default command setting:", err)
 			http.Error(w, "db error", http.StatusInternalServerError)
 			return
+		}
+		// Audit the default command toggle.
+		state := "disabled"
+		if body.Enabled {
+			state = "enabled"
+		}
+		if err := InsertAuditLog(login, "bot", "default_command", fmt.Sprintf("Set %s %s", cmd, state)); err != nil {
+			log.Println("failed to insert audit log for default command:", err)
 		}
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprint(w, "ok")
@@ -168,6 +179,14 @@ func handleCustomCommands(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "db error", http.StatusInternalServerError)
 			return
 		}
+		// Audit the custom command toggle.
+		state := "disabled"
+		if body.Enabled {
+			state = "enabled"
+		}
+		if err := InsertAuditLog(login, "bot", "custom_command", fmt.Sprintf("Set custom command %s %s", cmd, state)); err != nil {
+			log.Println("failed to insert audit log for custom command toggle:", err)
+		}
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprint(w, "ok")
 	default:
@@ -208,6 +227,11 @@ func handleCustomCommandsUpdate(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "db error", http.StatusInternalServerError)
 		return
 	}
+	// Audit the custom command update.
+	desc := fmt.Sprintf("Updated custom command %s (role=%s)", cmd, role)
+	if err := InsertAuditLog(login, "bot", "custom_command_update", desc); err != nil {
+		log.Println("failed to insert audit log for custom command update:", err)
+	}
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, "ok")
 }
@@ -238,6 +262,9 @@ func handleCustomCommandsDelete(w http.ResponseWriter, r *http.Request) {
 		log.Println("failed to delete custom command from HTTP:", err)
 		http.Error(w, "db error", http.StatusInternalServerError)
 		return
+	}
+	if err := InsertAuditLog(login, "bot", "custom_command_delete", fmt.Sprintf("Deleted custom command %s", cmd)); err != nil {
+		log.Println("failed to insert audit log for custom command delete:", err)
 	}
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, "ok")
@@ -337,6 +364,22 @@ func handleModuleSettings(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 			}
+		}
+		// Audit the module configuration change.
+		status := "disabled"
+		if body.Enabled {
+			status = "enabled"
+		}
+		action := "updated"
+		if body.ResetToDefault {
+			action = "reset to default"
+		}
+		desc := fmt.Sprintf("Module %s %s (status=%s)", module, action, status)
+		if strings.TrimSpace(body.Message) != "" && !body.ResetToDefault {
+			desc += " with custom message"
+		}
+		if err := InsertAuditLog(login, "bot", "module_settings", desc); err != nil {
+			log.Println("failed to insert audit log for module settings:", err)
 		}
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprint(w, "ok")
@@ -569,6 +612,10 @@ func handleJoin(w http.ResponseWriter, r *http.Request) {
 		// bot joins this channel without requiring a redeploy or waiting for the
 		// Postgres LISTEN/NOTIFY loop.
 		handleChannelsChanged(body.Login)
+		// Record in the audit log that the bot joined this channel.
+		if err := InsertAuditLog(body.Login, "bot", "channel_join", "Bot joined the channel"); err != nil {
+			log.Println("failed to insert audit log for join:", err)
+		}
 	}
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, "ok")
@@ -594,6 +641,9 @@ func handlePart(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "db error", http.StatusInternalServerError)
 			return
 		}
+	}
+	if err := InsertAuditLog(body.Login, "bot", "channel_part", "Bot left the channel"); err != nil {
+		log.Println("failed to insert audit log for part:", err)
 	}
 	// active channel bookkeeping for EventSub-based chat handling
 	unmarkActiveChannel(body.Login)
@@ -756,7 +806,63 @@ func handleStreamUpdate(clientID string) http.HandlerFunc {
 			http.Error(w, "helix error", http.StatusBadGateway)
 			return
 		}
+		// Audit the stream update request.
+		desc := fmt.Sprintf("Updated stream settings: title=%q, category=%q", body.Title, body.Category)
+		if err := InsertAuditLog(body.Login, "bot", "stream_update", desc); err != nil {
+			log.Println("failed to insert audit log for stream update:", err)
+		}
 		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+// handleAuditLogs returns the most recent audit log entries for a given
+// broadcaster so the dashboard can display a recent activity feed.
+func handleAuditLogs(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	login := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("login")))
+	if login == "" {
+		http.Error(w, "missing login", http.StatusBadRequest)
+		return
+	}
+	limit := 20
+	if raw := strings.TrimSpace(r.URL.Query().Get("limit")); raw != "" {
+		if n, err := strconv.Atoi(raw); err == nil && n > 0 && n <= 100 {
+			limit = n
+		}
+	}
+	logs, err := GetRecentAuditLogs(login, limit)
+	if err != nil {
+		log.Println("failed to load audit logs:", err)
+		http.Error(w, "db error", http.StatusInternalServerError)
+		return
+	}
+	out := []struct {
+		Source      string    `json:"source"`
+		Category    string    `json:"category"`
+		Description string    `json:"description"`
+		Timestamp   time.Time `json:"timestamp"`
+	}{}
+	for _, e := range logs {
+		out = append(out, struct {
+			Source      string    `json:"source"`
+			Category    string    `json:"category"`
+			Description string    `json:"description"`
+			Timestamp   time.Time `json:"timestamp"`
+		}{
+			Source:      e.Source,
+			Category:    e.Category,
+			Description: e.Description,
+			Timestamp:   e.CreatedAt,
+		})
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(struct {
+		Logs interface{} `json:"logs"`
+	}{Logs: out}); err != nil {
+		log.Println("encode audit logs:", err)
 	}
 }
 

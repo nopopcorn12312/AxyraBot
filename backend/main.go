@@ -268,6 +268,10 @@ func startEventSubWS() {
 													if err := sendHelixChatMessage(ch, msg); err != nil {
 														log.Println("failed to send follow thank-you message:", err)
 													}
+													// Record follow event in audit log.
+													if err := InsertAuditLog(ch, "twitch", "follow", fmt.Sprintf("%s followed the channel", follower)); err != nil {
+														log.Println("failed to insert audit log for follow:", err)
+													}
 												}(channelLogin, followerName, broadcasterID)
 											}
 										}
@@ -283,6 +287,10 @@ func startEventSubWS() {
 													msg := renderLiveAnnouncementMessage(ch, title, game)
 													if err := sendHelixChatMessage(ch, msg); err != nil {
 														log.Println("failed to send stream.online live message:", err)
+													}
+													// Record stream.online in audit log as a Twitch-side event.
+													if err := InsertAuditLog(ch, "twitch", "stream_online", fmt.Sprintf("Stream went live: %s | %s", title, game)); err != nil {
+														log.Println("failed to insert audit log for stream.online:", err)
 													}
 												}(channelLogin)
 											}

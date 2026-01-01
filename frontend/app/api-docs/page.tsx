@@ -228,12 +228,6 @@ export default function ApiDocsPage() {
           <div className="w-full rounded-2xl border border-slate-800 bg-slate-900/80 p-6 space-y-6">
             <div>
               <h1 className="text-2xl font-semibold mb-3">API Documentation</h1>
-              <p className="text-sm text-slate-300">
-                All endpoints are served from your backend base URL:
-                <span className="ml-1 rounded bg-slate-800 px-2 py-0.5 font-mono text-xs text-slate-100">
-                  {backendUrl}
-                </span>
-              </p>
             </div>
 
             <section className="space-y-3">
