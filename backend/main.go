@@ -785,8 +785,9 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 }
 
 // isBroadcasterOrModerator checks whether chatterLogin is the broadcaster for
-// channelLogin or a moderator in that channel using the broadcaster's token
-// and the Helix Get Moderators endpoint.
+// channelLogin or a moderator in that channel. It uses the bot's user access
+// token from TWITCH_BOT_OAUTH (which, per your setup, has moderator:read
+// scopes) together with the Helix Get Moderators endpoint.
 func isBroadcasterOrModerator(channelLogin, chatterLogin string) (bool, error) {
 	channelLogin = strings.ToLower(channelLogin)
 	chatterLogin = strings.ToLower(chatterLogin)
@@ -798,17 +799,41 @@ func isBroadcasterOrModerator(channelLogin, chatterLogin string) (bool, error) {
 	if clientID == "" {
 		return false, fmt.Errorf("TWITCH_CLIENT_ID not set")
 	}
-
-	access, err := GetUserAccessToken(channelLogin)
-	if err != nil || access == "" {
-		return false, fmt.Errorf("no user token for channel %s: %w", channelLogin, err)
+	botOAuth := os.Getenv("TWITCH_BOT_OAUTH")
+	access := strings.TrimPrefix(botOAuth, "oauth:")
+	if access == "" {
+		return false, fmt.Errorf("TWITCH_BOT_OAUTH not set or empty")
 	}
 
-	// Resolve broadcaster id from their token
-	broadcasterID, err := getUserIDFromToken(access)
+	// Resolve broadcaster id via Helix /users using the bot token
+	usersReqBroadcaster, err := http.NewRequest("GET", "https://api.twitch.tv/helix/users?login="+url.QueryEscape(channelLogin), nil)
 	if err != nil {
-		return false, fmt.Errorf("getUserIDFromToken failed: %w", err)
+		return false, err
 	}
+	usersReqBroadcaster.Header.Set("Client-ID", clientID)
+	usersReqBroadcaster.Header.Set("Authorization", "Bearer "+access)
+	client := &http.Client{Timeout: 10 * time.Second}
+	usersRespBroadcaster, err := client.Do(usersReqBroadcaster)
+	if err != nil {
+		return false, err
+	}
+	defer usersRespBroadcaster.Body.Close()
+	if usersRespBroadcaster.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(usersRespBroadcaster.Body)
+		return false, fmt.Errorf("helix users status %s: %s", usersRespBroadcaster.Status, string(b))
+	}
+	var usersResBroadcaster struct {
+		Data []struct {
+			ID string `json:"id"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(usersRespBroadcaster.Body).Decode(&usersResBroadcaster); err != nil {
+		return false, err
+	}
+	if len(usersResBroadcaster.Data) == 0 {
+		return false, fmt.Errorf("broadcaster not found: %s", channelLogin)
+	}
+	broadcasterID := usersResBroadcaster.Data[0].ID
 
 	// Resolve chatter user id via /users
 	usersReq, err := http.NewRequest("GET", "https://api.twitch.tv/helix/users?login="+url.QueryEscape(chatterLogin), nil)
@@ -817,7 +842,6 @@ func isBroadcasterOrModerator(channelLogin, chatterLogin string) (bool, error) {
 	}
 	usersReq.Header.Set("Client-ID", clientID)
 	usersReq.Header.Set("Authorization", "Bearer "+access)
-	client := &http.Client{Timeout: 10 * time.Second}
 	usersResp, err := client.Do(usersReq)
 	if err != nil {
 		return false, err
@@ -869,9 +893,9 @@ func isBroadcasterOrModerator(channelLogin, chatterLogin string) (bool, error) {
 }
 
 // isChannelVIP determines whether chatterLogin is a VIP in channelLogin
-// using the broadcaster's token and the Helix Get VIPs endpoint. This uses
-// the same pattern as isBroadcasterOrModerator but queries /channels/vips
-// instead of /moderation/moderators.
+// using the bot's user access token from TWITCH_BOT_OAUTH (which, per your
+// setup, has the scopes required to read VIPs) together with the Helix
+// Get VIPs endpoint.
 func isChannelVIP(channelLogin, chatterLogin string) (bool, error) {
 	channelLogin = strings.ToLower(channelLogin)
 	chatterLogin = strings.ToLower(chatterLogin)
@@ -884,17 +908,41 @@ func isChannelVIP(channelLogin, chatterLogin string) (bool, error) {
 	if clientID == "" {
 		return false, fmt.Errorf("TWITCH_CLIENT_ID not set")
 	}
-
-	access, err := GetUserAccessToken(channelLogin)
-	if err != nil || access == "" {
-		return false, fmt.Errorf("no user token for channel %s: %w", channelLogin, err)
+	botOAuth := os.Getenv("TWITCH_BOT_OAUTH")
+	access := strings.TrimPrefix(botOAuth, "oauth:")
+	if access == "" {
+		return false, fmt.Errorf("TWITCH_BOT_OAUTH not set or empty")
 	}
 
-	// Resolve broadcaster id from their token
-	broadcasterID, err := getUserIDFromToken(access)
+	// Resolve broadcaster id via Helix /users using the bot token
+	usersReqBroadcaster, err := http.NewRequest("GET", "https://api.twitch.tv/helix/users?login="+url.QueryEscape(channelLogin), nil)
 	if err != nil {
-		return false, fmt.Errorf("getUserIDFromToken failed: %w", err)
+		return false, err
 	}
+	usersReqBroadcaster.Header.Set("Client-ID", clientID)
+	usersReqBroadcaster.Header.Set("Authorization", "Bearer "+access)
+	client := &http.Client{Timeout: 10 * time.Second}
+	usersRespBroadcaster, err := client.Do(usersReqBroadcaster)
+	if err != nil {
+		return false, err
+	}
+	defer usersRespBroadcaster.Body.Close()
+	if usersRespBroadcaster.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(usersRespBroadcaster.Body)
+		return false, fmt.Errorf("helix users status %s: %s", usersRespBroadcaster.Status, string(b))
+	}
+	var usersResBroadcaster struct {
+		Data []struct {
+			ID string `json:"id"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(usersRespBroadcaster.Body).Decode(&usersResBroadcaster); err != nil {
+		return false, err
+	}
+	if len(usersResBroadcaster.Data) == 0 {
+		return false, fmt.Errorf("broadcaster not found: %s", channelLogin)
+	}
+	broadcasterID := usersResBroadcaster.Data[0].ID
 
 	// Resolve chatter user id via /users
 	usersReq, err := http.NewRequest("GET", "https://api.twitch.tv/helix/users?login="+url.QueryEscape(chatterLogin), nil)
