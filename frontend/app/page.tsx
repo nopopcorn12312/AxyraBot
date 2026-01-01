@@ -101,12 +101,13 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen flex flex-col px-4 bg-[radial-gradient(circle_at_top,_#1e293b,_#020617)]">
-      <section className="min-h-[95vh] flex flex-col">
+      <section className="min-h-[95vh] flex flex-col pt-20">
         <header
-          className={`sticky top-0 z-40 w-full max-w-6xl mx-auto flex items-center px-6 transition-all duration-300 ${
-            isScrolled ? "backdrop-blur-md" : "mt-6"
+          className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 ${
+            isScrolled ? "backdrop-blur-md" : ""
           }`}
         >
+          <div className="w-full max-w-6xl mx-auto flex items-center px-6">
         <div className="flex items-center gap-4 flex-1">
           <Image
             src={AxyraBotPFP}
@@ -158,6 +159,7 @@ export default function HomePage() {
             </div>
           )}
         </div>
+          </div>
       </header>
 
       <div className="flex-1 flex items-center justify-center">
