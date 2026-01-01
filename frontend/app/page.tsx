@@ -164,10 +164,164 @@ export default function HomePage() {
               </p>
             </div>
           </div>
-
-
         </div>
       </div>
+
+      {/* Scroll cue */}
+      <section className="w-full flex justify-center pb-6">
+        <div className="flex items-center justify-center h-10 w-10 rounded-full border border-slate-700 bg-slate-900/80 text-slate-300 shadow-sm shadow-slate-900/80">
+          <span className="text-lg">▼</span>
+        </div>
+      </section>
+
+      {/* Features */}
+      <section className="w-full max-w-5xl mx-auto pb-12">
+        <div className="text-center mb-6">
+          <h2 className="text-lg font-semibold tracking-wide text-slate-200">Features</h2>
+          <p className="mt-1 text-xs text-slate-400">Preview of what AxyraBot can do for your channel.</p>
+        </div>
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-4 shadow-sm shadow-slate-900/80">
+            <div className="mb-4 rounded-xl bg-slate-950/80 px-3 py-2 text-left">
+              <div className="text-[10px] font-semibold text-slate-400">Command</div>
+              <div className="mt-1 inline-flex items-center gap-2 rounded-full bg-slate-900 px-3 py-1 text-xs font-medium text-slate-100">
+                <span className="inline-block h-2 w-2 rounded-full bg-emerald-400" />
+                <span>!hello</span>
+              </div>
+            </div>
+            <h3 className="text-sm font-semibold text-slate-50 mb-1">Instant commands</h3>
+            <p className="text-xs text-slate-400">
+              Welcome new viewers and trigger responses with simple chat commands. Perfect for quick
+              interactions and callouts.
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-4 shadow-sm shadow-slate-900/80">
+            <div className="mb-4 rounded-xl bg-slate-950/80 px-3 py-2 text-left">
+              <div className="text-[10px] font-semibold text-slate-400">Event</div>
+              <div className="mt-1 inline-flex items-center gap-2 rounded-full bg-slate-900 px-3 py-1 text-xs font-medium text-slate-100">
+                <span className="inline-block h-2 w-2 rounded-full bg-sky-400" />
+                <span>New follower</span>
+              </div>
+            </div>
+            <h3 className="text-sm font-semibold text-slate-50 mb-1">Smart reactions</h3>
+            <p className="text-xs text-slate-400">
+              Automatically thank followers and respond to Twitch events so your community always
+              feels noticed.
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-4 shadow-sm shadow-slate-900/80">
+            <div className="mb-4 rounded-xl bg-slate-950/80 px-3 py-2 text-left">
+              <div className="text-[10px] font-semibold text-slate-400">Dashboard</div>
+              <div className="mt-1 inline-flex items-center gap-2 rounded-full bg-slate-900 px-3 py-1 text-xs font-medium text-slate-100">
+                <span className="inline-block h-2 w-2 rounded-full bg-violet-400" />
+                <span>Commands & stream info</span>
+              </div>
+            </div>
+            <h3 className="text-sm font-semibold text-slate-50 mb-1">Clean control panel</h3>
+            <p className="text-xs text-slate-400">
+              Manage titles, categories, and commands from a simple web dashboard instead of typing
+              everything in chat.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Dashboard preview */}
+      <section className="w-full max-w-5xl mx-auto pb-12">
+        <div className="text-center mb-6">
+          <h2 className="text-lg font-semibold tracking-wide text-slate-200">
+            Dashboard & Tables
+          </h2>
+          <p className="mt-1 text-xs text-slate-400 max-w-xl mx-auto">
+            Get a quick look at commands, stream info, and connection status at a glance. Designed
+            to stay readable even during a busy stream.
+          </p>
+        </div>
+        <div className="relative rounded-3xl border border-slate-800 bg-slate-900/80 p-4 shadow-xl shadow-black/40 overflow-hidden">
+          <div className="absolute inset-x-16 -top-24 h-40 rounded-full bg-sky-500/20 blur-3xl" />
+          <div className="relative grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1.4fr)] text-xs">
+            <div className="rounded-2xl border border-slate-800 bg-slate-950/80 p-3">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2 text-slate-200">
+                  <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                  <span className="font-medium">Joined channels</span>
+                </div>
+                <span className="text-[10px] text-slate-500">Preview</span>
+              </div>
+              <div className="h-40 rounded-lg border border-slate-800 bg-gradient-to-b from-slate-900 to-slate-950/90" />
+            </div>
+            <div className="rounded-2xl border border-slate-800 bg-slate-950/80 p-3 flex flex-col gap-3">
+              <div>
+                <div className="text-[11px] font-semibold text-slate-300 mb-1">Stream details</div>
+                <p className="text-[11px] text-slate-400">
+                  Edit your title, category, and connection status without leaving the browser.
+                </p>
+              </div>
+              <div className="mt-auto flex flex-wrap gap-2 text-[11px]">
+                <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-emerald-300 border border-emerald-500/40">
+                  Real-time updates
+                </span>
+                <span className="rounded-full bg-sky-500/10 px-3 py-1 text-sky-300 border border-sky-500/40">
+                  EventSub powered
+                </span>
+                <span className="rounded-full bg-violet-500/10 px-3 py-1 text-violet-300 border border-violet-500/40">
+                  Simple to use
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Who we are */}
+      <section className="w-full max-w-4xl mx-auto pb-12">
+        <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-6 text-center shadow-sm shadow-slate-900/80">
+          <h2 className="text-lg font-semibold text-slate-100 mb-2">Who we are</h2>
+          <p className="text-xs md:text-sm text-slate-400 max-w-2xl mx-auto">
+            AxyraBot is built to make Twitch moderation and engagement feel effortless. Whether
+            you&apos;re just starting your channel or managing a busy community, the goal is to keep
+            commands, stream info, and EventSub reactions simple so you can focus on your content.
+          </p>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="w-full max-w-5xl mx-auto pb-6 text-[11px] text-slate-400">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-t border-slate-800 pt-4">
+          <div className="flex items-center gap-2 text-slate-300">
+            <span className="h-6 w-6 rounded-xl border border-slate-700 bg-slate-900 flex items-center justify-center text-xs">
+              🤖
+            </span>
+            <span className="font-medium">AxyraBot</span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs">
+            <div>
+              <div className="font-semibold text-slate-200 mb-1">Product</div>
+              <div className="flex flex-col gap-0.5">
+                <a href="/dashboard" className="hover:text-slate-200">Dashboard</a>
+                <a href="/commands" className="hover:text-slate-200">Commands</a>
+              </div>
+            </div>
+            <div>
+              <div className="font-semibold text-slate-200 mb-1">Support</div>
+              <div className="flex flex-col gap-0.5">
+                <a href="#" className="hover:text-slate-200">Discord (coming soon)</a>
+                <a href="/api-docs" className="hover:text-slate-200">API Documentation</a>
+              </div>
+            </div>
+            <div>
+              <div className="font-semibold text-slate-200 mb-1">Legal</div>
+              <div className="flex flex-col gap-0.5">
+                <a href="/terms" className="hover:text-slate-200">Terms of Service</a>
+                <a href="/privacy" className="hover:text-slate-200">Privacy Policy</a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p className="mt-3 text-[10px] text-slate-500">© {new Date().getFullYear()} AxyraBot. All rights reserved.</p>
+      </footer>
     </main>
   );
 }
