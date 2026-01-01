@@ -785,9 +785,10 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 }
 
 // isBroadcasterOrModerator checks whether chatterLogin is the broadcaster for
-// channelLogin or a moderator in that channel. It uses the bot's user access
-// token from TWITCH_BOT_OAUTH (which, per your setup, has moderator:read
-// scopes) together with the Helix Get Moderators endpoint.
+// channelLogin or a moderator in that channel. It uses the broadcaster's
+// stored user access token (via GetUserAccessToken) together with the Helix
+// Get Moderators endpoint. This satisfies Twitch's requirement that the
+// broadcaster_id in the request match the user ID in the OAuth token.
 func isBroadcasterOrModerator(channelLogin, chatterLogin string) (bool, error) {
 	channelLogin = strings.ToLower(channelLogin)
 	chatterLogin = strings.ToLower(chatterLogin)
@@ -799,13 +800,13 @@ func isBroadcasterOrModerator(channelLogin, chatterLogin string) (bool, error) {
 	if clientID == "" {
 		return false, fmt.Errorf("TWITCH_CLIENT_ID not set")
 	}
-	botOAuth := os.Getenv("TWITCH_BOT_OAUTH")
-	access := strings.TrimPrefix(botOAuth, "oauth:")
-	if access == "" {
-		return false, fmt.Errorf("TWITCH_BOT_OAUTH not set or empty")
+
+	access, err := GetUserAccessToken(channelLogin)
+	if err != nil || access == "" {
+		return false, fmt.Errorf("no user token for channel %s: %w", channelLogin, err)
 	}
 
-	// Resolve broadcaster id via Helix /users using the bot token
+	// Resolve broadcaster id via Helix /users using the broadcaster's token
 	usersReqBroadcaster, err := http.NewRequest("GET", "https://api.twitch.tv/helix/users?login="+url.QueryEscape(channelLogin), nil)
 	if err != nil {
 		return false, err
@@ -879,11 +880,12 @@ func isBroadcasterOrModerator(channelLogin, chatterLogin string) (bool, error) {
 	defer modsResp.Body.Close()
 	if modsResp.StatusCode != http.StatusOK {
 		b, _ := io.ReadAll(modsResp.Body)
-		// If the bot token is missing moderation scopes, treat the user as not a
-		// moderator instead of failing the command, but log once for visibility.
+		// If the broadcaster token is missing moderation scopes, treat the user as
+		// not a moderator instead of failing the command, but log once for
+		// visibility.
 		if modsResp.StatusCode == http.StatusUnauthorized &&
 			strings.Contains(string(b), "Missing scope") {
-			log.Println("isBroadcasterOrModerator: missing moderation scope on bot token; treating as not-moderator")
+			log.Println("isBroadcasterOrModerator: missing moderation scope on broadcaster token; treating as not-moderator")
 			return false, nil
 		}
 		return false, fmt.Errorf("helix moderators status %s: %s", modsResp.Status, string(b))
@@ -900,9 +902,10 @@ func isBroadcasterOrModerator(channelLogin, chatterLogin string) (bool, error) {
 }
 
 // isChannelVIP determines whether chatterLogin is a VIP in channelLogin
-// using the bot's user access token from TWITCH_BOT_OAUTH (which, per your
-// setup, has the scopes required to read VIPs) together with the Helix
-// Get VIPs endpoint.
+// using the broadcaster's stored user access token together with the Helix
+// Get VIPs endpoint. This avoids the "broadcaster_id must match the user ID
+// in the request's OAuth token" 401 that occurs when using a separate bot
+// account token.
 func isChannelVIP(channelLogin, chatterLogin string) (bool, error) {
 	channelLogin = strings.ToLower(channelLogin)
 	chatterLogin = strings.ToLower(chatterLogin)
@@ -915,13 +918,13 @@ func isChannelVIP(channelLogin, chatterLogin string) (bool, error) {
 	if clientID == "" {
 		return false, fmt.Errorf("TWITCH_CLIENT_ID not set")
 	}
-	botOAuth := os.Getenv("TWITCH_BOT_OAUTH")
-	access := strings.TrimPrefix(botOAuth, "oauth:")
-	if access == "" {
-		return false, fmt.Errorf("TWITCH_BOT_OAUTH not set or empty")
+
+	access, err := GetUserAccessToken(channelLogin)
+	if err != nil || access == "" {
+		return false, fmt.Errorf("no user token for channel %s: %w", channelLogin, err)
 	}
 
-	// Resolve broadcaster id via Helix /users using the bot token
+	// Resolve broadcaster id via Helix /users using the broadcaster's token
 	usersReqBroadcaster, err := http.NewRequest("GET", "https://api.twitch.tv/helix/users?login="+url.QueryEscape(channelLogin), nil)
 	if err != nil {
 		return false, err
@@ -995,11 +998,11 @@ func isChannelVIP(channelLogin, chatterLogin string) (bool, error) {
 	defer vipsResp.Body.Close()
 	if vipsResp.StatusCode != http.StatusOK {
 		b, _ := io.ReadAll(vipsResp.Body)
-		// If the bot token is missing VIP scopes, treat the user as not a VIP
-		// instead of failing the command, but log once for visibility.
+		// If the broadcaster token is missing VIP scopes, treat the user as not a
+		// VIP instead of failing the command, but log once for visibility.
 		if vipsResp.StatusCode == http.StatusUnauthorized &&
 			strings.Contains(string(b), "Missing scope") {
-			log.Println("isChannelVIP: missing VIP scope on bot token; treating as not-VIP")
+			log.Println("isChannelVIP: missing VIP scope on broadcaster token; treating as not-VIP")
 			return false, nil
 		}
 		return false, fmt.Errorf("helix vips status %s: %s", vipsResp.Status, string(b))
