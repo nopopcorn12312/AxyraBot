@@ -161,17 +161,19 @@ export default function ModulesPage() {
           >
             ☰
           </button>
-          <Image
-            src={AxyraBotPFP}
-            alt="AxyraBot logo"
-            width={32}
-            height={32}
-            className="rounded-full border border-slate-700 shadow-sm shadow-sky-500/40"
-          />
-          <div className="text-2xl font-semibold tracking-tight">
-            <span className="text-accent">Axyra</span>
-            <span className="text-white">Bot</span>
-          </div>
+          <Link href="/" className="flex items-center gap-4">
+            <Image
+              src={AxyraBotPFP}
+              alt="AxyraBot logo"
+              width={32}
+              height={32}
+              className="rounded-full border border-slate-700 shadow-sm shadow-sky-500/40"
+            />
+            <div className="text-2xl font-semibold tracking-tight">
+              <span className="text-accent">Axyra</span>
+              <span className="text-white">Bot</span>
+            </div>
+          </Link>
         </div>
         <div className="flex items-center gap-4">
           <a href={primaryHref} className="hidden">
@@ -215,18 +217,6 @@ export default function ModulesPage() {
           className={`${sidebarOpen ? "w-60" : "w-16"} flex flex-col rounded-2xl border border-slate-800 bg-slate-900/80 p-3 transition-all duration-200`}
         >
           <nav className="mt-1 flex flex-col gap-2 text-sm text-slate-200">
-            <Link
-              href="/"
-              className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
-                pathname === "/"
-                  ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                  : "text-slate-200 hover:bg-slate-800/80"
-              }`}
-            >
-              <span className="text-lg">🏠</span>
-              {sidebarOpen && <span>Home</span>}
-            </Link>
-
             <Link
               href="/dashboard"
               className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
