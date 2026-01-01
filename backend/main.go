@@ -39,8 +39,6 @@ var (
 // List of built-in default commands that can be toggled per broadcaster.
 var defaultCommandNames = []string{
 	"!hello",
-	"!test",
-	"!testanc",
 	"!vanish",
 	"!title",
 	"!game",
@@ -596,25 +594,6 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 		}
 		if err := sendHelixChatMessage(channelLogin, fmt.Sprintf("Hello! I am %s", botName)); err != nil {
 			log.Println("failed to send !hello response:", err)
-		}
-	}
-	if isChatCommand(message, "!test") {
-		if !isDefaultCommandEnabled(channelLogin, "!test") {
-			return
-		}
-		if err := sendHelixChatMessage(channelLogin, "SUCCESS"); err != nil {
-			log.Println("failed to send !test response:", err)
-		}
-	}
-	if isChatCommand(message, "!testanc") {
-		if !isDefaultCommandEnabled(channelLogin, "!testanc") {
-			return
-		}
-		// Send a Twitch announcement using the Helix Chat Announcement API.
-		// The bot account must be a moderator or broadcaster in the channel
-		// and its token must include moderator:manage:announcements.
-		if err := sendHelixChatAnnouncement(channelLogin, "success", ""); err != nil {
-			log.Println("failed to send !testanc announcement:", err)
 		}
 	}
 

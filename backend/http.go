@@ -98,46 +98,74 @@ func handleDefaultCommandSettings(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handleCustomCommands returns the list of custom commands for a broadcaster.
-// It is used by the dashboard commands page when the "Custom commands" tab
-// is selected.
+// handleCustomCommands manages custom commands for a broadcaster.
+// GET returns the list of commands; POST updates the enabled flag for a
+// single command. It is used by the dashboard commands page when the
+// "Custom commands" tab is selected.
 func handleCustomCommands(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
-	login := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("login")))
-	if login == "" {
-		http.Error(w, "missing login", http.StatusBadRequest)
-		return
-	}
-	cmds, err := ListCustomCommands(login)
-	if err != nil {
-		log.Println("failed to list custom commands:", err)
-		http.Error(w, "db error", http.StatusInternalServerError)
-		return
-	}
-	out := []struct {
-		Name      string `json:"name"`
-		Response  string `json:"response"`
-		CreatedBy string `json:"createdBy"`
-	}{}
-	for _, c := range cmds {
-		out = append(out, struct {
+	switch r.Method {
+	case http.MethodGet:
+		login := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("login")))
+		if login == "" {
+			http.Error(w, "missing login", http.StatusBadRequest)
+			return
+		}
+		cmds, err := ListCustomCommands(login)
+		if err != nil {
+			log.Println("failed to list custom commands:", err)
+			http.Error(w, "db error", http.StatusInternalServerError)
+			return
+		}
+		out := []struct {
 			Name      string `json:"name"`
 			Response  string `json:"response"`
 			CreatedBy string `json:"createdBy"`
-		}{
-			Name:      c.Command,
-			Response:  c.Response,
-			CreatedBy: c.CreatedBy,
-		})
-	}
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(struct {
-		Commands interface{} `json:"commands"`
-	}{Commands: out}); err != nil {
-		log.Println("encode custom commands:", err)
+			Enabled   bool   `json:"enabled"`
+		}{}
+		for _, c := range cmds {
+			out = append(out, struct {
+				Name      string `json:"name"`
+				Response  string `json:"response"`
+				CreatedBy string `json:"createdBy"`
+				Enabled   bool   `json:"enabled"`
+			}{
+				Name:      c.Command,
+				Response:  c.Response,
+				CreatedBy: c.CreatedBy,
+				Enabled:   c.Enabled,
+			})
+		}
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(struct {
+			Commands interface{} `json:"commands"`
+		}{Commands: out}); err != nil {
+			log.Println("encode custom commands:", err)
+		}
+	case http.MethodPost:
+		var body struct {
+			Login   string `json:"login"`
+			Command string `json:"command"`
+			Enabled bool   `json:"enabled"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "bad json", http.StatusBadRequest)
+			return
+		}
+		login := strings.ToLower(strings.TrimSpace(body.Login))
+		cmd := strings.TrimSpace(body.Command)
+		if login == "" || cmd == "" {
+			http.Error(w, "missing login or command", http.StatusBadRequest)
+			return
+		}
+		if err := SetCustomCommandEnabled(login, cmd, body.Enabled); err != nil {
+			log.Println("failed to save custom command setting:", err)
+			http.Error(w, "db error", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "ok")
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
 }
 

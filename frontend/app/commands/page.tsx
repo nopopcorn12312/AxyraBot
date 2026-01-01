@@ -10,16 +10,14 @@ const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://your-backend.
 const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL;
 
 const defaultCommands = [
-  { name: "!hello", description: "Greets chat with the bot's name." },
-  { name: "!test", description: "Sends a simple SUCCESS message." },
-  { name: "!testanc", description: "Sends a Twitch announcement using the bot account." },
-  { name: "!vanish", description: "Times out the user briefly with a playful message." },
-  { name: "!title <new title>", description: "Changes the stream title (broadcaster or mods only)." },
-  { name: "!game <category>", description: "Changes the Twitch category/game (broadcaster or mods only)." },
-  { name: "!accountage [username]", description: "Shows when a user's Twitch account was created." },
-  { name: "!followage [username]", description: "Shows how long a user has followed the channel." },
-  { name: "!uptime", description: "Shows how long the channel has been live this session." },
-  { name: "!commands", description: "Links viewers to your channel's custom commands page." },
+  { name: "!hello", description: "Greets chat with the bot's name.", enabled: true },
+  { name: "!vanish", description: "Times out the user briefly with a playful message.", enabled: true },
+  { name: "!title <new title>", description: "Changes the stream title (broadcaster or mods only).", enabled: true },
+  { name: "!game <category>", description: "Changes the Twitch category/game (broadcaster or mods only).", enabled: true },
+  { name: "!accountage [username]", description: "Shows when a user's Twitch account was created.", enabled: true },
+  { name: "!followage [username]", description: "Shows how long a user has followed the channel.", enabled: true },
+  { name: "!uptime", description: "Shows how long the channel has been live this session.", enabled: true },
+  { name: "!commands", description: "Links viewers to your channel's custom commands page.", enabled: true },
 ];
 
 type CommandToggleProps = {
@@ -50,12 +48,13 @@ export default function CommandsPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [channelLogin, setChannelLogin] = useState<string | null>(null);
+  const [loggedInLogin, setLoggedInLogin] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [commandsOpen, setCommandsOpen] = useState(true);
   const [view, setView] = useState<"default" | "custom">("default");
   const [defaultSettings, setDefaultSettings] = useState<Record<string, boolean>>({});
-  const [customCommands, setCustomCommands] = useState<{ name: string; description: string }[]>([]);
+  const [customCommands, setCustomCommands] = useState<{ name: string; description: string; enabled: boolean }[]>([]);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const pathname = usePathname();
 
@@ -75,17 +74,19 @@ export default function CommandsPage() {
 
     if (storedLogin) {
       setIsLoggedIn(true);
-      setChannelLogin(storedLogin.toLowerCase());
+      setLoggedInLogin(storedLogin.toLowerCase());
     }
     if (storedAvatar) {
       setAvatarUrl(storedAvatar);
     }
 
-    // If there is no stored login (viewer clicking a shared link), fall back
-    // to the channel provided in the query string so the page can load that
-    // broadcaster's commands.
-    if (!storedLogin && channelFromQuery) {
+    // Determine which channel's commands to display. If a channel is supplied
+    // in the URL, always show that broadcaster's commands (so shared links
+    // work for viewers). Otherwise, fall back to the logged-in broadcaster.
+    if (channelFromQuery) {
       setChannelLogin(channelFromQuery.toLowerCase());
+    } else if (storedLogin) {
+      setChannelLogin(storedLogin.toLowerCase());
     }
   }, []);
 
@@ -124,10 +125,11 @@ export default function CommandsPage() {
           { signal: controller.signal },
         );
         if (!res.ok) return;
-        const data: { commands?: { name: string; response: string }[] } = await res.json();
+        const data: { commands?: { name: string; response: string; enabled?: boolean }[] } = await res.json();
         const rows = (data.commands || []).map((c) => ({
           name: c.name,
           description: c.response,
+          enabled: c.enabled ?? true,
         }));
         setCustomCommands(rows);
       } catch {
@@ -366,30 +368,55 @@ export default function CommandsPage() {
                       <td className="px-4 py-2 font-mono text-slate-100">{row.name}</td>
                       <td className="px-4 py-2 text-slate-300">{row.description}</td>
                       <td className="px-4 py-2 text-center">
-                        {view === "default" && channelLogin ? (
-                          <CommandToggle
-                            name={row.name}
-                            enabled={defaultSettings[row.name] ?? true}
-                            onChange={async (next) => {
-                              setDefaultSettings((prev) => ({ ...prev, [row.name]: next }));
-                              try {
-                                await fetch(`${backendUrl}/commands/default-settings`, {
-                                  method: "POST",
-                                  headers: { "Content-Type": "application/json" },
-                                  body: JSON.stringify({
-                                    login: channelLogin,
-                                    command: row.name,
-                                    enabled: next,
-                                  }),
-                                });
-                              } catch {
-                                // ignore network errors; UI state already updated
-                              }
-                            }}
-                          />
-                        ) : (
-                          <span className="text-slate-500 text-xs">—</span>
-                        )}
+                        {view === "default" && channelLogin && loggedInLogin === channelLogin ? (
+                            <CommandToggle
+                              name={row.name}
+                              enabled={defaultSettings[row.name] ?? true}
+                              onChange={async (next) => {
+                                setDefaultSettings((prev) => ({ ...prev, [row.name]: next }));
+                                try {
+                                  await fetch(`${backendUrl}/commands/default-settings`, {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({
+                                      login: channelLogin,
+                                      command: row.name,
+                                      enabled: next,
+                                    }),
+                                  });
+                                } catch {
+                                  // ignore network errors; UI state already updated
+                                }
+                              }}
+                            />
+                          ) : view === "custom" && isLoggedIn && channelLogin && loggedInLogin === channelLogin ? (
+                            <CommandToggle
+                              name={row.name}
+                              enabled={row.enabled}
+                              onChange={async (next) => {
+                                setCustomCommands((prev) =>
+                                  prev.map((cmd) =>
+                                    cmd.name === row.name ? { ...cmd, enabled: next } : cmd,
+                                  ),
+                                );
+                                try {
+                                  await fetch(`${backendUrl}/commands/custom`, {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({
+                                      login: channelLogin,
+                                      command: row.name,
+                                      enabled: next,
+                                    }),
+                                  });
+                                } catch {
+                                  // ignore network errors; UI state already updated
+                                }
+                              }}
+                            />
+                          ) : (
+                            <span className="text-slate-500 text-xs">—</span>
+                          )}
                       </td>
                     </tr>
                   ))}

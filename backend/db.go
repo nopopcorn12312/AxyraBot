@@ -224,7 +224,7 @@ func GetCustomCommandResponse(broadcasterLogin, commandName string) (string, err
 	broadcasterLogin = strings.ToLower(broadcasterLogin)
 	commandName = strings.ToLower(commandName)
 	var resp string
-	row := db.QueryRow(`SELECT response FROM custom_commands WHERE broadcaster_login=$1 AND command=$2`, broadcasterLogin, commandName)
+	row := db.QueryRow(`SELECT response FROM custom_commands WHERE broadcaster_login=$1 AND command=$2 AND COALESCE(enabled, TRUE) = TRUE`, broadcasterLogin, commandName)
 	if err := row.Scan(&resp); err != nil {
 		if err == sql.ErrNoRows {
 			return "", nil
@@ -236,10 +236,11 @@ func GetCustomCommandResponse(broadcasterLogin, commandName string) (string, err
 
 // CustomCommand represents a single stored custom command.
 type CustomCommand struct {
-	Command    string
-	Response   string
-	CreatedBy  string
-	CreatedAt  time.Time
+	Command   string
+	Response  string
+	CreatedBy string
+	CreatedAt time.Time
+	Enabled   bool
 }
 
 // ListCustomCommands returns all custom commands for a broadcaster.
@@ -249,14 +250,14 @@ func ListCustomCommands(broadcasterLogin string) ([]CustomCommand, error) {
 		return res, nil
 	}
 	broadcasterLogin = strings.ToLower(broadcasterLogin)
-	rows, err := db.Query(`SELECT command, response, COALESCE(created_by, ''), COALESCE(created_at, now()) FROM custom_commands WHERE broadcaster_login=$1 ORDER BY command`, broadcasterLogin)
+	rows, err := db.Query(`SELECT command, response, COALESCE(created_by, ''), COALESCE(created_at, now()), COALESCE(enabled, TRUE) FROM custom_commands WHERE broadcaster_login=$1 ORDER BY command`, broadcasterLogin)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var c CustomCommand
-		if err := rows.Scan(&c.Command, &c.Response, &c.CreatedBy, &c.CreatedAt); err != nil {
+		if err := rows.Scan(&c.Command, &c.Response, &c.CreatedBy, &c.CreatedAt, &c.Enabled); err != nil {
 			return nil, err
 		}
 		res = append(res, c)
@@ -272,6 +273,17 @@ func DeleteCustomCommand(broadcasterLogin, commandName string) error {
 	broadcasterLogin = strings.ToLower(broadcasterLogin)
 	commandName = strings.ToLower(commandName)
 	_, err := db.Exec(`DELETE FROM custom_commands WHERE broadcaster_login=$1 AND command=$2`, broadcasterLogin, commandName)
+	return err
+}
+
+// SetCustomCommandEnabled updates the enabled flag for a custom command.
+func SetCustomCommandEnabled(broadcasterLogin, commandName string, enabled bool) error {
+	if db == nil {
+		return nil
+	}
+	broadcasterLogin = strings.ToLower(broadcasterLogin)
+	commandName = strings.ToLower(commandName)
+	_, err := db.Exec(`UPDATE custom_commands SET enabled=$3 WHERE broadcaster_login=$1 AND command=$2`, broadcasterLogin, commandName, enabled)
 	return err
 }
 
@@ -320,6 +332,11 @@ func EnsureSchema() error {
 	);
 	`)
 	if err != nil {
+		return err
+	}
+
+	// Backfill: ensure custom_commands has an enabled flag for per-command toggles.
+	if _, err := db.Exec(`ALTER TABLE custom_commands ADD COLUMN IF NOT EXISTS enabled BOOLEAN NOT NULL DEFAULT TRUE`); err != nil {
 		return err
 	}
 
