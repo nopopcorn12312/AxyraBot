@@ -224,13 +224,232 @@ export default function ApiDocsPage() {
           </nav>
         </div>
 
-        <div className="flex-1 flex flex-col gap-6 text-slate-50">
-          <div className="w-full rounded-2xl border border-slate-800 bg-slate-900/80 p-6">
-            <h1 className="text-2xl font-semibold mb-3">API Documentation</h1>
-            <p className="text-sm text-slate-300">
-              Your API documentation will appear here. Once you have the
-              finalized docs, they can replace this placeholder.
-            </p>
+        <div className="flex-1 flex flex-col gap-6 text-slate-50 overflow-y-auto">
+          <div className="w-full rounded-2xl border border-slate-800 bg-slate-900/80 p-6 space-y-6">
+            <div>
+              <h1 className="text-2xl font-semibold mb-3">API Documentation</h1>
+              <p className="text-sm text-slate-300">
+                All endpoints are served from your backend base URL:
+                <span className="ml-1 rounded bg-slate-800 px-2 py-0.5 font-mono text-xs text-slate-100">
+                  {backendUrl}
+                </span>
+              </p>
+            </div>
+
+            <section className="space-y-3">
+              <h2 className="text-lg font-semibold text-slate-100">Authentication &amp; OAuth</h2>
+              <ul className="space-y-2 text-sm text-slate-300">
+                <li>
+                  <span className="font-mono bg-slate-800 px-1.5 py-0.5 rounded mr-2">GET /auth/start</span>
+                  Redirects the broadcaster to Twitch OAuth. Accepts optional
+                  <span className="font-mono bg-slate-800 px-1 py-0.5 rounded ml-1">redirect</span>
+                  query parameter (frontend URL) so the user is sent back to your dashboard after authorizing.
+                </li>
+                <li>
+                  <span className="font-mono bg-slate-800 px-1.5 py-0.5 rounded mr-2">GET /auth/callback</span>
+                  Twitch redirects back here with
+                  <span className="font-mono bg-slate-800 px-1 py-0.5 rounded ml-1">code</span>
+                  . The backend exchanges the code for a user access token, stores it, and then redirects to your
+                  frontend with
+                  <span className="font-mono bg-slate-800 px-1 py-0.5 rounded ml-1">login</span>
+                  and optional
+                  <span className="font-mono bg-slate-800 px-1 py-0.5 rounded ml-1">avatar</span>
+                  query parameters.
+                </li>
+              </ul>
+            </section>
+
+            <section className="space-y-3">
+              <h2 className="text-lg font-semibold text-slate-100">Channel Management</h2>
+              <ul className="space-y-2 text-sm text-slate-300">
+                <li>
+                  <span className="font-mono bg-slate-800 px-1.5 py-0.5 rounded mr-2">POST /join</span>
+                  Join the bot to a channel.
+                  <span className="ml-1 font-mono bg-slate-800 px-1.5 py-0.5 rounded">{"{ \"login\": \"channel\" }"}</span>
+                  . Marks the channel as joined and refreshes EventSub subscriptions.
+                </li>
+                <li>
+                  <span className="font-mono bg-slate-800 px-1.5 py-0.5 rounded mr-2">POST /part</span>
+                  Ask the bot to leave a channel.
+                  <span className="ml-1 font-mono bg-slate-800 px-1.5 py-0.5 rounded">{"{ \"login\": \"channel\" }"}</span>
+                  . Marks the channel as parted and removes it from active EventSub handling.
+                </li>
+                <li>
+                  <span className="font-mono bg-slate-800 px-1.5 py-0.5 rounded mr-2">GET /channels</span>
+                  Returns the list of joined channels as
+                  <span className="ml-1 font-mono bg-slate-800 px-1.5 py-0.5 rounded">{"{ \"channels\": [""login"", ...] }"}</span>
+                  .
+                </li>
+              </ul>
+            </section>
+
+            <section className="space-y-3">
+              <h2 className="text-lg font-semibold text-slate-100">Stream Info &amp; Updates</h2>
+              <ul className="space-y-2 text-sm text-slate-300">
+                <li>
+                  <span className="font-mono bg-slate-800 px-1.5 py-0.5 rounded mr-2">GET /stream/info</span>
+                  Query parameters:
+                  <span className="font-mono bg-slate-800 px-1 py-0.5 rounded ml-1">login</span>
+                  . Returns the current stream metadata from Twitch as
+                  <span className="ml-1 font-mono bg-slate-800 px-1.5 py-0.5 rounded">{"{ \"title\": ""..."", \"category\": ""..."" }"}</span>
+                  .
+                </li>
+                <li>
+                  <span className="font-mono bg-slate-800 px-1.5 py-0.5 rounded mr-2">POST /stream/update</span>
+                  Updates the broadcaster&apos;s stream title and/or category.
+                  Body:
+                  <span className="ml-1 font-mono bg-slate-800 px-1.5 py-0.5 rounded">{"{ \"login\": \"channel\", \"title\": \"...\", \"category\": \"...\" }"}</span>
+                  . The backend resolves
+                  <span className="font-mono bg-slate-800 px-1 py-0.5 rounded ml-1">category</span>
+                  to a Twitch
+                  <span className="font-mono bg-slate-800 px-1 py-0.5 rounded ml-1">game_id</span>
+                  before calling Helix.
+                </li>
+              </ul>
+            </section>
+
+            <section className="space-y-3">
+              <h2 className="text-lg font-semibold text-slate-100">Commands API</h2>
+              <h3 className="text-sm font-semibold text-slate-200 mt-1">Default Commands</h3>
+              <ul className="space-y-2 text-sm text-slate-300">
+                <li>
+                  <span className="font-mono bg-slate-800 px-1.5 py-0.5 rounded mr-2">GET /commands/default-settings</span>
+                  Query parameters:
+                  <span className="font-mono bg-slate-800 px-1 py-0.5 rounded ml-1">login</span>
+                  . Returns all built-in commands and whether they are enabled for that channel as
+                  <span className="ml-1 font-mono bg-slate-800 px-1.5 py-0.5 rounded">{"{ \"commands\": [{ \"name\": \"!hello\", \"enabled\": true }, ...] }"}</span>
+                  . Missing rows default to enabled.
+                </li>
+                <li>
+                  <span className="font-mono bg-slate-800 px-1.5 py-0.5 rounded mr-2">POST /commands/default-settings</span>
+                  Enable or disable a single default command.
+                  Body:
+                  <span className="ml-1 font-mono bg-slate-800 px-1.5 py-0.5 rounded">{"{ \"login\": \"channel\", \"command\": \"!hello\", \"enabled\": true }"}</span>
+                  .
+                </li>
+              </ul>
+
+              <h3 className="text-sm font-semibold text-slate-200 mt-4">Custom Commands</h3>
+              <ul className="space-y-2 text-sm text-slate-300">
+                <li>
+                  <span className="font-mono bg-slate-800 px-1.5 py-0.5 rounded mr-2">GET /commands/custom</span>
+                  Query parameters:
+                  <span className="font-mono bg-slate-800 px-1 py-0.5 rounded ml-1">login</span>
+                  . Returns all stored custom commands for the channel as
+                  <span className="ml-1 font-mono bg-slate-800 px-1.5 py-0.5 rounded">{"{ \"commands\": [{ \"name\": \"!hug\", \"response\": \"...\", \"createdBy\": \"user\", \"enabled\": true, \"role\": \"all\" }, ...] }"}</span>
+                  .
+                </li>
+                <li>
+                  <span className="font-mono bg-slate-800 px-1.5 py-0.5 rounded mr-2">POST /commands/custom</span>
+                  Toggle a single custom command on or off.
+                  Body:
+                  <span className="ml-1 font-mono bg-slate-800 px-1.5 py-0.5 rounded">{"{ \"login\": \"channel\", \"command\": \"!hug\", \"enabled\": true }"}</span>
+                  .
+                </li>
+                <li>
+                  <span className="font-mono bg-slate-800 px-1.5 py-0.5 rounded mr-2">POST /commands/custom/update</span>
+                  Update a custom command&apos;s name, response text, and who can use it.
+                  Body:
+                  <span className="ml-1 font-mono bg-slate-800 px-1.5 py-0.5 rounded">{"{ \"login\": \"channel\", \"originalCommand\": \"!hug\", \"command\": \"!hug\", \"response\": \"...\", \"role\": \"all|broadcaster|moderator|vip\" }"}</span>
+                  .
+                </li>
+                <li>
+                  <span className="font-mono bg-slate-800 px-1.5 py-0.5 rounded mr-2">POST /commands/custom/delete</span>
+                  Permanently delete a custom command.
+                  Body:
+                  <span className="ml-1 font-mono bg-slate-800 px-1.5 py-0.5 rounded">{"{ \"login\": \"channel\", \"command\": \"!hug\" }"}</span>
+                  .
+                </li>
+              </ul>
+            </section>
+
+            <section className="space-y-3">
+              <h2 className="text-lg font-semibold text-slate-100">Modules API</h2>
+              <ul className="space-y-2 text-sm text-slate-300">
+                <li>
+                  <span className="font-mono bg-slate-800 px-1.5 py-0.5 rounded mr-2">GET /modules/settings</span>
+                  Query parameters:
+                  <span className="font-mono bg-slate-800 px-1 py-0.5 rounded ml-1">login</span>
+                  . Returns per-channel module configuration as
+                  <span className="ml-1 font-mono bg-slate-800 px-1.5 py-0.5 rounded">{"{ \"modules\": [{ \"name\": \"live_announcement\", \"label\": \"Go live announcement\", \"description\": \"...\", \"enabled\": true, \"message\": \"$(channel) is now live! Streaming $(game) | $(title)\" }] }"}</span>
+                  .
+                </li>
+                <li>
+                  <span className="font-mono bg-slate-800 px-1.5 py-0.5 rounded mr-2">POST /modules/settings</span>
+                  Enable/disable a module and optionally update its message template.
+                  Body:
+                  <span className="ml-1 font-mono bg-slate-800 px-1.5 py-0.5 rounded">{"{ \"login\": \"channel\", \"module\": \"live_announcement\", \"enabled\": true, \"message\": \"...\", \"resetToDefault\": false }"}</span>
+                  . When
+                  <span className="font-mono bg-slate-800 px-1 py-0.5 rounded ml-1">resetToDefault</span>
+                  is
+                  <span className="font-mono bg-slate-800 px-1 py-0.5 rounded ml-1">true</span>
+                  , any stored custom message is cleared and the backend falls back to its default template.
+                </li>
+              </ul>
+            </section>
+
+            <section className="space-y-3">
+              <h2 className="text-lg font-semibold text-slate-100">Template Variables</h2>
+              <p className="text-sm text-slate-300">
+                You can use simple template variables inside custom command responses and module messages. The backend
+                performs plain string substitution when a command or module fires.
+              </p>
+
+              <h3 className="text-sm font-semibold text-slate-200 mt-1">Custom Commands</h3>
+              <ul className="space-y-2 text-sm text-slate-300">
+                <li>
+                  <span className="font-mono bg-slate-800 px-1.5 py-0.5 rounded mr-2">$(user)</span>
+                  Login of the user who triggered the command.
+                </li>
+                <li>
+                  <span className="font-mono bg-slate-800 px-1.5 py-0.5 rounded mr-2">$(channel)</span>
+                  Channel&apos;s login (owner of the channel where the command ran).
+                </li>
+                <li>
+                  <span className="font-mono bg-slate-800 px-1.5 py-0.5 rounded mr-2">$(touser)</span>
+                  The argument text after the command trigger. For example,
+                  <span className="ml-1 font-mono bg-slate-800 px-1.5 py-0.5 rounded">!hug someUser</span>
+                  will set
+                  <span className="ml-1 font-mono bg-slate-800 px-1.5 py-0.5 rounded">$(touser)</span>
+                  to
+                  <span className="ml-1 font-mono bg-slate-800 px-1.5 py-0.5 rounded">someUser</span>
+                  (without the leading @). If no argument is provided, it falls back to
+                  <span className="ml-1 font-mono bg-slate-800 px-1.5 py-0.5 rounded">$(user)</span>
+                  .
+                </li>
+                <li>
+                  <span className="font-mono bg-slate-800 px-1.5 py-0.5 rounded mr-2">$(random.chatter)</span>
+                  A random current chatter from the channel&apos;s viewer list (via Twitch chatters API). If Twitch returns
+                  no chatters, the backend falls back to a recent chatter cache, and finally to
+                  <span className="ml-1 font-mono bg-slate-800 px-1.5 py-0.5 rounded">$(user)</span>
+                  .
+                </li>
+              </ul>
+
+              <h3 className="text-sm font-semibold text-slate-200 mt-4">Live Announcement Module</h3>
+              <p className="text-sm text-slate-300">
+                The <span className="font-mono bg-slate-800 px-1.5 py-0.5 rounded">live_announcement</span> module uses a
+                separate template for the message sent when your stream goes live. Supported variables:
+              </p>
+              <ul className="space-y-2 text-sm text-slate-300 mt-1">
+                <li>
+                  <span className="font-mono bg-slate-800 px-1.5 py-0.5 rounded mr-2">$(channel)</span>
+                  Broadcaster&apos;s login.
+                </li>
+                <li>
+                  <span className="font-mono bg-slate-800 px-1.5 py-0.5 rounded mr-2">$(title)</span>
+                  Current stream title. If Twitch reports an empty title, it falls back to
+                  <span className="ml-1 font-mono bg-slate-800 px-1.5 py-0.5 rounded">Untitled stream</span>
+                  .
+                </li>
+                <li>
+                  <span className="font-mono bg-slate-800 px-1.5 py-0.5 rounded mr-2">$(game)</span>
+                  Current Twitch category / game name. If empty, it falls back to
+                  <span className="ml-1 font-mono bg-slate-800 px-1.5 py-0.5 rounded">Just Chatting</span>
+                  .
+                </li>
+              </ul>
+            </section>
           </div>
         </div>
       </div>
