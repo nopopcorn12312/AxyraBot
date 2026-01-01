@@ -262,6 +262,47 @@ export default function DashboardPage() {
         {sidebarOpen && <span>Dashboard</span>}
       </Link>
 
+      {/** Commands dropdown */}
+      <button
+        type="button"
+        onClick={() => setCommandsOpen((open) => !open)}
+        className={`flex items-center justify-between gap-3 rounded-xl px-3 py-2 text-left font-medium text-slate-200 hover:bg-slate-800/80 transition`}
+      >
+        <div className="flex items-center gap-3">
+        <span className="text-lg">❓</span>
+        {sidebarOpen && <span>Commands</span>}
+        </div>
+        {sidebarOpen && (
+        <span className="text-xs text-slate-400">
+          {commandsOpen ? "▾" : "▸"}
+        </span>
+        )}
+      </button>
+      {commandsOpen && (
+        <div className="mt-1 ml-6 flex flex-col gap-1 text-xs text-slate-200">
+        <Link
+          href="/commands?view=default"
+          className={`rounded-lg px-3 py-1.5 transition ${
+          pathname === "/commands"
+            ? "bg-slate-800/80 text-slate-50"
+            : "hover:bg-slate-800/60"
+          }`}
+        >
+          Default commands
+        </Link>
+        <Link
+          href="/commands?view=custom"
+          className={`rounded-lg px-3 py-1.5 transition ${
+          pathname === "/commands"
+            ? "bg-slate-800/80 text-slate-50"
+            : "hover:bg-slate-800/60"
+          }`}
+        >
+          Custom commands
+        </Link>
+        </div>
+      )}
+
       {/** Modules */}
       <Link
         href="/modules"
@@ -313,47 +354,6 @@ export default function DashboardPage() {
         <span className="text-lg">📘</span>
         {sidebarOpen && <span>API Docs</span>}
       </Link>
-
-      {/** Commands dropdown */}
-      <button
-        type="button"
-        onClick={() => setCommandsOpen((open) => !open)}
-        className={`flex items-center justify-between gap-3 rounded-xl px-3 py-2 text-left font-medium text-slate-200 hover:bg-slate-800/80 transition`}
-      >
-        <div className="flex items-center gap-3">
-        <span className="text-lg">❓</span>
-        {sidebarOpen && <span>Commands</span>}
-        </div>
-        {sidebarOpen && (
-        <span className="text-xs text-slate-400">
-          {commandsOpen ? "▾" : "▸"}
-        </span>
-        )}
-      </button>
-      {commandsOpen && (
-        <div className="mt-1 ml-6 flex flex-col gap-1 text-xs text-slate-200">
-        <Link
-          href="/commands?view=default"
-          className={`rounded-lg px-3 py-1.5 transition ${
-          pathname === "/commands"
-            ? "bg-slate-800/80 text-slate-50"
-            : "hover:bg-slate-800/60"
-          }`}
-        >
-          Default commands
-        </Link>
-        <Link
-          href="/commands?view=custom"
-          className={`rounded-lg px-3 py-1.5 transition ${
-          pathname === "/commands"
-            ? "bg-slate-800/80 text-slate-50"
-            : "hover:bg-slate-800/60"
-          }`}
-        >
-          Custom commands
-        </Link>
-        </div>
-      )}
       </nav>
         </div>
         <div className="flex-1 flex flex-col lg:flex-row gap-6 text-slate-50">

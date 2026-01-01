@@ -265,11 +265,11 @@ func handleModuleSettings(w http.ResponseWriter, r *http.Request) {
 		}
 	case http.MethodPost:
 		var body struct {
-			Login         string `json:"login"`
-			Module        string `json:"module"`
-			Enabled       bool   `json:"enabled"`
-			Message       string `json:"message"`
-			ResetToDefault bool  `json:"resetToDefault"`
+			Login          string `json:"login"`
+			Module         string `json:"module"`
+			Enabled        bool   `json:"enabled"`
+			Message        string `json:"message"`
+			ResetToDefault bool   `json:"resetToDefault"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			http.Error(w, "bad json", http.StatusBadRequest)
