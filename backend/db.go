@@ -376,6 +376,7 @@ func EnsureSchema() error {
 	 broadcaster_login TEXT NOT NULL,
 	 module_name TEXT NOT NULL,
 	 enabled BOOLEAN NOT NULL DEFAULT TRUE,
+	 message TEXT,
 	 UNIQUE (broadcaster_login, module_name)
 	);
 	CREATE TABLE IF NOT EXISTS channels (
@@ -395,6 +396,12 @@ func EnsureSchema() error {
 	);
 	`)
 	if err != nil {
+		return err
+	}
+
+	// Backfill: ensure module_settings has a message column for per-module
+	// configurable messages (e.g. live announcement text).
+	if _, err := db.Exec(`ALTER TABLE module_settings ADD COLUMN IF NOT EXISTS message TEXT`); err != nil {
 		return err
 	}
 
@@ -422,5 +429,44 @@ func EnsureSchema() error {
 	AFTER INSERT OR UPDATE OR DELETE ON channels
 	FOR EACH ROW EXECUTE FUNCTION notify_channels_changed();
 	`)
+	return err
+}
+
+// GetModuleMessage returns the stored message template for a given module, or
+// an empty string if none has been set.
+func GetModuleMessage(broadcasterLogin, moduleName string) (string, error) {
+	if db == nil {
+		return "", nil
+	}
+	broadcasterLogin = strings.ToLower(broadcasterLogin)
+	moduleName = strings.ToLower(moduleName)
+	var msg sql.NullString
+	row := db.QueryRow(`SELECT message FROM module_settings WHERE broadcaster_login=$1 AND module_name=$2`, broadcasterLogin, moduleName)
+	if err := row.Scan(&msg); err != nil {
+		if err == sql.ErrNoRows {
+			return "", nil
+		}
+		return "", err
+	}
+	if msg.Valid {
+		return msg.String, nil
+	}
+	return "", nil
+}
+
+// SetModuleMessage upserts the message template for a broadcaster's module
+// without altering the enabled flag.
+func SetModuleMessage(broadcasterLogin, moduleName, message string) error {
+	if db == nil {
+		return nil
+	}
+	broadcasterLogin = strings.ToLower(broadcasterLogin)
+	moduleName = strings.ToLower(moduleName)
+	_, err := db.Exec(`
+	INSERT INTO module_settings (broadcaster_login, module_name, message)
+	VALUES ($1, $2, $3)
+	ON CONFLICT (broadcaster_login, module_name) DO UPDATE
+	SET message = EXCLUDED.message;
+	`, broadcasterLogin, moduleName, message)
 	return err
 }

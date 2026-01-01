@@ -41,6 +41,10 @@ var (
 	liveStatusCache = map[string]liveStatusEntry{}
 )
 
+// Default template for the live announcement module. This can be overridden
+// per-broadcaster via the module_settings table.
+const defaultLiveAnnouncementTemplate = "$(channel) is now live! Streaming $(game) | $(title)"
+
 // List of built-in default commands that can be toggled per broadcaster.
 var defaultCommandNames = []string{
 	"!hello",
@@ -276,13 +280,7 @@ func startEventSubWS() {
 													if err != nil {
 														log.Println("failed to fetch title/game for stream.online:", err)
 													}
-													if title == "" {
-														title = "Untitled stream"
-													}
-													if game == "" {
-														game = "Just Chatting"
-													}
-													msg := fmt.Sprintf("%s is now live! Streaming %s | %s", ch, game, title)
+													msg := renderLiveAnnouncementMessage(ch, title, game)
 													if err := sendHelixChatMessage(ch, msg); err != nil {
 														log.Println("failed to send stream.online live message:", err)
 													}
@@ -397,6 +395,33 @@ func writeIRC(c *websocket.Conn, line string) {
 	if err := c.WriteMessage(websocket.TextMessage, []byte(line)); err != nil {
 		log.Println("irc write error:", err)
 	}
+}
+
+// renderLiveAnnouncementMessage builds the outgoing chat message for the
+// live announcement module. It supports simple template variables in the
+// stored message string:
+//   $(channel) - broadcaster login
+//   $(title)   - stream title (falls back to "Untitled stream")
+//   $(game)    - game/category name (falls back to "Just Chatting")
+func renderLiveAnnouncementMessage(channelLogin, title, game string) string {
+	if title == "" {
+		title = "Untitled stream"
+	}
+	if game == "" {
+		game = "Just Chatting"
+	}
+	tmpl := defaultLiveAnnouncementTemplate
+	if db != nil {
+		if msg, err := GetModuleMessage(channelLogin, "live_announcement"); err != nil {
+			log.Println("failed to load live_announcement template:", err)
+		} else if strings.TrimSpace(msg) != "" {
+			tmpl = msg
+		}
+	}
+	msg := strings.ReplaceAll(tmpl, "$(channel)", channelLogin)
+	msg = strings.ReplaceAll(msg, "$(title)", title)
+	msg = strings.ReplaceAll(msg, "$(game)", game)
+	return msg
 }
 
 // isChatCommand returns true if the message matches the given command token

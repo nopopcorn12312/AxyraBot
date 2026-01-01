@@ -229,6 +229,7 @@ func handleModuleSettings(w http.ResponseWriter, r *http.Request) {
 			Label       string `json:"label"`
 			Description string `json:"description"`
 			Enabled     bool   `json:"enabled"`
+			Message     string `json:"message"`
 		}{}
 		// Live announcement when the broadcaster goes live
 		enabled, err := GetModuleEnabled(login, "live_announcement")
@@ -237,16 +238,24 @@ func handleModuleSettings(w http.ResponseWriter, r *http.Request) {
 			// treat as enabled on error
 			enabled = true
 		}
+		msgTmpl := defaultLiveAnnouncementTemplate
+		if msg, err := GetModuleMessage(login, "live_announcement"); err != nil {
+			log.Println("failed to load live_announcement template in HTTP handler:", err)
+		} else if strings.TrimSpace(msg) != "" {
+			msgTmpl = msg
+		}
 		modules = append(modules, struct {
 			Name        string `json:"name"`
 			Label       string `json:"label"`
 			Description string `json:"description"`
 			Enabled     bool   `json:"enabled"`
+			Message     string `json:"message"`
 		}{
 			Name:        "live_announcement",
 			Label:       "Go live announcement",
 			Description: "Send a chat message when your stream goes live.",
 			Enabled:     enabled,
+			Message:     msgTmpl,
 		})
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(struct {
@@ -256,9 +265,10 @@ func handleModuleSettings(w http.ResponseWriter, r *http.Request) {
 		}
 	case http.MethodPost:
 		var body struct {
-			Login  string `json:"login"`
-			Module string `json:"module"`
-			Enabled bool  `json:"enabled"`
+			Login   string `json:"login"`
+			Module  string `json:"module"`
+			Enabled bool   `json:"enabled"`
+			Message string `json:"message"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			http.Error(w, "bad json", http.StatusBadRequest)
@@ -274,6 +284,16 @@ func handleModuleSettings(w http.ResponseWriter, r *http.Request) {
 			log.Println("failed to save module setting:", err)
 			http.Error(w, "db error", http.StatusInternalServerError)
 			return
+		}
+		// If a non-empty message was provided, update the module's message
+		// template as well. The UI that only toggles enabled will omit this
+		// field so existing messages are preserved.
+		if strings.TrimSpace(body.Message) != "" {
+			if err := SetModuleMessage(login, module, body.Message); err != nil {
+				log.Println("failed to save module message:", err)
+				http.Error(w, "db error", http.StatusInternalServerError)
+				return
+			}
 		}
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprint(w, "ok")

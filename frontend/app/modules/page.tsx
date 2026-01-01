@@ -14,6 +14,7 @@ type ModuleRow = {
   label: string;
   description: string;
   enabled: boolean;
+  message: string;
 };
 
 type ToggleProps = {
@@ -49,6 +50,10 @@ export default function ModulesPage() {
   const [modules, setModules] = useState<ModuleRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [editingModule, setEditingModule] = useState<string | null>(null);
+  const [editMessage, setEditMessage] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const pathname = usePathname();
 
@@ -345,20 +350,135 @@ export default function ModulesPage() {
                   {modules.map((m) => (
                     <div
                       key={m.name}
-                      className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950/50 px-4 py-3"
+                      className="rounded-xl border border-slate-800 bg-slate-950/50 px-4 py-3"
                     >
-                      <div className="flex flex-col">
-                        <span className="text-sm font-medium text-slate-100">
-                          {m.label}
-                        </span>
-                        <span className="text-xs text-slate-400">
-                          {m.description}
-                        </span>
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium text-slate-100">
+                            {m.label}
+                          </span>
+                          <span className="text-xs text-slate-400">
+                            {m.description}
+                          </span>
+                          <span className="mt-1 text-xs text-slate-300">
+                            <span className="font-semibold text-slate-200">Message:</span>{" "}
+                            {m.message}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          {isLoggedIn && login && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (editingModule === m.name) {
+                                  setEditingModule(null);
+                                  setEditError(null);
+                                  return;
+                                }
+                                setEditingModule(m.name);
+                                setEditMessage(m.message ?? "");
+                                setEditError(null);
+                              }}
+                              className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-700 bg-slate-900/80 text-slate-300 hover:bg-slate-800/80"
+                            >
+                              <span className="sr-only">Edit module message</span>
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 20 20"
+                                fill="currentColor"
+                                className="h-3.5 w-3.5"
+                              >
+                                <path d="M13.586 3.586a2 2 0 0 1 2.828 2.828l-8.5 8.5a2 2 0 0 1-.878.518l-3 .8a.5.5 0 0 1-.606-.606l.8-3a2 2 0 0 1 .518-.878l8.5-8.5Z" />
+                              </svg>
+                            </button>
+                          )}
+                          <ModuleToggle
+                            enabled={m.enabled}
+                            onChange={(next) => handleToggle(m.name, next)}
+                          />
+                        </div>
                       </div>
-                      <ModuleToggle
-                        enabled={m.enabled}
-                        onChange={(next) => handleToggle(m.name, next)}
-                      />
+                      {editingModule === m.name && (
+                        <div className="mt-3 border-t border-slate-800 pt-3">
+                          <div className="flex flex-col gap-2">
+                            <label className="text-xs font-medium text-slate-300">
+                              Announcement message
+                            </label>
+                            <input
+                              type="text"
+                              value={editMessage}
+                              onChange={(e) => setEditMessage(e.target.value)}
+                              className="w-full rounded-md border border-slate-700 bg-slate-900/80 px-2 py-1 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-accent/60"
+                              placeholder="$(channel) is now live! Streaming $(game) | $(title)"
+                            />
+                            <p className="text-[11px] text-slate-400">
+                              You can use $(channel), $(game), and $(title) as
+                              variables.
+                            </p>
+                            {editError && (
+                              <div className="text-xs text-red-400">{editError}</div>
+                            )}
+                            <div className="mt-1 flex gap-2 justify-end">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingModule(null);
+                                  setEditError(null);
+                                }}
+                                className="rounded-md border border-slate-700 px-3 py-1 text-xs font-medium text-slate-200 hover:bg-slate-800/80"
+                                disabled={savingEdit}
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  if (!login || !editingModule) return;
+                                  const trimmed = editMessage.trim();
+                                  if (!trimmed) {
+                                    setEditError("Message cannot be empty.");
+                                    return;
+                                  }
+                                  setSavingEdit(true);
+                                  setEditError(null);
+                                  try {
+                                    const res = await fetch(`${backendUrl}/modules/settings`, {
+                                      method: "POST",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({
+                                        login,
+                                        module: editingModule,
+                                        enabled: m.enabled,
+                                        message: trimmed,
+                                      }),
+                                    });
+                                    if (!res.ok) {
+                                      setEditError("Failed to save changes. Please try again.");
+                                    } else {
+                                      setModules((prev) =>
+                                        prev.map((mod) =>
+                                          mod.name === editingModule
+                                            ? { ...mod, message: trimmed }
+                                            : mod,
+                                        ),
+                                      );
+                                      setEditingModule(null);
+                                    }
+                                  } catch {
+                                    setEditError("Network error while saving changes.");
+                                  } finally {
+                                    setSavingEdit(false);
+                                  }
+                                }}
+                                className="rounded-md bg-accent px-3 py-1 text-xs font-medium text-white hover:bg-accent/90 disabled:opacity-60"
+                                disabled={savingEdit}
+                              >
+                                {savingEdit ? "Saving..." : "Save changes"}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                   {modules.length === 0 && !loading && !error && (
