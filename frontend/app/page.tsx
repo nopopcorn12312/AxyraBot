@@ -11,6 +11,7 @@ export default function HomePage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -57,6 +58,20 @@ export default function HomePage() {
     };
   }, [menuOpen]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 10);
+    };
+
+    handleScroll();
+    window.addEventListener("scroll", handleScroll);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
+
   const handleLogout = () => {
     if (typeof window !== "undefined") {
       window.localStorage.removeItem("axyra.login");
@@ -87,7 +102,11 @@ export default function HomePage() {
   return (
     <main className="min-h-screen flex flex-col px-4 bg-[radial-gradient(circle_at_top,_#1e293b,_#020617)]">
       <section className="min-h-[95vh] flex flex-col">
-        <header className="w-full max-w-6xl mx-auto mt-6 flex items-center px-6">
+        <header
+          className={`sticky top-0 z-40 w-full max-w-6xl mx-auto flex items-center px-6 transition-colors duration-300 ${
+            isScrolled ? "bg-black/90 border-b border-slate-800" : "mt-6"
+          }`}
+        >
         <div className="flex items-center gap-4 flex-1">
           <Image
             src={AxyraBotPFP}
