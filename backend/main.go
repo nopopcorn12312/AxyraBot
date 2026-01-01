@@ -270,7 +270,7 @@ func startEventSubWS() {
 									case "stream.online":
 										if event, ok := payload["event"].(map[string]interface{}); ok {
 											channelLogin, _ := event["broadcaster_user_login"].(string)
-											if channelLogin != "" {
+											if channelLogin != "" && isModuleEnabled(channelLogin, "live_announcement") {
 												go func(ch string) {
 													title, game, err := getChannelTitleAndGame(ch)
 													if err != nil {
@@ -1616,6 +1616,18 @@ func isDefaultCommandEnabled(channelLogin, commandName string) bool {
 	enabled, err := GetDefaultCommandEnabled(channelLogin, commandName)
 	if err != nil {
 		log.Println("failed to read default command setting:", err)
+		return true
+	}
+	return enabled
+}
+
+// isModuleEnabled returns whether a given module is enabled for the
+// specified broadcaster. If there is any error or no row, the module is
+// treated as enabled.
+func isModuleEnabled(channelLogin, moduleName string) bool {
+	enabled, err := GetModuleEnabled(channelLogin, moduleName)
+	if err != nil {
+		log.Println("failed to read module setting:", err)
 		return true
 	}
 	return enabled

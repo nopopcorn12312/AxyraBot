@@ -23,6 +23,7 @@ func startHTTPServer(clientID, clientSecret string) {
 	mux.HandleFunc("/commands/default-settings", withCORS(handleDefaultCommandSettings))
 	mux.HandleFunc("/commands/custom", withCORS(handleCustomCommands))
 	mux.HandleFunc("/commands/custom/update", withCORS(handleCustomCommandsUpdate))
+	mux.HandleFunc("/modules/settings", withCORS(handleModuleSettings))
 	addr := ":8080"
 	if p := os.Getenv("PORT"); p != "" {
 		addr = ":" + p
@@ -208,6 +209,77 @@ func handleCustomCommandsUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, "ok")
+}
+
+// handleModuleSettings exposes per-broadcaster enable flags for optional
+// modules like the "go live" chat announcement. GET returns the full list
+// for a broadcaster; POST updates a single module flag.
+func handleModuleSettings(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		login := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("login")))
+		if login == "" {
+			http.Error(w, "missing login", http.StatusBadRequest)
+			return
+		}
+		// For now we have a single module, but structure the response so we
+		// can add more later.
+		modules := []struct {
+			Name        string `json:"name"`
+			Label       string `json:"label"`
+			Description string `json:"description"`
+			Enabled     bool   `json:"enabled"`
+		}{}
+		// Live announcement when the broadcaster goes live
+		enabled, err := GetModuleEnabled(login, "live_announcement")
+		if err != nil {
+			log.Println("failed to load module setting:", err)
+			// treat as enabled on error
+			enabled = true
+		}
+		modules = append(modules, struct {
+			Name        string `json:"name"`
+			Label       string `json:"label"`
+			Description string `json:"description"`
+			Enabled     bool   `json:"enabled"`
+		}{
+			Name:        "live_announcement",
+			Label:       "Go live announcement",
+			Description: "Send a chat message when your stream goes live.",
+			Enabled:     enabled,
+		})
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(struct {
+			Modules interface{} `json:"modules"`
+		}{Modules: modules}); err != nil {
+			log.Println("encode module settings:", err)
+		}
+	case http.MethodPost:
+		var body struct {
+			Login  string `json:"login"`
+			Module string `json:"module"`
+			Enabled bool  `json:"enabled"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "bad json", http.StatusBadRequest)
+			return
+		}
+		login := strings.ToLower(strings.TrimSpace(body.Login))
+		module := strings.TrimSpace(body.Module)
+		if login == "" || module == "" {
+			http.Error(w, "missing login or module", http.StatusBadRequest)
+			return
+		}
+		if err := SetModuleEnabled(login, module, body.Enabled); err != nil {
+			log.Println("failed to save module setting:", err)
+			http.Error(w, "db error", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "ok")
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
 }
 
 // withCORS wraps an HTTP handler and adds CORS headers so that the frontend

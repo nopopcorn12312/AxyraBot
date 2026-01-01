@@ -196,6 +196,41 @@ func SetDefaultCommandEnabled(broadcasterLogin, commandName string, enabled bool
 	return err
 }
 
+// GetModuleEnabled returns whether a given module is enabled for a
+// broadcaster. If no row exists, it is treated as enabled.
+func GetModuleEnabled(broadcasterLogin, moduleName string) (bool, error) {
+	if db == nil {
+		return true, nil
+	}
+	broadcasterLogin = strings.ToLower(broadcasterLogin)
+	moduleName = strings.ToLower(moduleName)
+	var enabled bool
+	row := db.QueryRow(`SELECT enabled FROM module_settings WHERE broadcaster_login=$1 AND module_name=$2`, broadcasterLogin, moduleName)
+	if err := row.Scan(&enabled); err != nil {
+		if err == sql.ErrNoRows {
+			return true, nil
+		}
+		return true, err
+	}
+	return enabled, nil
+}
+
+// SetModuleEnabled upserts the enabled flag for a broadcaster's module.
+func SetModuleEnabled(broadcasterLogin, moduleName string, enabled bool) error {
+	if db == nil {
+		return nil
+	}
+	broadcasterLogin = strings.ToLower(broadcasterLogin)
+	moduleName = strings.ToLower(moduleName)
+	_, err := db.Exec(`
+	INSERT INTO module_settings (broadcaster_login, module_name, enabled)
+	VALUES ($1, $2, $3)
+	ON CONFLICT (broadcaster_login, module_name) DO UPDATE
+	SET enabled = EXCLUDED.enabled;
+	`, broadcasterLogin, moduleName, enabled)
+	return err
+}
+
 // UpsertCustomCommand creates or updates a custom command for a broadcaster.
 // The command name should include the leading '!' and is stored in lowercase.
 func UpsertCustomCommand(broadcasterLogin, createdBy, commandName, response string) error {
@@ -335,6 +370,13 @@ func EnsureSchema() error {
 	 created_by TEXT,
 	 created_at TIMESTAMPTZ DEFAULT now(),
 	 UNIQUE (broadcaster_login, command)
+	);
+	CREATE TABLE IF NOT EXISTS module_settings (
+	 id SERIAL PRIMARY KEY,
+	 broadcaster_login TEXT NOT NULL,
+	 module_name TEXT NOT NULL,
+	 enabled BOOLEAN NOT NULL DEFAULT TRUE,
+	 UNIQUE (broadcaster_login, module_name)
 	);
 	CREATE TABLE IF NOT EXISTS channels (
 	 id SERIAL PRIMARY KEY,
