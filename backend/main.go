@@ -30,7 +30,16 @@ var (
 	helixBotUserID      string
 	helixBroadcasterIDs = map[string]string{}
 	appAccessToken      string
+
+	// cached live-status per channel to avoid hitting Helix on every message
+	liveStatusMu    sync.Mutex
+	liveStatusCache = map[string]liveStatusEntry{}
 )
+
+type liveStatusEntry struct {
+	live      bool
+	checkedAt time.Time
+}
 
 func main() {
 	botName := os.Getenv("TWITCH_BOT_USERNAME")
@@ -377,8 +386,8 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 	channelLogin = strings.ToLower(channelLogin)
 	log.Printf("[CHAT] channel=%s user=%s msg=%q", channelLogin, chatterLogin, message)
 
-	// update approximate watch time based on chat activity
-	if db != nil {
+	// update approximate watch time based on chat activity, but only while live
+	if db != nil && isChannelLive(channelLogin) {
 		if err := UpdateWatchTime(channelLogin, strings.ToLower(chatterLogin), time.Now().UTC()); err != nil {
 			log.Println("failed to update watch time:", err)
 		}
@@ -1237,6 +1246,32 @@ func getWatchTimeString(broadcasterLogin, viewerLogin string) (string, error) {
 		durationUnit{value: hours, label: "hours"},
 		durationUnit{value: minutes, label: "minutes"},
 	), nil
+}
+
+// isChannelLive returns true if the broadcaster is currently live, with a
+// short-lived cache per channel to avoid calling Helix for every message.
+func isChannelLive(channelLogin string) bool {
+	channelLogin = strings.ToLower(channelLogin)
+	now := time.Now().UTC()
+
+	liveStatusMu.Lock()
+	entry, ok := liveStatusCache[channelLogin]
+	if ok && now.Sub(entry.checkedAt) < 60*time.Second {
+		liveStatusMu.Unlock()
+		return entry.live
+	}
+	liveStatusMu.Unlock()
+
+	live := false
+	if uptime, err := getStreamUptimeString(channelLogin); err == nil && uptime != "" {
+		live = true
+	}
+
+	liveStatusMu.Lock()
+	liveStatusCache[channelLogin] = liveStatusEntry{live: live, checkedAt: now}
+	liveStatusMu.Unlock()
+
+	return live
 }
 
 // active channel helpers
