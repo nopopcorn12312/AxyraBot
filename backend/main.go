@@ -47,7 +47,6 @@ var defaultCommandNames = []string{
 	"!accountage",
 	"!followage",
 	"!uptime",
-	"!watchtime",
 }
 
 type liveStatusEntry struct {
@@ -594,31 +593,6 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 		}
 	}
 
-	// !watchtime [username] - approximate time a user spent watching this channel
-	if strings.HasPrefix(message, "!watchtime") {
-		if !isDefaultCommandEnabled(channelLogin, "!watchtime") {
-			return
-		}
-		arg := strings.TrimSpace(strings.TrimPrefix(message, "!watchtime"))
-		targetDisplay := chatterLogin
-		targetLogin := strings.ToLower(chatterLogin)
-		if arg != "" {
-			clean := strings.TrimSpace(arg)
-			clean = strings.TrimPrefix(clean, "@")
-			if clean != "" {
-				targetDisplay = clean
-				targetLogin = strings.ToLower(clean)
-			}
-		}
-		wt, err := getWatchTimeString(channelLogin, targetLogin)
-		if err != nil {
-			log.Println("failed to get watch time:", err)
-			return
-		}
-		if err := sendHelixChatMessage(channelLogin, fmt.Sprintf("%s has spent %s watching %s", targetDisplay, wt, channelLogin)); err != nil {
-			log.Println("failed to send !watchtime response:", err)
-		}
-	}
 }
 
 // isBroadcasterOrModerator checks whether chatterLogin is the broadcaster for
@@ -1249,33 +1223,6 @@ func getStreamUptimeString(channelLogin string) (string, error) {
 		d = 0
 	}
 	totalMinutes := int(d.Minutes())
-	years := totalMinutes / (60 * 24 * 365)
-	remainingDays := (totalMinutes / (60 * 24)) % 365
-	months := remainingDays / 30
-	days := remainingDays % 30
-	hours := (totalMinutes / 60) % 24
-	minutes := totalMinutes % 60
-
-	return formatDurationUnits(
-		durationUnit{value: years, label: "years"},
-		durationUnit{value: months, label: "months"},
-		durationUnit{value: days, label: "days"},
-		durationUnit{value: hours, label: "hours"},
-		durationUnit{value: minutes, label: "minutes"},
-	), nil
-}
-
-// getWatchTimeString converts stored watch time seconds into a
-// human-readable years/months/days/hours/minutes string.
-func getWatchTimeString(broadcasterLogin, viewerLogin string) (string, error) {
-	secs, err := GetWatchTimeSeconds(strings.ToLower(broadcasterLogin), strings.ToLower(viewerLogin))
-	if err != nil {
-		return "", err
-	}
-	if secs < 0 {
-		secs = 0
-	}
-	totalMinutes := int(secs / 60)
 	years := totalMinutes / (60 * 24 * 365)
 	remainingDays := (totalMinutes / (60 * 24)) % 365
 	months := remainingDays / 30

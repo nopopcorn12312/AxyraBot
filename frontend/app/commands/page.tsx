@@ -19,7 +19,6 @@ const defaultCommands = [
   { name: "!accountage [username]", description: "Shows when a user's Twitch account was created." },
   { name: "!followage [username]", description: "Shows how long a user has followed the channel." },
   { name: "!uptime", description: "Shows how long the channel has been live this session." },
-  { name: "!watchtime [username]", description: "Shows approximate time a user has spent watching while live." },
 ];
 
 const customCommands = [
