@@ -66,6 +66,14 @@ export default function HomePage() {
     setAvatarUrl(null);
     setMenuOpen(false);
   };
+
+  const handleScrollToDetails = () => {
+    if (typeof document === "undefined") return;
+    const target = document.getElementById("axyra-details");
+    if (target) {
+      target.scrollIntoView({ behavior: "smooth" });
+    }
+  };
   // After Twitch auth, send users back to the homepage so we can update
   // local state and show the Dashboard buttons/avatar.
   const redirectTarget = frontendUrl ? `${frontendUrl}` : "";
@@ -171,14 +179,22 @@ export default function HomePage() {
 
       {/* Scroll cue + lower sections wrapper with grey background */}
       <div className="w-full bg-slate-950/80 border-t border-slate-800">
-      <section className="w-full flex justify-center pb-6 pt-4">
-        <div className="flex items-center justify-center h-10 w-10 rounded-full border border-slate-700 bg-slate-900/80 text-slate-300 shadow-sm shadow-slate-900/80">
-          <span className="text-lg">▼</span>
-        </div>
-      </section>
+        <section className="w-full flex justify-center pb-6 -mt-5">
+          <button
+            type="button"
+            onClick={handleScrollToDetails}
+            className="flex items-center justify-center h-11 w-11 rounded-full bg-slate-300 text-slate-900 shadow-md shadow-black/40 focus:outline-none"
+            aria-label="Scroll to more details"
+          >
+            <span className="text-base leading-none">▼</span>
+          </button>
+        </section>
 
-      {/* Features */}
-      <section className="w-full max-w-5xl mx-auto pb-12">
+        {/* Features */}
+        <section
+          id="axyra-details"
+          className="w-full max-w-5xl mx-auto pb-12"
+        >
         <div className="text-center mb-6">
           <h2 className="text-lg font-semibold tracking-wide text-slate-200">Features</h2>
           <p className="mt-1 text-xs text-slate-400">Preview of what AxyraBot can do for your channel.</p>
