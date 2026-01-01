@@ -179,7 +179,7 @@ func startEventSubWS() {
 				c.Close()
 				break
 			}
-			// try to decode and capture session id from session_welcome and handle notifications
+// try to decode and capture session id from session_welcome and handle notifications
 			var m map[string]interface{}
 			if err := json.Unmarshal(message, &m); err == nil {
 				if metadata, ok := m["metadata"].(map[string]interface{}); ok {
@@ -238,27 +238,27 @@ func startEventSubWS() {
 													}
 												}(channelLogin, followerName, broadcasterID)
 											}
-										case "stream.online":
-											if event, ok := payload["event"].(map[string]interface{}); ok {
-												channelLogin, _ := event["broadcaster_user_login"].(string)
-												if channelLogin != "" {
-													go func(ch string) {
-														title, game, err := getChannelTitleAndGame(ch)
-														if err != nil {
-															log.Println("failed to fetch title/game for stream.online:", err)
-														}
-														if title == "" {
-															title = "Untitled stream"
-														}
-														if game == "" {
-															game = "Just Chatting"
-														}
-														msg := fmt.Sprintf("%s is now live! Streaming %s | %s", ch, game, title)
-														if err := sendHelixChatMessage(ch, msg); err != nil {
-															log.Println("failed to send stream.online live message:", err)
-														}
-													}(channelLogin)
-												}
+										}
+									case "stream.online":
+										if event, ok := payload["event"].(map[string]interface{}); ok {
+											channelLogin, _ := event["broadcaster_user_login"].(string)
+											if channelLogin != "" {
+												go func(ch string) {
+													title, game, err := getChannelTitleAndGame(ch)
+													if err != nil {
+														log.Println("failed to fetch title/game for stream.online:", err)
+													}
+													if title == "" {
+														title = "Untitled stream"
+													}
+													if game == "" {
+														game = "Just Chatting"
+													}
+													msg := fmt.Sprintf("%s is now live! Streaming %s | %s", ch, game, title)
+													if err := sendHelixChatMessage(ch, msg); err != nil {
+														log.Println("failed to send stream.online live message:", err)
+													}
+												}(channelLogin)
 											}
 										}
 									}
@@ -271,7 +271,6 @@ func startEventSubWS() {
 			log.Printf("[EventSub WS] %s\n", string(message))
 		}
 
-		// reconnect
 		time.Sleep(5 * time.Second)
 	}
 }
