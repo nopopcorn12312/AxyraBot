@@ -179,7 +179,7 @@ func startEventSubWS() {
 				c.Close()
 				break
 			}
-// try to decode and capture session id from session_welcome and handle notifications
+			// try to decode and capture session id from session_welcome and handle notifications
 			var m map[string]interface{}
 			if err := json.Unmarshal(message, &m); err == nil {
 				if metadata, ok := m["metadata"].(map[string]interface{}); ok {
@@ -1795,7 +1795,7 @@ func registerEventSubSubscriptions(appToken, clientID, channel, tokensPath strin
 		eventSubMu.Lock()
 		sid := eventSubSessionID
 		eventSubMu.Unlock()
-				if sid != "" {
+		if sid != "" {
 			// Determine list of channels to register EventSub for.
 			channels := []string{}
 			if db != nil {
@@ -1811,10 +1811,10 @@ func registerEventSubSubscriptions(appToken, clientID, channel, tokensPath strin
 				return
 			}
 
-					// Subscribe to chat messages and follows so we can both read chat
-					// and thank users when they follow the channel. Separately, we
-					// subscribe to stream.online events to announce when channels go live.
-					subs := []string{"channel.chat.message", "channel.follow"}
+			// Subscribe to chat messages and follows so we can both read chat
+			// and thank users when they follow the channel. Separately, we
+			// subscribe to stream.online events to announce when channels go live.
+			subs := []string{"channel.chat.message", "channel.follow"}
 
 			// bot user access token for chat-related EventSub (channel.chat.message)
 			botToken := ""
@@ -1836,15 +1836,15 @@ func registerEventSubSubscriptions(appToken, clientID, channel, tokensPath strin
 				}
 			}
 
-					// For each channel, resolve its broadcaster id and create subscriptions.
-					for _, ch := range channels {
-						broadcasterID, err := getUserID(ch, appToken, clientID)
+			// For each channel, resolve its broadcaster id and create subscriptions.
+			for _, ch := range channels {
+				broadcasterID, err := getUserID(ch, appToken, clientID)
 				if err != nil {
 					log.Println("failed to resolve broadcaster id for", ch, ":", err)
 					continue
 				}
 
-						for _, st := range subs {
+				for _, st := range subs {
 					cond := map[string]string{"broadcaster_user_id": broadcasterID}
 					// channel.chat.message also requires the bot user id in the condition
 					// and uses version 1 of the subscription type. channel.follow uses
@@ -1865,23 +1865,23 @@ func registerEventSubSubscriptions(appToken, clientID, channel, tokensPath strin
 						}
 						cond["moderator_user_id"] = botID
 					}
-							// chat-related subs use the bot's user token; stream.online
-							// will use the app token below.
-							auth := botToken
+					// chat-related subs use the bot's user token; stream.online
+					// will use the app token below.
+					auth := botToken
 					if err := createEventSubSubscription(auth, clientID, st, version, cond, sid, "websocket", "", ""); err != nil {
 						log.Println("failed creating subscription", st, "for", ch, ":", err)
 					}
 
 					// avoid hitting rate limits too quickly
 					time.Sleep(500 * time.Millisecond)
-						}
+				}
 
-						// Additionally subscribe to stream.online using the app access token
-						// so we can announce when the broadcaster goes live.
-						streamCond := map[string]string{"broadcaster_user_id": broadcasterID}
-						if err := createEventSubSubscription(appToken, clientID, "stream.online", "1", streamCond, sid, "websocket", "", ""); err != nil {
-							log.Println("failed creating stream.online subscription for", ch, ":", err)
-						}
+				// Additionally subscribe to stream.online using the app access token
+				// so we can announce when the broadcaster goes live.
+				streamCond := map[string]string{"broadcaster_user_id": broadcasterID}
+				if err := createEventSubSubscription(appToken, clientID, "stream.online", "1", streamCond, sid, "websocket", "", ""); err != nil {
+					log.Println("failed creating stream.online subscription for", ch, ":", err)
+				}
 			}
 			return
 		}
