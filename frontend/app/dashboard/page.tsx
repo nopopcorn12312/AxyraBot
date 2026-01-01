@@ -255,7 +255,7 @@ export default function DashboardPage() {
               alt="AxyraBot logo"
               width={32}
               height={32}
-              className="rounded-full border border-slate-700 shadow-sm shadow-sky-500/40"
+              className="rounded-full shadow-sm shadow-sky-500/40"
             />
             <div className="text-2xl font-semibold tracking-tight">
               <span className="text-accent">Axyra</span>
@@ -283,7 +283,7 @@ export default function DashboardPage() {
                     alt="Twitch profile picture"
                     width={32}
                     height={32}
-                    className="rounded-full border border-slate-700"
+                    className="rounded-full"
                   />
                 )}
               </button>

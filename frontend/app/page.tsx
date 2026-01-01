@@ -138,13 +138,13 @@ export default function HomePage() {
               onClick={() => setMenuOpen((open) => !open)}
               className="relative flex items-center focus:outline-none"
             >
-              <Image
-                src={avatarUrl}
-                alt="Twitch profile picture"
-                width={36}
-                height={36}
-                className="rounded-full border border-slate-700"
-              />
+                  <Image
+                    src={avatarUrl}
+                    alt="Twitch profile picture"
+                    width={36}
+                    height={36}
+                    className="rounded-full shadow-md shadow-sky-500/50"
+                  />
             </button>
           )}
           {isLoggedIn && menuOpen && (
