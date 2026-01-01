@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"os"
@@ -30,6 +31,10 @@ var (
 	helixBotUserID      string
 	helixBroadcasterIDs = map[string]string{}
 	appAccessToken      string
+
+	// in-memory tracking of recent chatters per channel for template variables
+	chattersMu       sync.Mutex
+	chattersByChannel = map[string]map[string]time.Time{}
 
 	// cached live-status per channel to avoid hitting Helix on every message
 	liveStatusMu    sync.Mutex
@@ -58,6 +63,8 @@ func main() {
 	if botName == "" {
 		botName = "AxyraBot"
 	}
+
+	rand.Seed(time.Now().UnixNano())
 
 	oauth := os.Getenv("TWITCH_BOT_OAUTH") // should be in form: oauth:xxxxxxxxxxxx
 	clientID := os.Getenv("TWITCH_CLIENT_ID")
@@ -417,6 +424,10 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 		}
 	}
 
+	// track that this user has recently chatted in this channel so custom
+	// commands can reference $(random.chatter)
+	noteChatterSeen(channelLogin, chatterLogin)
+
 	botName := os.Getenv("TWITCH_BOT_USERNAME")
 	if botName == "" {
 		botName = "AxyraBot"
@@ -774,7 +785,9 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 				log.Println("failed to look up custom command:", err)
 			} else if resp != "" {
 				if canUseCustomCommand(channelLogin, chatterLogin, role) {
-					if err := sendHelixChatMessage(channelLogin, resp); err != nil {
+					// Render template variables like $(user) and $(random.chatter)
+					text := renderCustomCommandResponse(channelLogin, chatterLogin, resp)
+					if err := sendHelixChatMessage(channelLogin, text); err != nil {
 						log.Println("failed to send custom command response:", err)
 					}
 				}
@@ -1599,6 +1612,146 @@ func isDefaultCommandEnabled(channelLogin, commandName string) bool {
 		return true
 	}
 	return enabled
+}
+
+// noteChatterSeen records that a user has sent a message in a channel at the
+// given time. This is used to power template variables like $(random.chatter)
+// in custom command responses.
+func noteChatterSeen(channelLogin, chatterLogin string) {
+	channelLogin = strings.ToLower(strings.TrimSpace(channelLogin))
+	chatterLogin = strings.ToLower(strings.TrimSpace(chatterLogin))
+	if channelLogin == "" || chatterLogin == "" {
+		return
+	}
+	chattersMu.Lock()
+	defer chattersMu.Unlock()
+	m, ok := chattersByChannel[channelLogin]
+	if !ok {
+		m = map[string]time.Time{}
+		chattersByChannel[channelLogin] = m
+	}
+	m[chatterLogin] = time.Now().UTC()
+}
+
+// getRandomChatter returns the login of a random recent chatter in the given
+// channel. It considers only users who have spoken within the last few
+// minutes. If no such user is found, it returns an empty string.
+func getRandomChatter(channelLogin string) string {
+	const window = 10 * time.Minute
+	channelLogin = strings.ToLower(strings.TrimSpace(channelLogin))
+	if channelLogin == "" {
+		return ""
+	}
+	now := time.Now().UTC()
+	chattersMu.Lock()
+	defer chattersMu.Unlock()
+	m, ok := chattersByChannel[channelLogin]
+	if !ok || len(m) == 0 {
+		return ""
+	}
+	// collect eligible chatters and prune old entries
+	eligible := make([]string, 0, len(m))
+	for user, ts := range m {
+		if now.Sub(ts) <= window {
+			eligible = append(eligible, user)
+		} else {
+			delete(m, user)
+		}
+	}
+	if len(eligible) == 0 {
+		return ""
+	}
+	return eligible[rand.Intn(len(eligible))]
+}
+
+// getRandomChatterFromAPI uses Twitch's Get Chatters endpoint to select a
+// random user currently in chat for the given channel. It uses the
+// broadcaster's stored user access token (which must include the
+// moderator:read:chatters scope). On error or if no chatters are returned,
+// it returns an empty string.
+func getRandomChatterFromAPI(channelLogin string) string {
+	channelLogin = strings.ToLower(strings.TrimSpace(channelLogin))
+	if channelLogin == "" {
+		return ""
+	}
+	clientID := os.Getenv("TWITCH_CLIENT_ID")
+	if clientID == "" {
+		return ""
+	}
+	access, err := GetUserAccessToken(channelLogin)
+	if err != nil || access == "" {
+		return ""
+	}
+
+	// Derive broadcaster ID from the user token
+	userID, err := getUserIDFromToken(access)
+	if err != nil || userID == "" {
+		return ""
+	}
+
+	// Use the broadcaster as both broadcaster_id and moderator_id so their
+	// token can read chatters for their own channel.
+	endpoint := fmt.Sprintf("https://api.twitch.tv/helix/chat/chatters?broadcaster_id=%s&moderator_id=%s&first=1000", url.QueryEscape(userID), url.QueryEscape(userID))
+	req, err := http.NewRequest("GET", endpoint, nil)
+	if err != nil {
+		return ""
+	}
+	req.Header.Set("Client-ID", clientID)
+	req.Header.Set("Authorization", "Bearer "+access)
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return ""
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode/100 != 2 {
+		return ""
+	}
+	var data struct {
+		Data []struct {
+			UserLogin string `json:"user_login"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return ""
+	}
+	if len(data.Data) == 0 {
+		return ""
+	}
+	// pick a random chatter from the returned list
+	idx := rand.Intn(len(data.Data))
+	return strings.ToLower(strings.TrimSpace(data.Data[idx].UserLogin))
+}
+
+// renderCustomCommandResponse applies simple template substitutions to a
+// stored custom command response string. Supported placeholders:
+//   $(user)           - the login of the user who triggered the command
+//   $(channel)        - the channel's login
+//   $(random.chatter) - a random recent chatter in the channel (falls back to
+//                       $(user) if none are available)
+func renderCustomCommandResponse(channelLogin, chatterLogin, template string) string {
+	channelLogin = strings.ToLower(strings.TrimSpace(channelLogin))
+	chatterLogin = strings.TrimSpace(chatterLogin)
+	if template == "" {
+		return ""
+	}
+	out := template
+	// simple replacements for user and channel
+	out = strings.ReplaceAll(out, "$(user)", chatterLogin)
+	out = strings.ReplaceAll(out, "$(channel)", channelLogin)
+	// random chatter: compute once per render so multiple occurrences are
+	// consistent within a single message.
+	rc := getRandomChatterFromAPI(channelLogin)
+	if rc == "" {
+		// fall back to our in-memory recent chatter list if the API fails or
+		// returns no data
+		rc = getRandomChatter(channelLogin)
+	}
+	if rc == "" {
+		rc = chatterLogin
+	}
+	out = strings.ReplaceAll(out, "$(random.chatter)", rc)
+	return out
 }
 
 // canUseCustomCommand returns true if a user with chatterLogin is allowed to
