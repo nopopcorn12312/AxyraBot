@@ -78,7 +78,8 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen flex flex-col px-4 bg-[radial-gradient(circle_at_top,_#1e293b,_#020617)]">
-      <header className="w-full max-w-6xl mx-auto mt-6 flex items-center px-6">
+      <section className="min-h-[95vh] flex flex-col">
+        <header className="w-full max-w-6xl mx-auto mt-6 flex items-center px-6">
         <div className="flex items-center gap-4 flex-1">
           <Image
             src={AxyraBotPFP}
@@ -166,9 +167,11 @@ export default function HomePage() {
           </div>
         </div>
       </div>
+      </section>
 
-      {/* Scroll cue */}
-      <section className="w-full flex justify-center pb-6">
+      {/* Scroll cue + lower sections wrapper with grey background */}
+      <div className="w-full bg-slate-950/80 border-t border-slate-800">
+      <section className="w-full flex justify-center pb-6 pt-4">
         <div className="flex items-center justify-center h-10 w-10 rounded-full border border-slate-700 bg-slate-900/80 text-slate-300 shadow-sm shadow-slate-900/80">
           <span className="text-lg">▼</span>
         </div>
@@ -322,6 +325,7 @@ export default function HomePage() {
         </div>
         <p className="mt-3 text-[10px] text-slate-500">© {new Date().getFullYear()} AxyraBot. All rights reserved.</p>
       </footer>
+      </div>
     </main>
   );
 }
