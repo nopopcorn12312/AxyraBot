@@ -277,7 +277,7 @@ export default function ApiDocsPage() {
                 <li>
                   <span className="font-mono bg-slate-800 px-1.5 py-0.5 rounded mr-2">GET /channels</span>
                   Returns the list of joined channels as
-                  <span className="ml-1 font-mono bg-slate-800 px-1.5 py-0.5 rounded">{"{ \"channels\": [""login"", ...] }"}</span>
+                  <span className="ml-1 font-mono bg-slate-800 px-1.5 py-0.5 rounded">{"{ \"channels\": [\"login\", ...] }"}</span>
                   .
                 </li>
               </ul>
@@ -291,7 +291,7 @@ export default function ApiDocsPage() {
                   Query parameters:
                   <span className="font-mono bg-slate-800 px-1 py-0.5 rounded ml-1">login</span>
                   . Returns the current stream metadata from Twitch as
-                  <span className="ml-1 font-mono bg-slate-800 px-1.5 py-0.5 rounded">{"{ \"title\": ""..."", \"category\": ""..."" }"}</span>
+                  <span className="ml-1 font-mono bg-slate-800 px-1.5 py-0.5 rounded">{"{ \"title\": \"...\", \"category\": \"...\" }"}</span>
                   .
                 </li>
                 <li>
