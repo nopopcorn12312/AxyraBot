@@ -19,11 +19,7 @@ const defaultCommands = [
   { name: "!accountage [username]", description: "Shows when a user's Twitch account was created." },
   { name: "!followage [username]", description: "Shows how long a user has followed the channel." },
   { name: "!uptime", description: "Shows how long the channel has been live this session." },
-];
-
-const customCommands = [
-  { name: "!shoutout", description: "Example custom command placeholder." },
-  { name: "!discord", description: "Links to your Discord server (example)." },
+  { name: "!commands", description: "Links viewers to your channel's custom commands page." },
 ];
 
 type CommandToggleProps = {
@@ -59,19 +55,37 @@ export default function CommandsPage() {
   const [commandsOpen, setCommandsOpen] = useState(true);
   const [view, setView] = useState<"default" | "custom">("default");
   const [defaultSettings, setDefaultSettings] = useState<Record<string, boolean>>({});
+  const [customCommands, setCustomCommands] = useState<{ name: string; description: string }[]>([]);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const pathname = usePathname();
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const fromQuery = params.get("view");
+    if (fromQuery === "custom") {
+      setView("custom");
+    } else if (fromQuery === "default") {
+      setView("default");
+    }
+
     const storedLogin = window.localStorage.getItem("axyra.login");
     const storedAvatar = window.localStorage.getItem("axyra.avatar");
+    const channelFromQuery = params.get("channel");
+
     if (storedLogin) {
       setIsLoggedIn(true);
       setChannelLogin(storedLogin.toLowerCase());
     }
     if (storedAvatar) {
       setAvatarUrl(storedAvatar);
+    }
+
+    // If there is no stored login (viewer clicking a shared link), fall back
+    // to the channel provided in the query string so the page can load that
+    // broadcaster's commands.
+    if (!storedLogin && channelFromQuery) {
+      setChannelLogin(channelFromQuery.toLowerCase());
     }
   }, []);
 
@@ -101,15 +115,27 @@ export default function CommandsPage() {
   }, [channelLogin, view]);
 
   useEffect(() => {
-  if (typeof window === "undefined") return;
-  const params = new URLSearchParams(window.location.search);
-  const fromQuery = params.get("view");
-  if (fromQuery === "custom") {
-    setView("custom");
-  } else if (fromQuery === "default") {
-    setView("default");
-  }
-  }, []);
+    if (!channelLogin || view !== "custom") return;
+    const controller = new AbortController();
+    (async () => {
+      try {
+        const res = await fetch(
+          `${backendUrl}/commands/custom?login=${encodeURIComponent(channelLogin)}`,
+          { signal: controller.signal },
+        );
+        if (!res.ok) return;
+        const data: { commands?: { name: string; response: string }[] } = await res.json();
+        const rows = (data.commands || []).map((c) => ({
+          name: c.name,
+          description: c.response,
+        }));
+        setCustomCommands(rows);
+      } catch {
+        // ignore fetch errors for now
+      }
+    })();
+    return () => controller.abort();
+  }, [channelLogin, view]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -139,7 +165,7 @@ export default function CommandsPage() {
 
   const rows = useMemo(
     () => (view === "default" ? defaultCommands : customCommands),
-    [view],
+    [view, customCommands],
   );
 
   return (

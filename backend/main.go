@@ -47,6 +47,7 @@ var defaultCommandNames = []string{
 	"!accountage",
 	"!followage",
 	"!uptime",
+	"!commands",
 }
 
 type liveStatusEntry struct {
@@ -423,6 +424,171 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 		botName = "AxyraBot"
 	}
 
+	// !addcom !trigger response - add or update a custom command (mods + broadcaster only)
+	if isChatCommand(message, "!addcom") {
+		// Require broadcaster or moderator
+		allowed, err := isBroadcasterOrModerator(channelLogin, chatterLogin)
+		if err != nil {
+			log.Println("failed moderator check for !addcom:", err)
+		}
+		if !allowed {
+			if err := sendHelixChatMessage(channelLogin, fmt.Sprintf("@%s only the broadcaster or a moderator can use !addcom", chatterLogin)); err != nil {
+				log.Println("failed to send !addcom permission response:", err)
+			}
+			return
+		}
+		rest := strings.TrimSpace(strings.TrimPrefix(message, "!addcom"))
+		if rest == "" {
+			if err := sendHelixChatMessage(channelLogin, "Usage: !addcom !command response text"); err != nil {
+				log.Println("failed to send !addcom usage response:", err)
+			}
+			return
+		}
+		parts := strings.SplitN(rest, " ", 2)
+		if len(parts) < 2 {
+			if err := sendHelixChatMessage(channelLogin, "Usage: !addcom !command response text"); err != nil {
+				log.Println("failed to send !addcom usage response:", err)
+			}
+			return
+		}
+		trigger := strings.TrimSpace(parts[0])
+		response := strings.TrimSpace(parts[1])
+		if !strings.HasPrefix(trigger, "!") || len(trigger) < 2 {
+			if err := sendHelixChatMessage(channelLogin, "Custom command trigger must start with ! and contain at least one character after it"); err != nil {
+				log.Println("failed to send !addcom validation response:", err)
+			}
+			return
+		}
+		// Do not allow overriding built-in commands; those are controlled via dashboard toggles.
+		for _, d := range defaultCommandNames {
+			if strings.EqualFold(trigger, d) {
+				if err := sendHelixChatMessage(channelLogin, fmt.Sprintf("%s is a built-in command and cannot be overridden; use the dashboard to toggle it", trigger)); err != nil {
+					log.Println("failed to send !addcom built-in response:", err)
+				}
+				return
+			}
+		}
+		if db != nil {
+			if err := UpsertCustomCommand(channelLogin, chatterLogin, trigger, response); err != nil {
+				log.Println("failed to upsert custom command:", err)
+				if err2 := sendHelixChatMessage(channelLogin, "Failed to save custom command"); err2 != nil {
+					log.Println("failed to send !addcom error response:", err2)
+				}
+				return
+			}
+		}
+		if err := sendHelixChatMessage(channelLogin, fmt.Sprintf("%s the command %s has been added.", chatterLogin, trigger)); err != nil {
+			log.Println("failed to send !addcom confirmation:", err)
+		}
+		return
+	}
+
+	// !delcom !trigger - delete a custom command (mods + broadcaster only)
+	if isChatCommand(message, "!delcom") {
+		allowed, err := isBroadcasterOrModerator(channelLogin, chatterLogin)
+		if err != nil {
+			log.Println("failed moderator check for !delcom:", err)
+		}
+		if !allowed {
+			if err := sendHelixChatMessage(channelLogin, fmt.Sprintf("@%s only the broadcaster or a moderator can use !delcom", chatterLogin)); err != nil {
+				log.Println("failed to send !delcom permission response:", err)
+			}
+			return
+		}
+		arg := strings.TrimSpace(strings.TrimPrefix(message, "!delcom"))
+		if arg == "" {
+			if err := sendHelixChatMessage(channelLogin, "Usage: !delcom !command"); err != nil {
+				log.Println("failed to send !delcom usage response:", err)
+			}
+			return
+		}
+		trigger := arg
+		if !strings.HasPrefix(trigger, "!") || len(trigger) < 2 {
+			if err := sendHelixChatMessage(channelLogin, "Custom command trigger must start with ! and contain at least one character after it"); err != nil {
+				log.Println("failed to send !delcom validation response:", err)
+			}
+			return
+		}
+		for _, d := range defaultCommandNames {
+			if strings.EqualFold(trigger, d) {
+				if err := sendHelixChatMessage(channelLogin, fmt.Sprintf("%s is a built-in command and cannot be deleted; use the dashboard to toggle it", trigger)); err != nil {
+					log.Println("failed to send !delcom built-in response:", err)
+				}
+				return
+			}
+		}
+		if db != nil {
+			if err := DeleteCustomCommand(channelLogin, trigger); err != nil {
+				log.Println("failed to delete custom command:", err)
+				if err2 := sendHelixChatMessage(channelLogin, "Failed to delete custom command"); err2 != nil {
+					log.Println("failed to send !delcom error response:", err2)
+				}
+				return
+			}
+		}
+		if err := sendHelixChatMessage(channelLogin, fmt.Sprintf("%s the command %s has been deleted!", chatterLogin, trigger)); err != nil {
+			log.Println("failed to send !delcom confirmation:", err)
+		}
+		return
+	}
+
+	// !editcom !trigger new response - edit an existing custom command (mods + broadcaster only)
+	if isChatCommand(message, "!editcom") {
+		allowed, err := isBroadcasterOrModerator(channelLogin, chatterLogin)
+		if err != nil {
+			log.Println("failed moderator check for !editcom:", err)
+		}
+		if !allowed {
+			if err := sendHelixChatMessage(channelLogin, fmt.Sprintf("@%s only the broadcaster or a moderator can use !editcom", chatterLogin)); err != nil {
+				log.Println("failed to send !editcom permission response:", err)
+			}
+			return
+		}
+		rest := strings.TrimSpace(strings.TrimPrefix(message, "!editcom"))
+		if rest == "" {
+			if err := sendHelixChatMessage(channelLogin, "Usage: !editcom !command new response text"); err != nil {
+				log.Println("failed to send !editcom usage response:", err)
+			}
+			return
+		}
+		parts := strings.SplitN(rest, " ", 2)
+		if len(parts) < 2 {
+			if err := sendHelixChatMessage(channelLogin, "Usage: !editcom !command new response text"); err != nil {
+				log.Println("failed to send !editcom usage response:", err)
+			}
+			return
+		}
+		trigger := strings.TrimSpace(parts[0])
+		newResponse := strings.TrimSpace(parts[1])
+		if !strings.HasPrefix(trigger, "!") || len(trigger) < 2 {
+			if err := sendHelixChatMessage(channelLogin, "Custom command trigger must start with ! and contain at least one character after it"); err != nil {
+				log.Println("failed to send !editcom validation response:", err)
+			}
+			return
+		}
+		for _, d := range defaultCommandNames {
+			if strings.EqualFold(trigger, d) {
+				if err := sendHelixChatMessage(channelLogin, fmt.Sprintf("%s is a built-in command and cannot be edited; use the dashboard to toggle it", trigger)); err != nil {
+					log.Println("failed to send !editcom built-in response:", err)
+				}
+				return
+			}
+		}
+		if db != nil {
+			if err := UpsertCustomCommand(channelLogin, chatterLogin, trigger, newResponse); err != nil {
+				log.Println("failed to update custom command:", err)
+				if err2 := sendHelixChatMessage(channelLogin, "Failed to edit custom command"); err2 != nil {
+					log.Println("failed to send !editcom error response:", err2)
+				}
+				return
+			}
+		}
+		if err := sendHelixChatMessage(channelLogin, fmt.Sprintf("%s the command %s has been edited.", chatterLogin, trigger)); err != nil {
+			log.Println("failed to send !editcom confirmation:", err)
+		}
+		return
+	}
+
 	// basic commands migrated from IRC handler
 	if isChatCommand(message, "!hello") {
 		if !isDefaultCommandEnabled(channelLogin, "!hello") {
@@ -602,6 +768,36 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 		}
 		if err := sendHelixChatMessage(channelLogin, fmt.Sprintf("%s has been live for %s", channelLogin, uptime)); err != nil {
 			log.Println("failed to send !uptime response:", err)
+		}
+	}
+
+	// !commands - link to the broadcaster's custom commands page on the dashboard
+	if isChatCommand(message, "!commands") {
+		if !isDefaultCommandEnabled(channelLogin, "!commands") {
+			return
+		}
+		base := getFrontendBaseURL()
+		link := fmt.Sprintf("%s/commands?view=custom&channel=%s", base, url.QueryEscape(channelLogin))
+		text := fmt.Sprintf("%s All of %s's custom commands can be found here %s", chatterLogin, channelLogin, link)
+		if err := sendHelixChatMessage(channelLogin, text); err != nil {
+			log.Println("failed to send !commands response:", err)
+		}
+		return
+	}
+
+	// Custom commands: if the first token matches a stored trigger, send its response.
+	msgTrimmed := strings.TrimSpace(message)
+	if strings.HasPrefix(msgTrimmed, "!") && db != nil {
+		fields := strings.Fields(msgTrimmed)
+		if len(fields) > 0 {
+			trigger := strings.ToLower(fields[0])
+			if resp, err := GetCustomCommandResponse(channelLogin, trigger); err != nil {
+				log.Println("failed to look up custom command:", err)
+			} else if resp != "" {
+				if err := sendHelixChatMessage(channelLogin, resp); err != nil {
+					log.Println("failed to send custom command response:", err)
+				}
+			}
 		}
 	}
 
@@ -1272,6 +1468,19 @@ func isDefaultCommandEnabled(channelLogin, commandName string) bool {
 		return true
 	}
 	return enabled
+}
+
+// getFrontendBaseURL returns the base URL for the frontend dashboard used in
+// responses like !commands. Prefer FRONTEND_URL, then FRONTEND_ORIGIN, and
+// finally default to http://localhost:3000 for local development.
+func getFrontendBaseURL() string {
+	if u := os.Getenv("FRONTEND_URL"); u != "" {
+		return strings.TrimRight(u, "/")
+	}
+	if u := os.Getenv("FRONTEND_ORIGIN"); u != "" {
+		return strings.TrimRight(u, "/")
+	}
+	return "http://localhost:3000"
 }
 
 // active channel helpers

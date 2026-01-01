@@ -21,6 +21,7 @@ func startHTTPServer(clientID, clientSecret string) {
 	mux.HandleFunc("/stream/info", withCORS(handleStreamInfo(clientID)))
 	mux.HandleFunc("/stream/update", withCORS(handleStreamUpdate(clientID)))
 	mux.HandleFunc("/commands/default-settings", withCORS(handleDefaultCommandSettings))
+	mux.HandleFunc("/commands/custom", withCORS(handleCustomCommands))
 	addr := ":8080"
 	if p := os.Getenv("PORT"); p != "" {
 		addr = ":" + p
@@ -94,6 +95,49 @@ func handleDefaultCommandSettings(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "ok")
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
+}
+
+// handleCustomCommands returns the list of custom commands for a broadcaster.
+// It is used by the dashboard commands page when the "Custom commands" tab
+// is selected.
+func handleCustomCommands(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	login := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("login")))
+	if login == "" {
+		http.Error(w, "missing login", http.StatusBadRequest)
+		return
+	}
+	cmds, err := ListCustomCommands(login)
+	if err != nil {
+		log.Println("failed to list custom commands:", err)
+		http.Error(w, "db error", http.StatusInternalServerError)
+		return
+	}
+	out := []struct {
+		Name      string `json:"name"`
+		Response  string `json:"response"`
+		CreatedBy string `json:"createdBy"`
+	}{}
+	for _, c := range cmds {
+		out = append(out, struct {
+			Name      string `json:"name"`
+			Response  string `json:"response"`
+			CreatedBy string `json:"createdBy"`
+		}{
+			Name:      c.Command,
+			Response:  c.Response,
+			CreatedBy: c.CreatedBy,
+		})
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(struct {
+		Commands interface{} `json:"commands"`
+	}{Commands: out}); err != nil {
+		log.Println("encode custom commands:", err)
 	}
 }
 

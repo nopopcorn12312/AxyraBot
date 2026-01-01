@@ -196,6 +196,85 @@ func SetDefaultCommandEnabled(broadcasterLogin, commandName string, enabled bool
 	return err
 }
 
+// UpsertCustomCommand creates or updates a custom command for a broadcaster.
+// The command name should include the leading '!' and is stored in lowercase.
+func UpsertCustomCommand(broadcasterLogin, createdBy, commandName, response string) error {
+	if db == nil {
+		return nil
+	}
+	broadcasterLogin = strings.ToLower(broadcasterLogin)
+	commandName = strings.ToLower(commandName)
+	_, err := db.Exec(`
+	INSERT INTO custom_commands (broadcaster_login, command, response, created_by, created_at)
+	VALUES ($1, $2, $3, $4, now())
+	ON CONFLICT (broadcaster_login, command) DO UPDATE
+	SET response = EXCLUDED.response,
+	    created_by = EXCLUDED.created_by,
+	    created_at = EXCLUDED.created_at;
+	`, broadcasterLogin, commandName, response, createdBy)
+	return err
+}
+
+// GetCustomCommandResponse returns the response string for a single custom
+// command trigger, or empty string if none exists.
+func GetCustomCommandResponse(broadcasterLogin, commandName string) (string, error) {
+	if db == nil {
+		return "", nil
+	}
+	broadcasterLogin = strings.ToLower(broadcasterLogin)
+	commandName = strings.ToLower(commandName)
+	var resp string
+	row := db.QueryRow(`SELECT response FROM custom_commands WHERE broadcaster_login=$1 AND command=$2`, broadcasterLogin, commandName)
+	if err := row.Scan(&resp); err != nil {
+		if err == sql.ErrNoRows {
+			return "", nil
+		}
+		return "", err
+	}
+	return resp, nil
+}
+
+// CustomCommand represents a single stored custom command.
+type CustomCommand struct {
+	Command    string
+	Response   string
+	CreatedBy  string
+	CreatedAt  time.Time
+}
+
+// ListCustomCommands returns all custom commands for a broadcaster.
+func ListCustomCommands(broadcasterLogin string) ([]CustomCommand, error) {
+	res := []CustomCommand{}
+	if db == nil {
+		return res, nil
+	}
+	broadcasterLogin = strings.ToLower(broadcasterLogin)
+	rows, err := db.Query(`SELECT command, response, COALESCE(created_by, ''), COALESCE(created_at, now()) FROM custom_commands WHERE broadcaster_login=$1 ORDER BY command`, broadcasterLogin)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var c CustomCommand
+		if err := rows.Scan(&c.Command, &c.Response, &c.CreatedBy, &c.CreatedAt); err != nil {
+			return nil, err
+		}
+		res = append(res, c)
+	}
+	return res, nil
+}
+
+// DeleteCustomCommand removes a single custom command for a broadcaster.
+func DeleteCustomCommand(broadcasterLogin, commandName string) error {
+	if db == nil {
+		return nil
+	}
+	broadcasterLogin = strings.ToLower(broadcasterLogin)
+	commandName = strings.ToLower(commandName)
+	_, err := db.Exec(`DELETE FROM custom_commands WHERE broadcaster_login=$1 AND command=$2`, broadcasterLogin, commandName)
+	return err
+}
+
 func EnsureSchema() error {
 	// create simple tables if not exist
 	_, err := db.Exec(`
@@ -203,6 +282,22 @@ func EnsureSchema() error {
 	 id SERIAL PRIMARY KEY,
 	 login TEXT UNIQUE NOT NULL,
 	 twitch_user_id TEXT,
+	);
+	CREATE TABLE IF NOT EXISTS default_command_settings (
+	 id SERIAL PRIMARY KEY,
+	 broadcaster_login TEXT NOT NULL,
+	 command_name TEXT NOT NULL,
+	 enabled BOOLEAN NOT NULL DEFAULT TRUE,
+	 UNIQUE (broadcaster_login, command_name)
+	);
+	CREATE TABLE IF NOT EXISTS custom_commands (
+	 id SERIAL PRIMARY KEY,
+	 broadcaster_login TEXT NOT NULL,
+	 command TEXT NOT NULL,
+	 response TEXT NOT NULL,
+	 created_by TEXT,
+	 created_at TIMESTAMPTZ DEFAULT now(),
+	 UNIQUE (broadcaster_login, command)
 	 access_token TEXT,
 	 refresh_token TEXT,
 	 scopes TEXT,
