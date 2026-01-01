@@ -519,6 +519,16 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 				}
 				return
 			}
+			// Record in the audit log that a custom command was added/updated via chat.
+			action := "added"
+			if _, role, err := GetCustomCommandResponse(channelLogin, trigger); err == nil && role != "" {
+				// If the command already existed, treat this as an update.
+				action = "updated"
+			}
+			desc := fmt.Sprintf("%s %s custom command %s via chat", chatterLogin, action, trigger)
+			if err := InsertAuditLog(channelLogin, "bot", "custom_command_add", desc); err != nil {
+				log.Println("failed to insert audit log for !addcom:", err)
+			}
 		}
 		if err := sendHelixChatMessage(channelLogin, fmt.Sprintf("%s the command %s has been added.", chatterLogin, trigger)); err != nil {
 			log.Println("failed to send !addcom confirmation:", err)
@@ -567,6 +577,9 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 					log.Println("failed to send !delcom error response:", err2)
 				}
 				return
+			}
+			if err := InsertAuditLog(channelLogin, "bot", "custom_command_delete", fmt.Sprintf("%s deleted custom command %s via chat", chatterLogin, trigger)); err != nil {
+				log.Println("failed to insert audit log for !delcom:", err)
 			}
 		}
 		if err := sendHelixChatMessage(channelLogin, fmt.Sprintf("%s the command %s has been deleted!", chatterLogin, trigger)); err != nil {
@@ -624,6 +637,9 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 					log.Println("failed to send !editcom error response:", err2)
 				}
 				return
+			}
+			if err := InsertAuditLog(channelLogin, "bot", "custom_command_update", fmt.Sprintf("%s edited custom command %s via chat", chatterLogin, trigger)); err != nil {
+				log.Println("failed to insert audit log for !editcom:", err)
 			}
 		}
 		if err := sendHelixChatMessage(channelLogin, fmt.Sprintf("%s the command %s has been edited.", chatterLogin, trigger)); err != nil {
