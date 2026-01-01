@@ -380,6 +380,308 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 			log.Println("failed to send !testanc announcement:", err)
 		}
 	}
+
+	// !vanish - timeout the user for 1 second with a playful reason
+	if strings.HasPrefix(message, "!vanish") {
+		if err := timeoutUser(channelLogin, chatterLogin, 1, "wanted to hide \"something\""); err != nil {
+			log.Println("failed to apply !vanish timeout:", err)
+		} else {
+			if err := sendHelixChatMessage(channelLogin, "Come back here and face it"); err != nil {
+				log.Println("failed to send !vanish response:", err)
+			}
+		}
+	}
+
+	// !title (text) - change stream title (mods + broadcaster only)
+	if strings.HasPrefix(message, "!title") {
+		// Require broadcaster or moderator
+		allowed, err := isBroadcasterOrModerator(channelLogin, chatterLogin)
+		if err != nil {
+			log.Println("failed moderator check for !title:", err)
+		}
+		if !allowed {
+			if err := sendHelixChatMessage(channelLogin, fmt.Sprintf("@%s only the broadcaster or a moderator can use !title", chatterLogin)); err != nil {
+				log.Println("failed to send !title permission response:", err)
+			}
+			return
+		}
+		// Extract the new title text after the command keyword
+		text := strings.TrimSpace(strings.TrimPrefix(message, "!title"))
+		if text == "" {
+			if err := sendHelixChatMessage(channelLogin, "Usage: !title <new title>"); err != nil {
+				log.Println("failed to send !title usage response:", err)
+			}
+			return
+		}
+		if err := updateStreamInfoFromChat(channelLogin, text, ""); err != nil {
+			log.Println("failed to update title from !title:", err)
+		}
+	}
+
+	// !game (text) - change Twitch category (mods + broadcaster only)
+	if strings.HasPrefix(message, "!game") {
+		allowed, err := isBroadcasterOrModerator(channelLogin, chatterLogin)
+		if err != nil {
+			log.Println("failed moderator check for !game:", err)
+		}
+		if !allowed {
+			if err := sendHelixChatMessage(channelLogin, fmt.Sprintf("@%s only the broadcaster or a moderator can use !game", chatterLogin)); err != nil {
+				log.Println("failed to send !game permission response:", err)
+			}
+			return
+		}
+		text := strings.TrimSpace(strings.TrimPrefix(message, "!game"))
+		if text == "" {
+			if err := sendHelixChatMessage(channelLogin, "Usage: !game <category name>"); err != nil {
+				log.Println("failed to send !game usage response:", err)
+			}
+			return
+		}
+		if err := updateStreamInfoFromChat(channelLogin, "", text); err != nil {
+			log.Println("failed to update category from !game:", err)
+		}
+	}
+}
+
+// isBroadcasterOrModerator checks whether chatterLogin is the broadcaster for
+// channelLogin or a moderator in that channel using the broadcaster's token
+// and the Helix Get Moderators endpoint.
+func isBroadcasterOrModerator(channelLogin, chatterLogin string) (bool, error) {
+	channelLogin = strings.ToLower(channelLogin)
+	chatterLogin = strings.ToLower(chatterLogin)
+	if channelLogin == chatterLogin {
+		return true, nil
+	}
+
+	clientID := os.Getenv("TWITCH_CLIENT_ID")
+	if clientID == "" {
+		return false, fmt.Errorf("TWITCH_CLIENT_ID not set")
+	}
+
+	access, err := GetUserAccessToken(channelLogin)
+	if err != nil || access == "" {
+		return false, fmt.Errorf("no user token for channel %s: %w", channelLogin, err)
+	}
+
+	// Resolve broadcaster id from their token
+	broadcasterID, err := getUserIDFromToken(access)
+	if err != nil {
+		return false, fmt.Errorf("getUserIDFromToken failed: %w", err)
+	}
+
+	// Resolve chatter user id via /users
+	usersReq, err := http.NewRequest("GET", "https://api.twitch.tv/helix/users?login="+url.QueryEscape(chatterLogin), nil)
+	if err != nil {
+		return false, err
+	}
+	usersReq.Header.Set("Client-ID", clientID)
+	usersReq.Header.Set("Authorization", "Bearer "+access)
+	client := &http.Client{Timeout: 10 * time.Second}
+	usersResp, err := client.Do(usersReq)
+	if err != nil {
+		return false, err
+	}
+	defer usersResp.Body.Close()
+	if usersResp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(usersResp.Body)
+		return false, fmt.Errorf("helix users status %s: %s", usersResp.Status, string(b))
+	}
+	var usersRes struct {
+		Data []struct {
+			ID string `json:"id"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(usersResp.Body).Decode(&usersRes); err != nil {
+		return false, err
+	}
+	if len(usersRes.Data) == 0 {
+		return false, nil
+	}
+	chatterID := usersRes.Data[0].ID
+
+	// Query moderators list for this specific user
+	modsURL := fmt.Sprintf("https://api.twitch.tv/helix/moderation/moderators?broadcaster_id=%s&user_id=%s", url.QueryEscape(broadcasterID), url.QueryEscape(chatterID))
+	modsReq, err := http.NewRequest("GET", modsURL, nil)
+	if err != nil {
+		return false, err
+	}
+	modsReq.Header.Set("Client-ID", clientID)
+	modsReq.Header.Set("Authorization", "Bearer "+access)
+	modsResp, err := client.Do(modsReq)
+	if err != nil {
+		return false, err
+	}
+	defer modsResp.Body.Close()
+	if modsResp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(modsResp.Body)
+		return false, fmt.Errorf("helix moderators status %s: %s", modsResp.Status, string(b))
+	}
+	var modsRes struct {
+		Data []struct {
+			UserID string `json:"user_id"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(modsResp.Body).Decode(&modsRes); err != nil {
+		return false, err
+	}
+	return len(modsRes.Data) > 0, nil
+}
+
+// timeoutUser applies a short timeout to the specified user in the channel
+// using the broadcaster's token and the Helix Ban Users (timeout) endpoint.
+func timeoutUser(channelLogin, targetLogin string, seconds int, reason string) error {
+	channelLogin = strings.ToLower(channelLogin)
+	targetLogin = strings.ToLower(targetLogin)
+	if seconds <= 0 {
+		seconds = 1
+	}
+
+	clientID := os.Getenv("TWITCH_CLIENT_ID")
+	if clientID == "" {
+		return fmt.Errorf("TWITCH_CLIENT_ID not set")
+	}
+
+	access, err := GetUserAccessToken(channelLogin)
+	if err != nil || access == "" {
+		return fmt.Errorf("no user token for channel %s: %w", channelLogin, err)
+	}
+
+	// broadcaster id from token
+	broadcasterID, err := getUserIDFromToken(access)
+	if err != nil {
+		return fmt.Errorf("getUserIDFromToken failed: %w", err)
+	}
+
+	// resolve target user id
+	usersReq, err := http.NewRequest("GET", "https://api.twitch.tv/helix/users?login="+url.QueryEscape(targetLogin), nil)
+	if err != nil {
+		return err
+	}
+	usersReq.Header.Set("Client-ID", clientID)
+	usersReq.Header.Set("Authorization", "Bearer "+access)
+	client := &http.Client{Timeout: 10 * time.Second}
+	usersResp, err := client.Do(usersReq)
+	if err != nil {
+		return err
+	}
+	defer usersResp.Body.Close()
+	if usersResp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(usersResp.Body)
+		return fmt.Errorf("helix users status %s: %s", usersResp.Status, string(b))
+	}
+	var usersRes struct {
+		Data []struct {
+			ID string `json:"id"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(usersResp.Body).Decode(&usersRes); err != nil {
+		return err
+	}
+	if len(usersRes.Data) == 0 {
+		return fmt.Errorf("user not found: %s", targetLogin)
+	}
+	targetID := usersRes.Data[0].ID
+
+	body := map[string]interface{}{
+		"data": map[string]interface{}{
+			"user_id": targetID,
+			"duration": seconds,
+			"reason":  reason,
+		},
+	}
+	buf, _ := json.Marshal(body)
+	endpoint := fmt.Sprintf("https://api.twitch.tv/helix/moderation/bans?broadcaster_id=%s&moderator_id=%s", url.QueryEscape(broadcasterID), url.QueryEscape(broadcasterID))
+	req, err := http.NewRequest("POST", endpoint, bytes.NewReader(buf))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Client-ID", clientID)
+	req.Header.Set("Authorization", "Bearer "+access)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode/100 != 2 {
+		b, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("helix bans status %s: %s", resp.Status, string(b))
+	}
+	return nil
+}
+
+// updateStreamInfoFromChat updates the stream title and/or category in
+// response to chat commands using the broadcaster's stored user token.
+func updateStreamInfoFromChat(channelLogin, title, category string) error {
+	channelLogin = strings.ToLower(channelLogin)
+	clientID := os.Getenv("TWITCH_CLIENT_ID")
+	if clientID == "" {
+		return fmt.Errorf("TWITCH_CLIENT_ID not set")
+	}
+	if strings.TrimSpace(title) == "" && strings.TrimSpace(category) == "" {
+		return nil
+	}
+
+	access, err := GetUserAccessToken(channelLogin)
+	if err != nil || access == "" {
+		return fmt.Errorf("no user token for channel %s: %w", channelLogin, err)
+	}
+	userID, err := getUserIDFromToken(access)
+	if err != nil {
+		return fmt.Errorf("getUserIDFromToken failed: %w", err)
+	}
+
+	payload := map[string]string{}
+	if strings.TrimSpace(title) != "" {
+		payload["title"] = title
+	}
+	if strings.TrimSpace(category) != "" {
+		// resolve game name to game_id
+		gamesReq, err := http.NewRequest("GET", "https://api.twitch.tv/helix/games?name="+url.QueryEscape(category), nil)
+		if err == nil {
+			gamesReq.Header.Set("Client-ID", clientID)
+			gamesReq.Header.Set("Authorization", "Bearer "+access)
+			client := &http.Client{Timeout: 10 * time.Second}
+			gamesResp, err := client.Do(gamesReq)
+			if err == nil {
+				defer gamesResp.Body.Close()
+				if gamesResp.StatusCode/100 == 2 {
+					var g struct {
+						Data []struct {
+							ID string `json:"id"`
+						} `json:"data"`
+					}
+					if err := json.NewDecoder(gamesResp.Body).Decode(&g); err == nil {
+						if len(g.Data) > 0 {
+							payload["game_id"] = g.Data[0].ID
+						}
+					}
+				}
+			}
+		}
+	}
+	if len(payload) == 0 {
+		return nil
+	}
+	buf, _ := json.Marshal(payload)
+	req, err := http.NewRequest("PATCH", "https://api.twitch.tv/helix/channels?broadcaster_id="+url.QueryEscape(userID), bytes.NewReader(buf))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Client-ID", clientID)
+	req.Header.Set("Authorization", "Bearer "+access)
+	req.Header.Set("Content-Type", "application/json")
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode/100 != 2 {
+		b, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("helix channels patch status %s: %s", resp.Status, string(b))
+	}
+	return nil
 }
 
 // active channel helpers
@@ -938,7 +1240,7 @@ func registerEventSubSubscriptions(appToken, clientID, channel, tokensPath strin
 		eventSubMu.Lock()
 		sid := eventSubSessionID
 		eventSubMu.Unlock()
-				if sid != "" {
+		if sid != "" {
 			// Determine list of channels to register EventSub for.
 			channels := []string{}
 			if db != nil {
@@ -954,9 +1256,9 @@ func registerEventSubSubscriptions(appToken, clientID, channel, tokensPath strin
 				return
 			}
 
-					// Subscribe to chat messages and follows so we can both read chat
-					// and thank users when they follow the channel.
-					subs := []string{"channel.chat.message", "channel.follow"}
+			// Subscribe to chat messages and follows so we can both read chat
+			// and thank users when they follow the channel.
+			subs := []string{"channel.chat.message", "channel.follow"}
 
 			// bot user access token for chat-related EventSub (channel.chat.message)
 			botToken := ""
@@ -978,7 +1280,7 @@ func registerEventSubSubscriptions(appToken, clientID, channel, tokensPath strin
 				}
 			}
 
-					// For each channel, resolve its broadcaster id and create subscriptions.
+			// For each channel, resolve its broadcaster id and create subscriptions.
 			for _, ch := range channels {
 				broadcasterID, err := getUserID(ch, appToken, clientID)
 				if err != nil {
@@ -988,29 +1290,29 @@ func registerEventSubSubscriptions(appToken, clientID, channel, tokensPath strin
 
 				for _, st := range subs {
 					cond := map[string]string{"broadcaster_user_id": broadcasterID}
-							// channel.chat.message also requires the bot user id in the condition
-							// and uses version 1 of the subscription type. channel.follow uses
-							// version 2 and requires moderator_user_id in the condition.
-							version := "1"
-							if st == "channel.chat.message" {
-								if botID == "" || botToken == "" {
-									log.Println("skipping channel.chat.message subscription; botID or botToken not available")
-									continue
-								}
-								cond["user_id"] = botID
-							} else if st == "channel.follow" {
-								// channel.follow requires version 2 and moderator_user_id.
-								version = "2"
-								if botID == "" || botToken == "" {
-									log.Println("skipping channel.follow subscription; botID or botToken not available")
-									continue
-								}
-								cond["moderator_user_id"] = botID
-							}
-							// for our current use case, all subs use the bot's user token
-							// with websocket transport.
-							auth := botToken
-							if err := createEventSubSubscription(auth, clientID, st, version, cond, sid, "websocket", "", ""); err != nil {
+					// channel.chat.message also requires the bot user id in the condition
+					// and uses version 1 of the subscription type. channel.follow uses
+					// version 2 and requires moderator_user_id in the condition.
+					version := "1"
+					if st == "channel.chat.message" {
+						if botID == "" || botToken == "" {
+							log.Println("skipping channel.chat.message subscription; botID or botToken not available")
+							continue
+						}
+						cond["user_id"] = botID
+					} else if st == "channel.follow" {
+						// channel.follow requires version 2 and moderator_user_id.
+						version = "2"
+						if botID == "" || botToken == "" {
+							log.Println("skipping channel.follow subscription; botID or botToken not available")
+							continue
+						}
+						cond["moderator_user_id"] = botID
+					}
+					// for our current use case, all subs use the bot's user token
+					// with websocket transport.
+					auth := botToken
+					if err := createEventSubSubscription(auth, clientID, st, version, cond, sid, "websocket", "", ""); err != nil {
 						log.Println("failed creating subscription", st, "for", ch, ":", err)
 					}
 
