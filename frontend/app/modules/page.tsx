@@ -9,6 +9,8 @@ import AxyraBotPFP from "../images/AxyraBotPFP.png";
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://your-backend.onrender.com";
 const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL;
 
+const defaultLiveAnnouncementMessage = "$(channel) is now live! Streaming $(game) | $(title)";
+
 type ModuleRow = {
   name: string;
   label: string;
@@ -409,7 +411,7 @@ export default function ModulesPage() {
                               value={editMessage}
                               onChange={(e) => setEditMessage(e.target.value)}
                               className="w-full rounded-md border border-slate-700 bg-slate-900/80 px-2 py-1 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-accent/60"
-                              placeholder="$(channel) is now live! Streaming $(game) | $(title)"
+                              placeholder={defaultLiveAnnouncementMessage}
                             />
                             <p className="text-[11px] text-slate-400">
                               You can use $(channel), $(game), and $(title) as
@@ -429,6 +431,47 @@ export default function ModulesPage() {
                                 disabled={savingEdit}
                               >
                                 Cancel
+                              </button>
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  if (!login || !editingModule) return;
+                                  setSavingEdit(true);
+                                  setEditError(null);
+                                  try {
+                                    const res = await fetch(`${backendUrl}/modules/settings`, {
+                                      method: "POST",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({
+                                        login,
+                                        module: editingModule,
+                                        enabled: m.enabled,
+                                        resetToDefault: true,
+                                      }),
+                                    });
+                                    if (!res.ok) {
+                                      setEditError("Failed to restore default. Please try again.");
+                                    } else {
+                                      const nextMessage = defaultLiveAnnouncementMessage;
+                                      setModules((prev) =>
+                                        prev.map((mod) =>
+                                          mod.name === editingModule
+                                            ? { ...mod, message: nextMessage }
+                                            : mod,
+                                        ),
+                                      );
+                                      setEditMessage(nextMessage);
+                                    }
+                                  } catch {
+                                    setEditError("Network error while restoring default.");
+                                  } finally {
+                                    setSavingEdit(false);
+                                  }
+                                }}
+                                className="rounded-md border border-slate-700 px-3 py-1 text-xs font-medium text-slate-200 hover:bg-slate-800/80 disabled:opacity-60"
+                                disabled={savingEdit}
+                              >
+                                Restore Default
                               </button>
                               <button
                                 type="button"

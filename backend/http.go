@@ -265,10 +265,11 @@ func handleModuleSettings(w http.ResponseWriter, r *http.Request) {
 		}
 	case http.MethodPost:
 		var body struct {
-			Login   string `json:"login"`
-			Module  string `json:"module"`
-			Enabled bool   `json:"enabled"`
-			Message string `json:"message"`
+			Login         string `json:"login"`
+			Module        string `json:"module"`
+			Enabled       bool   `json:"enabled"`
+			Message       string `json:"message"`
+			ResetToDefault bool  `json:"resetToDefault"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			http.Error(w, "bad json", http.StatusBadRequest)
@@ -285,14 +286,24 @@ func handleModuleSettings(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "db error", http.StatusInternalServerError)
 			return
 		}
-		// If a non-empty message was provided, update the module's message
-		// template as well. The UI that only toggles enabled will omit this
-		// field so existing messages are preserved.
-		if strings.TrimSpace(body.Message) != "" {
-			if err := SetModuleMessage(login, module, body.Message); err != nil {
-				log.Println("failed to save module message:", err)
+		// If the caller requested restoring the default template, clear any
+		// stored custom message so the backend falls back to its default.
+		if body.ResetToDefault {
+			if err := SetModuleMessage(login, module, ""); err != nil {
+				log.Println("failed to reset module message to default:", err)
 				http.Error(w, "db error", http.StatusInternalServerError)
 				return
+			}
+		} else {
+			// If a non-empty message was provided, update the module's message
+			// template as well. The UI that only toggles enabled will omit this
+			// field so existing messages are preserved.
+			if strings.TrimSpace(body.Message) != "" {
+				if err := SetModuleMessage(login, module, body.Message); err != nil {
+					log.Println("failed to save module message:", err)
+					http.Error(w, "db error", http.StatusInternalServerError)
+					return
+				}
 			}
 		}
 		w.WriteHeader(http.StatusOK)

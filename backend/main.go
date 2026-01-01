@@ -400,9 +400,10 @@ func writeIRC(c *websocket.Conn, line string) {
 // renderLiveAnnouncementMessage builds the outgoing chat message for the
 // live announcement module. It supports simple template variables in the
 // stored message string:
-//   $(channel) - broadcaster login
-//   $(title)   - stream title (falls back to "Untitled stream")
-//   $(game)    - game/category name (falls back to "Just Chatting")
+//
+//	$(channel) - broadcaster login
+//	$(title)   - stream title (falls back to "Untitled stream")
+//	$(game)    - game/category name (falls back to "Just Chatting")
 func renderLiveAnnouncementMessage(channelLogin, title, game string) string {
 	if title == "" {
 		title = "Untitled stream"
