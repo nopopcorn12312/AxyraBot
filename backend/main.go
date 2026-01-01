@@ -951,7 +951,6 @@ func isChannelVIP(channelLogin, chatterLogin string) (bool, error) {
 	}
 	usersReq.Header.Set("Client-ID", clientID)
 	usersReq.Header.Set("Authorization", "Bearer "+access)
-	client := &http.Client{Timeout: 10 * time.Second}
 	usersResp, err := client.Do(usersReq)
 	if err != nil {
 		return false, err
