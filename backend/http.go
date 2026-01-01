@@ -22,6 +22,7 @@ func startHTTPServer(clientID, clientSecret string) {
 	mux.HandleFunc("/stream/update", withCORS(handleStreamUpdate(clientID)))
 	mux.HandleFunc("/commands/default-settings", withCORS(handleDefaultCommandSettings))
 	mux.HandleFunc("/commands/custom", withCORS(handleCustomCommands))
+	mux.HandleFunc("/commands/custom/update", withCORS(handleCustomCommandsUpdate))
 	addr := ":8080"
 	if p := os.Getenv("PORT"); p != "" {
 		addr = ":" + p
@@ -121,6 +122,7 @@ func handleCustomCommands(w http.ResponseWriter, r *http.Request) {
 			Response  string `json:"response"`
 			CreatedBy string `json:"createdBy"`
 			Enabled   bool   `json:"enabled"`
+			Role      string `json:"role"`
 		}{}
 		for _, c := range cmds {
 			out = append(out, struct {
@@ -128,11 +130,13 @@ func handleCustomCommands(w http.ResponseWriter, r *http.Request) {
 				Response  string `json:"response"`
 				CreatedBy string `json:"createdBy"`
 				Enabled   bool   `json:"enabled"`
+				Role      string `json:"role"`
 			}{
 				Name:      c.Command,
 				Response:  c.Response,
 				CreatedBy: c.CreatedBy,
 				Enabled:   c.Enabled,
+				Role:      c.Role,
 			})
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -167,6 +171,43 @@ func handleCustomCommands(w http.ResponseWriter, r *http.Request) {
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
+}
+
+// handleCustomCommandsUpdate updates the name, response text, and role for a
+// single custom command. It is intended for use by the broadcaster from the
+// dashboard UI.
+func handleCustomCommandsUpdate(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	var body struct {
+		Login           string `json:"login"`
+		OriginalCommand string `json:"originalCommand"`
+		Command         string `json:"command"`
+		Response        string `json:"response"`
+		Role            string `json:"role"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "bad json", http.StatusBadRequest)
+		return
+	}
+	login := strings.ToLower(strings.TrimSpace(body.Login))
+	orig := strings.TrimSpace(body.OriginalCommand)
+	cmd := strings.TrimSpace(body.Command)
+	resp := strings.TrimSpace(body.Response)
+	role := strings.TrimSpace(body.Role)
+	if login == "" || orig == "" || cmd == "" {
+		http.Error(w, "missing login, originalCommand, or command", http.StatusBadRequest)
+		return
+	}
+	if err := UpdateCustomCommand(login, orig, cmd, resp, role); err != nil {
+		log.Println("failed to update custom command:", err)
+		http.Error(w, "db error", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprint(w, "ok")
 }
 
 // withCORS wraps an HTTP handler and adds CORS headers so that the frontend

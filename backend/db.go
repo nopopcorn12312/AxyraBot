@@ -215,23 +215,25 @@ func UpsertCustomCommand(broadcasterLogin, createdBy, commandName, response stri
 	return err
 }
 
-// GetCustomCommandResponse returns the response string for a single custom
-// command trigger, or empty string if none exists.
-func GetCustomCommandResponse(broadcasterLogin, commandName string) (string, error) {
+// GetCustomCommandResponse returns the response and permitted role for a
+// single custom command trigger, or empty strings if none exists. Only
+// commands with enabled=true are returned.
+func GetCustomCommandResponse(broadcasterLogin, commandName string) (string, string, error) {
 	if db == nil {
-		return "", nil
+		return "", "", nil
 	}
 	broadcasterLogin = strings.ToLower(broadcasterLogin)
 	commandName = strings.ToLower(commandName)
 	var resp string
-	row := db.QueryRow(`SELECT response FROM custom_commands WHERE broadcaster_login=$1 AND command=$2 AND COALESCE(enabled, TRUE) = TRUE`, broadcasterLogin, commandName)
-	if err := row.Scan(&resp); err != nil {
+	var role string
+	row := db.QueryRow(`SELECT response, COALESCE(permitted_role, 'all') FROM custom_commands WHERE broadcaster_login=$1 AND command=$2 AND COALESCE(enabled, TRUE) = TRUE`, broadcasterLogin, commandName)
+	if err := row.Scan(&resp, &role); err != nil {
 		if err == sql.ErrNoRows {
-			return "", nil
+			return "", "", nil
 		}
-		return "", err
+		return "", "", err
 	}
-	return resp, nil
+	return resp, role, nil
 }
 
 // CustomCommand represents a single stored custom command.
@@ -241,6 +243,7 @@ type CustomCommand struct {
 	CreatedBy string
 	CreatedAt time.Time
 	Enabled   bool
+	Role      string
 }
 
 // ListCustomCommands returns all custom commands for a broadcaster.
@@ -250,14 +253,14 @@ func ListCustomCommands(broadcasterLogin string) ([]CustomCommand, error) {
 		return res, nil
 	}
 	broadcasterLogin = strings.ToLower(broadcasterLogin)
-	rows, err := db.Query(`SELECT command, response, COALESCE(created_by, ''), COALESCE(created_at, now()), COALESCE(enabled, TRUE) FROM custom_commands WHERE broadcaster_login=$1 ORDER BY command`, broadcasterLogin)
+	rows, err := db.Query(`SELECT command, response, COALESCE(created_by, ''), COALESCE(created_at, now()), COALESCE(enabled, TRUE), COALESCE(permitted_role, 'all') FROM custom_commands WHERE broadcaster_login=$1 ORDER BY command`, broadcasterLogin)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var c CustomCommand
-		if err := rows.Scan(&c.Command, &c.Response, &c.CreatedBy, &c.CreatedAt, &c.Enabled); err != nil {
+		if err := rows.Scan(&c.Command, &c.Response, &c.CreatedBy, &c.CreatedAt, &c.Enabled, &c.Role); err != nil {
 			return nil, err
 		}
 		res = append(res, c)
@@ -284,6 +287,24 @@ func SetCustomCommandEnabled(broadcasterLogin, commandName string, enabled bool)
 	broadcasterLogin = strings.ToLower(broadcasterLogin)
 	commandName = strings.ToLower(commandName)
 	_, err := db.Exec(`UPDATE custom_commands SET enabled=$3 WHERE broadcaster_login=$1 AND command=$2`, broadcasterLogin, commandName, enabled)
+	return err
+}
+
+// UpdateCustomCommand updates the name, response, and permitted role for a
+// custom command owned by a broadcaster. oldName is used to locate the
+// existing row in case the name is being changed.
+func UpdateCustomCommand(broadcasterLogin, oldName, newName, response, role string) error {
+	if db == nil {
+		return nil
+	}
+	broadcasterLogin = strings.ToLower(broadcasterLogin)
+	oldName = strings.ToLower(oldName)
+	newName = strings.ToLower(newName)
+	role = strings.ToLower(strings.TrimSpace(role))
+	if role == "" {
+		role = "all"
+	}
+	_, err := db.Exec(`UPDATE custom_commands SET command=$3, response=$4, permitted_role=$5 WHERE broadcaster_login=$1 AND command=$2`, broadcasterLogin, oldName, newName, response, role)
 	return err
 }
 
@@ -337,6 +358,11 @@ func EnsureSchema() error {
 
 	// Backfill: ensure custom_commands has an enabled flag for per-command toggles.
 	if _, err := db.Exec(`ALTER TABLE custom_commands ADD COLUMN IF NOT EXISTS enabled BOOLEAN NOT NULL DEFAULT TRUE`); err != nil {
+		return err
+	}
+	// Backfill: ensure custom_commands has a permitted_role field for
+	// per-command role restrictions.
+	if _, err := db.Exec(`ALTER TABLE custom_commands ADD COLUMN IF NOT EXISTS permitted_role TEXT NOT NULL DEFAULT 'all'`); err != nil {
 		return err
 	}
 

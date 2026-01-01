@@ -770,11 +770,13 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 		fields := strings.Fields(msgTrimmed)
 		if len(fields) > 0 {
 			trigger := strings.ToLower(fields[0])
-			if resp, err := GetCustomCommandResponse(channelLogin, trigger); err != nil {
+			if resp, role, err := GetCustomCommandResponse(channelLogin, trigger); err != nil {
 				log.Println("failed to look up custom command:", err)
 			} else if resp != "" {
-				if err := sendHelixChatMessage(channelLogin, resp); err != nil {
-					log.Println("failed to send custom command response:", err)
+				if canUseCustomCommand(channelLogin, chatterLogin, role) {
+					if err := sendHelixChatMessage(channelLogin, resp); err != nil {
+						log.Println("failed to send custom command response:", err)
+					}
 				}
 			}
 		}
@@ -864,6 +866,92 @@ func isBroadcasterOrModerator(channelLogin, chatterLogin string) (bool, error) {
 		return false, err
 	}
 	return len(modsRes.Data) > 0, nil
+}
+
+// isChannelVIP determines whether chatterLogin is a VIP in channelLogin
+// using the broadcaster's token and the Helix Get VIPs endpoint. This uses
+// the same pattern as isBroadcasterOrModerator but queries /channels/vips
+// instead of /moderation/moderators.
+func isChannelVIP(channelLogin, chatterLogin string) (bool, error) {
+	channelLogin = strings.ToLower(channelLogin)
+	chatterLogin = strings.ToLower(chatterLogin)
+	if channelLogin == chatterLogin {
+		// Treat the broadcaster as allowed when a command is restricted to VIPs.
+		return true, nil
+	}
+
+	clientID := os.Getenv("TWITCH_CLIENT_ID")
+	if clientID == "" {
+		return false, fmt.Errorf("TWITCH_CLIENT_ID not set")
+	}
+
+	access, err := GetUserAccessToken(channelLogin)
+	if err != nil || access == "" {
+		return false, fmt.Errorf("no user token for channel %s: %w", channelLogin, err)
+	}
+
+	// Resolve broadcaster id from their token
+	broadcasterID, err := getUserIDFromToken(access)
+	if err != nil {
+		return false, fmt.Errorf("getUserIDFromToken failed: %w", err)
+	}
+
+	// Resolve chatter user id via /users
+	usersReq, err := http.NewRequest("GET", "https://api.twitch.tv/helix/users?login="+url.QueryEscape(chatterLogin), nil)
+	if err != nil {
+		return false, err
+	}
+	usersReq.Header.Set("Client-ID", clientID)
+	usersReq.Header.Set("Authorization", "Bearer "+access)
+	client := &http.Client{Timeout: 10 * time.Second}
+	usersResp, err := client.Do(usersReq)
+	if err != nil {
+		return false, err
+	}
+	defer usersResp.Body.Close()
+	if usersResp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(usersResp.Body)
+		return false, fmt.Errorf("helix users status %s: %s", usersResp.Status, string(b))
+	}
+	var usersRes struct {
+		Data []struct {
+			ID string `json:"id"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(usersResp.Body).Decode(&usersRes); err != nil {
+		return false, err
+	}
+	if len(usersRes.Data) == 0 {
+		return false, nil
+	}
+	chatterID := usersRes.Data[0].ID
+
+	// Query VIP list for this specific user
+	vipsURL := fmt.Sprintf("https://api.twitch.tv/helix/channels/vips?broadcaster_id=%s&user_id=%s", url.QueryEscape(broadcasterID), url.QueryEscape(chatterID))
+	vipsReq, err := http.NewRequest("GET", vipsURL, nil)
+	if err != nil {
+		return false, err
+	}
+	vipsReq.Header.Set("Client-ID", clientID)
+	vipsReq.Header.Set("Authorization", "Bearer "+access)
+	vipsResp, err := client.Do(vipsReq)
+	if err != nil {
+		return false, err
+	}
+	defer vipsResp.Body.Close()
+	if vipsResp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(vipsResp.Body)
+		return false, fmt.Errorf("helix vips status %s: %s", vipsResp.Status, string(b))
+	}
+	var vipsRes struct {
+		Data []struct {
+			UserID string `json:"user_id"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(vipsResp.Body).Decode(&vipsRes); err != nil {
+		return false, err
+	}
+	return len(vipsRes.Data) > 0, nil
 }
 
 // timeoutUser applies a short timeout to the specified user in the channel
@@ -1447,6 +1535,44 @@ func isDefaultCommandEnabled(channelLogin, commandName string) bool {
 		return true
 	}
 	return enabled
+}
+
+// canUseCustomCommand returns true if a user with chatterLogin is allowed to
+// invoke a custom command in channelLogin based on the stored role string.
+// Supported roles: "all", "broadcaster", "moderator", "vip".
+func canUseCustomCommand(channelLogin, chatterLogin, role string) bool {
+	role = strings.ToLower(strings.TrimSpace(role))
+	if role == "" || role == "all" {
+		return true
+	}
+	// broadcaster always allowed for any role
+	if strings.EqualFold(channelLogin, chatterLogin) {
+		return true
+	}
+	switch role {
+	case "broadcaster":
+		// only broadcaster, which we've already checked above
+		return false
+	case "moderator":
+		ok, err := isBroadcasterOrModerator(channelLogin, chatterLogin)
+		if err != nil {
+			log.Println("canUseCustomCommand moderator check failed:", err)
+		}
+		return ok
+	case "vip":
+		// allow moderators and broadcaster via existing helper; otherwise check VIP list
+		if ok, err := isBroadcasterOrModerator(channelLogin, chatterLogin); err == nil && ok {
+			return true
+		}
+		ok, err := isChannelVIP(channelLogin, chatterLogin)
+		if err != nil {
+			log.Println("canUseCustomCommand vip check failed:", err)
+		}
+		return ok
+	default:
+		// unknown role: fail closed
+		return false
+	}
 }
 
 // getFrontendBaseURL returns the base URL for the frontend dashboard used in

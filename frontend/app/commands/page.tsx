@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import AxyraBotPFP from "../images/AxyraBotPFP.png";
 
@@ -19,6 +19,8 @@ const defaultCommands = [
   { name: "!uptime", description: "Shows how long the channel has been live this session.", enabled: true },
   { name: "!commands", description: "Links viewers to your channel's custom commands page.", enabled: true },
 ];
+
+type CustomCommandRole = "all" | "broadcaster" | "moderator" | "vip";
 
 type CommandToggleProps = {
   name: string;
@@ -54,7 +56,15 @@ export default function CommandsPage() {
   const [commandsOpen, setCommandsOpen] = useState(true);
   const [view, setView] = useState<"default" | "custom">("default");
   const [defaultSettings, setDefaultSettings] = useState<Record<string, boolean>>({});
-  const [customCommands, setCustomCommands] = useState<{ name: string; description: string; enabled: boolean }[]>([]);
+  const [customCommands, setCustomCommands] = useState<
+    { name: string; description: string; enabled: boolean; role: CustomCommandRole }[]
+  >([]);
+  const [editingCommand, setEditingCommand] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editResponse, setEditResponse] = useState("");
+  const [editRole, setEditRole] = useState<CustomCommandRole>("all");
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const pathname = usePathname();
 
@@ -125,12 +135,32 @@ export default function CommandsPage() {
           { signal: controller.signal },
         );
         if (!res.ok) return;
-        const data: { commands?: { name: string; response: string; enabled?: boolean }[] } = await res.json();
-        const rows = (data.commands || []).map((c) => ({
-          name: c.name,
-          description: c.response,
-          enabled: c.enabled ?? true,
-        }));
+        const data: {
+          commands?: { name: string; response: string; enabled?: boolean; role?: string }[];
+        } = await res.json();
+        const rows = (data.commands || []).map((c) => {
+          const rawRole = (c.role || "all").toLowerCase();
+          let role: CustomCommandRole = "all";
+          switch (rawRole) {
+            case "broadcaster":
+              role = "broadcaster";
+              break;
+            case "moderator":
+              role = "moderator";
+              break;
+            case "vip":
+              role = "vip";
+              break;
+            default:
+              role = "all";
+          }
+          return {
+            name: c.name,
+            description: c.response,
+            enabled: c.enabled ?? true,
+            role,
+          };
+        });
         setCustomCommands(rows);
       } catch {
         // ignore fetch errors for now
@@ -164,11 +194,6 @@ export default function CommandsPage() {
   const connectUrl = `${backendUrl}/auth/start?redirect=${encodeURIComponent(redirectTarget)}`;
   const primaryHref = isLoggedIn ? "/dashboard" : connectUrl;
   const primaryLabel = isLoggedIn ? "Dashboard" : "Login with Twitch";
-
-  const rows = useMemo(
-    () => (view === "default" ? defaultCommands : customCommands),
-    [view, customCommands],
-  );
 
   return (
     <main className="min-h-screen flex flex-col bg-[radial-gradient(circle_at_top,_#1e293b,_#020617)]">
@@ -360,72 +385,242 @@ export default function CommandsPage() {
                     <th className="px-4 py-3 font-semibold">Command</th>
                     <th className="px-4 py-3 font-semibold">Description</th>
                     <th className="px-4 py-3 font-semibold w-32 text-center">Enabled</th>
+                    <th className="px-4 py-3 font-semibold w-24 text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((row) => (
-                    <tr key={row.name} className="border-t border-slate-800 hover:bg-slate-900/60">
-                      <td className="px-4 py-2 font-mono text-slate-100">{row.name}</td>
-                      <td className="px-4 py-2 text-slate-300">{row.description}</td>
-                      <td className="px-4 py-2 text-center">
-                        {view === "default" && channelLogin && loggedInLogin === channelLogin ? (
-                            <CommandToggle
-                              name={row.name}
-                              enabled={defaultSettings[row.name] ?? true}
-                              onChange={async (next) => {
-                                setDefaultSettings((prev) => ({ ...prev, [row.name]: next }));
-                                try {
-                                  await fetch(`${backendUrl}/commands/default-settings`, {
-                                    method: "POST",
-                                    headers: { "Content-Type": "application/json" },
-                                    body: JSON.stringify({
-                                      login: channelLogin,
-                                      command: row.name,
-                                      enabled: next,
-                                    }),
-                                  });
-                                } catch {
-                                  // ignore network errors; UI state already updated
-                                }
-                              }}
-                            />
-                          ) : view === "custom" && isLoggedIn && channelLogin && loggedInLogin === channelLogin ? (
-                            <CommandToggle
-                              name={row.name}
-                              enabled={row.enabled}
-                              onChange={async (next) => {
-                                setCustomCommands((prev) =>
-                                  prev.map((cmd) =>
-                                    cmd.name === row.name ? { ...cmd, enabled: next } : cmd,
-                                  ),
-                                );
-                                try {
-                                  await fetch(`${backendUrl}/commands/custom`, {
-                                    method: "POST",
-                                    headers: { "Content-Type": "application/json" },
-                                    body: JSON.stringify({
-                                      login: channelLogin,
-                                      command: row.name,
-                                      enabled: next,
-                                    }),
-                                  });
-                                } catch {
-                                  // ignore network errors; UI state already updated
-                                }
-                              }}
-                            />
-                          ) : (
+                  {view === "default" && (
+                    <>
+                      {defaultCommands.map((row) => (
+                        <tr key={row.name} className="border-t border-slate-800 hover:bg-slate-900/60">
+                          <td className="px-4 py-2 font-mono text-slate-100">{row.name}</td>
+                          <td className="px-4 py-2 text-slate-300">{row.description}</td>
+                          <td className="px-4 py-2 text-center">
+                            {channelLogin && loggedInLogin === channelLogin ? (
+                              <CommandToggle
+                                name={row.name}
+                                enabled={defaultSettings[row.name] ?? true}
+                                onChange={async (next) => {
+                                  setDefaultSettings((prev) => ({ ...prev, [row.name]: next }));
+                                  try {
+                                    await fetch(`${backendUrl}/commands/default-settings`, {
+                                      method: "POST",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({
+                                        login: channelLogin,
+                                        command: row.name,
+                                        enabled: next,
+                                      }),
+                                    });
+                                  } catch {
+                                    // ignore network errors; UI state already updated
+                                  }
+                                }}
+                              />
+                            ) : (
+                              <span className="text-slate-500 text-xs">—</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-2 text-center">
                             <span className="text-slate-500 text-xs">—</span>
+                          </td>
+                        </tr>
+                      ))}
+                      {defaultCommands.length === 0 && (
+                        <tr>
+                          <td colSpan={4} className="px-4 py-4 text-center text-slate-400">
+                            No commands to display yet.
+                          </td>
+                        </tr>
+                      )}
+                    </>
+                  )}
+                  {view === "custom" && (
+                    <>
+                      {customCommands.map((row) => (
+                        <Fragment key={row.name}>
+                          <tr className="border-t border-slate-800 hover:bg-slate-900/60">
+                            <td className="px-4 py-2 font-mono text-slate-100">{row.name}</td>
+                            <td className="px-4 py-2 text-slate-300">{row.description}</td>
+                            <td className="px-4 py-2 text-center">
+                              {isLoggedIn && channelLogin && loggedInLogin === channelLogin ? (
+                                <CommandToggle
+                                  name={row.name}
+                                  enabled={row.enabled}
+                                  onChange={async (next) => {
+                                    setCustomCommands((prev) =>
+                                      prev.map((cmd) =>
+                                        cmd.name === row.name ? { ...cmd, enabled: next } : cmd,
+                                      ),
+                                    );
+                                    try {
+                                      await fetch(`${backendUrl}/commands/custom`, {
+                                        method: "POST",
+                                        headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({
+                                          login: channelLogin,
+                                          command: row.name,
+                                          enabled: next,
+                                        }),
+                                      });
+                                    } catch {
+                                      // ignore network errors; UI state already updated
+                                    }
+                                  }}
+                                />
+                              ) : (
+                                <span className="text-slate-500 text-xs">—</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-2 text-center">
+                              {isLoggedIn && channelLogin && loggedInLogin === channelLogin ? (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (editingCommand === row.name) {
+                                      setEditingCommand(null);
+                                      setEditError(null);
+                                      return;
+                                    }
+                                    setEditingCommand(row.name);
+                                    setEditName(row.name);
+                                    setEditResponse(row.description);
+                                    setEditRole(row.role);
+                                    setEditError(null);
+                                  }}
+                                  className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-700 bg-slate-900/80 text-slate-300 hover:bg-slate-800/80"
+                                >
+                                  <span className="sr-only">Edit command</span>
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    viewBox="0 0 20 20"
+                                    fill="currentColor"
+                                    className="h-3.5 w-3.5"
+                                  >
+                                    <path d="M13.586 3.586a2 2 0 0 1 2.828 2.828l-8.5 8.5a2 2 0 0 1-.878.518l-3 .8a.5.5 0 0 1-.606-.606l.8-3a2 2 0 0 1 .518-.878l8.5-8.5Z" />
+                                  </svg>
+                                </button>
+                              ) : (
+                                <span className="text-slate-500 text-xs">—</span>
+                              )}
+                            </td>
+                          </tr>
+                          {editingCommand === row.name && (
+                            <tr className="border-t border-slate-800 bg-slate-950/80">
+                              <td colSpan={4} className="px-4 py-3">
+                                <div className="flex flex-col gap-3">
+                                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+                                    <label className="text-xs font-medium text-slate-300 sm:w-32">Command name</label>
+                                    <input
+                                      type="text"
+                                      value={editName}
+                                      onChange={(e) => setEditName(e.target.value)}
+                                      className="flex-1 rounded-md border border-slate-700 bg-slate-900/80 px-2 py-1 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-accent/60"
+                                    />
+                                  </div>
+                                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+                                    <label className="text-xs font-medium text-slate-300 sm:w-32">Response</label>
+                                    <input
+                                      type="text"
+                                      value={editResponse}
+                                      onChange={(e) => setEditResponse(e.target.value)}
+                                      className="flex-1 rounded-md border border-slate-700 bg-slate-900/80 px-2 py-1 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-accent/60"
+                                    />
+                                  </div>
+                                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+                                    <label className="text-xs font-medium text-slate-300 sm:w-32">Who can use</label>
+                                    <select
+                                      value={editRole}
+                                      onChange={(e) => setEditRole(e.target.value as CustomCommandRole)}
+                                      className="flex-1 rounded-md border border-slate-700 bg-slate-900/80 px-2 py-1 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-accent/60"
+                                    >
+                                      <option value="all">All users</option>
+                                      <option value="broadcaster">Broadcaster only</option>
+                                      <option value="moderator">Broadcaster & moderators</option>
+                                      <option value="vip">Broadcaster, mods & VIPs</option>
+                                    </select>
+                                  </div>
+                                  {editError && (
+                                    <div className="text-xs text-red-400">{editError}</div>
+                                  )}
+                                  <div className="mt-1 flex gap-2 justify-end">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setEditingCommand(null);
+                                        setEditError(null);
+                                      }}
+                                      className="rounded-md border border-slate-700 px-3 py-1 text-xs font-medium text-slate-200 hover:bg-slate-800/80"
+                                      disabled={savingEdit}
+                                    >
+                                      Cancel
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={async () => {
+                                        if (!channelLogin || !editingCommand) return;
+                                        const trimmedName = editName.trim();
+                                        if (!trimmedName) {
+                                          setEditError("Command name cannot be empty.");
+                                          return;
+                                        }
+                                        setSavingEdit(true);
+                                        setEditError(null);
+                                        try {
+                                          const res = await fetch(`${backendUrl}/commands/custom/update`, {
+                                            method: "POST",
+                                            headers: { "Content-Type": "application/json" },
+                                            body: JSON.stringify({
+                                              login: channelLogin,
+                                              originalCommand: editingCommand,
+                                              command: trimmedName,
+                                              response: editResponse,
+                                              role: editRole,
+                                            }),
+                                          });
+                                          if (!res.ok) {
+                                            setEditError("Failed to save changes. Please try again.");
+                                          } else {
+                                            setCustomCommands((prev) =>
+                                              prev.map((cmd) =>
+                                                cmd.name === editingCommand
+                                                  ? {
+                                                      ...cmd,
+                                                      name: trimmedName,
+                                                      description: editResponse,
+                                                      role: editRole,
+                                                    }
+                                                  : cmd,
+                                              ),
+                                            );
+                                            setEditingCommand(null);
+                                          }
+                                        } catch {
+                                          setEditError("Network error while saving changes.");
+                                        } finally {
+                                          setSavingEdit(false);
+                                        }
+                                      }}
+                                      className="rounded-md bg-accent px-3 py-1 text-xs font-medium text-white hover:bg-accent/90 disabled:opacity-60"
+                                      disabled={savingEdit}
+                                    >
+                                      {savingEdit ? "Saving..." : "Save changes"}
+                                    </button>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
                           )}
-                      </td>
-                    </tr>
-                  ))}
-                  {rows.length === 0 && (
-                    <tr>
-                      <td colSpan={3} className="px-4 py-4 text-center text-slate-400">
-                        No commands to display yet.
-                      </td>
-                    </tr>
+                        </Fragment>
+                      ))}
+                      {customCommands.length === 0 && (
+                        <tr>
+                          <td colSpan={4} className="px-4 py-4 text-center text-slate-400">
+                            No commands to display yet.
+                          </td>
+                        </tr>
+                      )}
+                    </>
                   )}
                 </tbody>
               </table>
