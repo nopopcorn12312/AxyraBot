@@ -33,7 +33,7 @@ var (
 	appAccessToken      string
 
 	// in-memory tracking of recent chatters per channel for template variables
-	chattersMu       sync.Mutex
+	chattersMu        sync.Mutex
 	chattersByChannel = map[string]map[string]time.Time{}
 
 	// cached live-status per channel to avoid hitting Helix on every message
@@ -785,8 +785,15 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 				log.Println("failed to look up custom command:", err)
 			} else if resp != "" {
 				if canUseCustomCommand(channelLogin, chatterLogin, role) {
-					// Render template variables like $(user) and $(random.chatter)
-					text := renderCustomCommandResponse(channelLogin, chatterLogin, resp)
+					// Render template variables like $(user), $(touser), and $(random.chatter).
+					// For $(touser), use the text after the trigger word, e.g.
+					//   !hug someName  => touser = "someName".
+					toUser := ""
+					if len(fields) > 1 {
+						toUser = strings.TrimSpace(strings.Join(fields[1:], " "))
+						toUser = strings.TrimPrefix(toUser, "@")
+					}
+					text := renderCustomCommandResponse(channelLogin, chatterLogin, toUser, resp)
 					if err := sendHelixChatMessage(channelLogin, text); err != nil {
 						log.Println("failed to send custom command response:", err)
 					}
@@ -1725,13 +1732,17 @@ func getRandomChatterFromAPI(channelLogin string) string {
 
 // renderCustomCommandResponse applies simple template substitutions to a
 // stored custom command response string. Supported placeholders:
-//   $(user)           - the login of the user who triggered the command
-//   $(channel)        - the channel's login
-//   $(random.chatter) - a random recent chatter in the channel (falls back to
-//                       $(user) if none are available)
-func renderCustomCommandResponse(channelLogin, chatterLogin, template string) string {
+//
+//	$(user)           - the login of the user who triggered the command
+//	$(channel)        - the channel's login
+//	$(touser)         - the argument text after the trigger, e.g. for
+//	                    "!hug someName" this would be "someName" (without @)
+//	$(random.chatter) - a random current chatter in the channel (falls back
+//	                    to $(user) if none are available)
+func renderCustomCommandResponse(channelLogin, chatterLogin, toUser, template string) string {
 	channelLogin = strings.ToLower(strings.TrimSpace(channelLogin))
 	chatterLogin = strings.TrimSpace(chatterLogin)
+	toUser = strings.TrimSpace(toUser)
 	if template == "" {
 		return ""
 	}
@@ -1739,6 +1750,10 @@ func renderCustomCommandResponse(channelLogin, chatterLogin, template string) st
 	// simple replacements for user and channel
 	out = strings.ReplaceAll(out, "$(user)", chatterLogin)
 	out = strings.ReplaceAll(out, "$(channel)", channelLogin)
+	if toUser == "" {
+		toUser = chatterLogin
+	}
+	out = strings.ReplaceAll(out, "$(touser)", toUser)
 	// random chatter: compute once per render so multiple occurrences are
 	// consistent within a single message.
 	rc := getRandomChatterFromAPI(channelLogin)
