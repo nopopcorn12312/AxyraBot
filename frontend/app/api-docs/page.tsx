@@ -127,48 +127,27 @@ export default function ApiDocsPage() {
             <Link
               href="/"
               className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
-                pathname === "/" ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]" : "text-slate-200 hover:bg-slate-800/80"
+                pathname === "/"
+                  ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
+                  : "text-slate-200 hover:bg-slate-800/80"
               }`}
             >
               <span className="text-lg">🏠</span>
               {sidebarOpen && <span>Home</span>}
             </Link>
+
             <Link
               href="/dashboard"
               className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
-                pathname === "/dashboard" ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]" : "text-slate-200 hover:bg-slate-800/80"
+                pathname === "/dashboard"
+                  ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
+                  : "text-slate-200 hover:bg-slate-800/80"
               }`}
             >
               <span className="text-lg">📊</span>
               {sidebarOpen && <span>Dashboard</span>}
             </Link>
-            <Link
-              href="/privacy"
-              className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
-                pathname === "/privacy" ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]" : "text-slate-200 hover:bg-slate-800/80"
-              }`}
-            >
-              <span className="text-lg">🔒</span>
-              {sidebarOpen && <span>Privacy</span>}
-            </Link>
-            <Link
-              href="/terms"
-              className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
-                pathname === "/terms" ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]" : "text-slate-200 hover:bg-slate-800/80"
-              }`}
-            >
-              <span className="text-lg">📜</span>
-              {sidebarOpen && <span>Terms</span>}
-            </Link>
-            <Link
-              href="/api-docs"
-              className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
-                pathname === "/api-docs" ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]" : "text-slate-200 hover:bg-slate-800/80"
-              }`}
-            >
-              <span className="text-lg">📘</span>
-              {sidebarOpen && <span>API Docs</span>}
-            </Link>
+
             <button
               type="button"
               onClick={() => setCommandsOpen((open) => !open)}
@@ -202,6 +181,46 @@ export default function ApiDocsPage() {
                 </Link>
               </div>
             )}
+
+            <Link
+              href="/modules"
+              className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                pathname === "/modules" ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]" : "text-slate-200 hover:bg-slate-800/80"
+              }`}
+            >
+              <span className="text-lg">🧩</span>
+              {sidebarOpen && <span>Modules</span>}
+            </Link>
+
+            <Link
+              href="/privacy"
+              className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                pathname === "/privacy" ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]" : "text-slate-200 hover:bg-slate-800/80"
+              }`}
+            >
+              <span className="text-lg">🔒</span>
+              {sidebarOpen && <span>Privacy</span>}
+            </Link>
+
+            <Link
+              href="/terms"
+              className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                pathname === "/terms" ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]" : "text-slate-200 hover:bg-slate-800/80"
+              }`}
+            >
+              <span className="text-lg">📜</span>
+              {sidebarOpen && <span>Terms</span>}
+            </Link>
+
+            <Link
+              href="/api-docs"
+              className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                pathname === "/api-docs" ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]" : "text-slate-200 hover:bg-slate-800/80"
+              }`}
+            >
+              <span className="text-lg">📘</span>
+              {sidebarOpen && <span>API Docs</span>}
+            </Link>
           </nav>
         </div>
 
