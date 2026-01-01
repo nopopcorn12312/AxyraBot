@@ -90,6 +90,47 @@ func GetUserAccessToken(login string) (string, error) {
 	return token, nil
 }
 
+// UpdateWatchTime increments the watch_time counter for a viewer in a
+// broadcaster's channel based on the provided timestamp. It caps each
+// increment to a few minutes to avoid large jumps between sparse messages.
+func UpdateWatchTime(broadcasterLogin, viewerLogin string, now time.Time) error {
+	if db == nil {
+		return nil
+	}
+	if broadcasterLogin == "" || viewerLogin == "" {
+		return nil
+	}
+	_, err := db.Exec(`
+	INSERT INTO watch_time (broadcaster_login, viewer_login, total_seconds, last_seen_at)
+	VALUES ($1, $2, 0, $3)
+	ON CONFLICT (broadcaster_login, viewer_login) DO UPDATE
+	SET total_seconds = watch_time.total_seconds +
+	  LEAST(
+	    GREATEST(EXTRACT(EPOCH FROM ($3 - COALESCE(watch_time.last_seen_at, $3))), 0),
+	    300
+	  ),
+	    last_seen_at = $3;
+	`, broadcasterLogin, viewerLogin, now)
+	return err
+}
+
+// GetWatchTimeSeconds returns the cumulative watch time (in seconds) that a
+// viewer has spent in a broadcaster's channel, or 0 if no record exists.
+func GetWatchTimeSeconds(broadcasterLogin, viewerLogin string) (int64, error) {
+	if db == nil {
+		return 0, nil
+	}
+	var secs int64
+	row := db.QueryRow(`SELECT total_seconds FROM watch_time WHERE broadcaster_login=$1 AND viewer_login=$2`, broadcasterLogin, viewerLogin)
+	if err := row.Scan(&secs); err != nil {
+		if err == sql.ErrNoRows {
+			return 0, nil
+		}
+		return 0, err
+	}
+	return secs, nil
+}
+
 func EnsureSchema() error {
 	// create simple tables if not exist
 	_, err := db.Exec(`
@@ -108,6 +149,14 @@ func EnsureSchema() error {
 	 owner_user TEXT,
 	 joined BOOLEAN DEFAULT FALSE,
 	 joined_at TIMESTAMPTZ
+	);
+	CREATE TABLE IF NOT EXISTS watch_time (
+	 id SERIAL PRIMARY KEY,
+	 broadcaster_login TEXT NOT NULL,
+	 viewer_login TEXT NOT NULL,
+	 total_seconds BIGINT NOT NULL DEFAULT 0,
+	 last_seen_at TIMESTAMPTZ,
+	 UNIQUE (broadcaster_login, viewer_login)
 	);
 	`)
 	if err != nil {

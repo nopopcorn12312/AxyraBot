@@ -356,6 +356,13 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 	channelLogin = strings.ToLower(channelLogin)
 	log.Printf("[CHAT] channel=%s user=%s msg=%q", channelLogin, chatterLogin, message)
 
+	// update approximate watch time based on chat activity
+	if db != nil {
+		if err := UpdateWatchTime(channelLogin, strings.ToLower(chatterLogin), time.Now().UTC()); err != nil {
+			log.Println("failed to update watch time:", err)
+		}
+	}
+
 	botName := os.Getenv("TWITCH_BOT_USERNAME")
 	if botName == "" {
 		botName = "AxyraBot"
@@ -471,6 +478,71 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 		}
 		if err := sendHelixChatMessage(channelLogin, fmt.Sprintf("%s's account was created %s ago", targetDisplay, ageText)); err != nil {
 			log.Println("failed to send !accountage response:", err)
+		}
+	}
+
+	// !followage [username] - report how long a user has been following the broadcaster
+	if strings.HasPrefix(message, "!followage") {
+		arg := strings.TrimSpace(strings.TrimPrefix(message, "!followage"))
+		targetDisplay := chatterLogin
+		targetLogin := chatterLogin
+		if arg != "" {
+			clean := strings.TrimSpace(arg)
+			clean = strings.TrimPrefix(clean, "@")
+			if clean != "" {
+				targetDisplay = clean
+				targetLogin = clean
+			}
+		}
+		ageText, err := getFollowAgeString(channelLogin, targetLogin)
+		if err != nil {
+			log.Println("failed to get follow age:", err)
+			return
+		}
+		if err := sendHelixChatMessage(channelLogin, fmt.Sprintf("%s has been following %s for %s", targetDisplay, channelLogin, ageText)); err != nil {
+			log.Println("failed to send !followage response:", err)
+		}
+	}
+
+	// !uptime - report how long the broadcaster has been live this session
+	if strings.HasPrefix(message, "!uptime") {
+		uptime, err := getStreamUptimeString(channelLogin)
+		if err != nil {
+			log.Println("failed to get uptime:", err)
+			return
+		}
+		if uptime == "" {
+			// not live
+			if err := sendHelixChatMessage(channelLogin, fmt.Sprintf("%s is not currently live", channelLogin)); err != nil {
+				log.Println("failed to send !uptime offline response:", err)
+			}
+			return
+		}
+		if err := sendHelixChatMessage(channelLogin, fmt.Sprintf("%s has been live for %s", channelLogin, uptime)); err != nil {
+			log.Println("failed to send !uptime response:", err)
+		}
+	}
+
+	// !watchtime [username] - approximate time a user spent watching this channel
+	if strings.HasPrefix(message, "!watchtime") {
+		arg := strings.TrimSpace(strings.TrimPrefix(message, "!watchtime"))
+		targetDisplay := chatterLogin
+		targetLogin := strings.ToLower(chatterLogin)
+		if arg != "" {
+			clean := strings.TrimSpace(arg)
+			clean = strings.TrimPrefix(clean, "@")
+			if clean != "" {
+				targetDisplay = clean
+				targetLogin = strings.ToLower(clean)
+			}
+		}
+		wt, err := getWatchTimeString(channelLogin, targetLogin)
+		if err != nil {
+			log.Println("failed to get watch time:", err)
+			return
+		}
+		if err := sendHelixChatMessage(channelLogin, fmt.Sprintf("%s has spent %s watching %s", targetDisplay, wt, channelLogin)); err != nil {
+			log.Println("failed to send !watchtime response:", err)
 		}
 	}
 }
@@ -616,9 +688,9 @@ func timeoutUser(channelLogin, targetLogin string, seconds int, reason string) e
 
 	body := map[string]interface{}{
 		"data": map[string]interface{}{
-			"user_id": targetID,
+			"user_id":  targetID,
 			"duration": seconds,
-			"reason":  reason,
+			"reason":   reason,
 		},
 	}
 	buf, _ := json.Marshal(body)
@@ -792,6 +864,265 @@ func getAccountAgeString(login string) (string, error) {
 	hours := totalHours % 24
 
 	return fmt.Sprintf("%d years, %d months, %d days, %d hours", years, months, days, hours), nil
+}
+
+// getFollowAgeString retrieves how long followerLogin has been following
+// broadcasterLogin and returns a human-readable age including minutes.
+func getFollowAgeString(broadcasterLogin, followerLogin string) (string, error) {
+	broadcasterLogin = strings.ToLower(strings.TrimPrefix(broadcasterLogin, "@"))
+	followerLogin = strings.ToLower(strings.TrimPrefix(followerLogin, "@"))
+	if broadcasterLogin == "" || followerLogin == "" {
+		return "", fmt.Errorf("empty login for follow age")
+	}
+
+	clientID := os.Getenv("TWITCH_CLIENT_ID")
+	if clientID == "" {
+		return "", fmt.Errorf("TWITCH_CLIENT_ID not set")
+	}
+	botOAuth := os.Getenv("TWITCH_BOT_OAUTH")
+	accessToken := strings.TrimPrefix(botOAuth, "oauth:")
+	if accessToken == "" {
+		return "", fmt.Errorf("TWITCH_BOT_OAUTH not set or empty")
+	}
+
+	client := &http.Client{Timeout: 10 * time.Second}
+
+	// resolve broadcaster id
+	usersReq, err := http.NewRequest("GET", "https://api.twitch.tv/helix/users?login="+url.QueryEscape(broadcasterLogin), nil)
+	if err != nil {
+		return "", err
+	}
+	usersReq.Header.Set("Client-ID", clientID)
+	usersReq.Header.Set("Authorization", "Bearer "+accessToken)
+	usersResp, err := client.Do(usersReq)
+	if err != nil {
+		return "", err
+	}
+	defer usersResp.Body.Close()
+	if usersResp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(usersResp.Body)
+		return "", fmt.Errorf("helix users status %s: %s", usersResp.Status, string(b))
+	}
+	var usersRes struct {
+		Data []struct {
+			ID string `json:"id"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(usersResp.Body).Decode(&usersRes); err != nil {
+		return "", err
+	}
+	if len(usersRes.Data) == 0 {
+		return "", fmt.Errorf("broadcaster not found: %s", broadcasterLogin)
+	}
+	broadcasterID := usersRes.Data[0].ID
+
+	// resolve follower id
+	followerReq, err := http.NewRequest("GET", "https://api.twitch.tv/helix/users?login="+url.QueryEscape(followerLogin), nil)
+	if err != nil {
+		return "", err
+	}
+	followerReq.Header.Set("Client-ID", clientID)
+	followerReq.Header.Set("Authorization", "Bearer "+accessToken)
+	followerResp, err := client.Do(followerReq)
+	if err != nil {
+		return "", err
+	}
+	defer followerResp.Body.Close()
+	if followerResp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(followerResp.Body)
+		return "", fmt.Errorf("helix users status %s: %s", followerResp.Status, string(b))
+	}
+	var followerRes struct {
+		Data []struct {
+			ID string `json:"id"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(followerResp.Body).Decode(&followerRes); err != nil {
+		return "", err
+	}
+	if len(followerRes.Data) == 0 {
+		return "", fmt.Errorf("user not found: %s", followerLogin)
+	}
+	followerID := followerRes.Data[0].ID
+
+	// query channel followers for this specific user
+	followURL := fmt.Sprintf("https://api.twitch.tv/helix/channels/followers?broadcaster_id=%s&user_id=%s", url.QueryEscape(broadcasterID), url.QueryEscape(followerID))
+	followReq, err := http.NewRequest("GET", followURL, nil)
+	if err != nil {
+		return "", err
+	}
+	followReq.Header.Set("Client-ID", clientID)
+	followReq.Header.Set("Authorization", "Bearer "+accessToken)
+	followResp, err := client.Do(followReq)
+	if err != nil {
+		return "", err
+	}
+	defer followResp.Body.Close()
+	if followResp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(followResp.Body)
+		return "", fmt.Errorf("helix followers status %s: %s", followResp.Status, string(b))
+	}
+	var followRes struct {
+		Data []struct {
+			FollowedAt string `json:"followed_at"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(followResp.Body).Decode(&followRes); err != nil {
+		return "", err
+	}
+	if len(followRes.Data) == 0 || followRes.Data[0].FollowedAt == "" {
+		return "", fmt.Errorf("%s does not follow %s", followerLogin, broadcasterLogin)
+	}
+	followedAt, err := time.Parse(time.RFC3339, followRes.Data[0].FollowedAt)
+	if err != nil {
+		return "", err
+	}
+
+	d := time.Since(followedAt)
+	if d < 0 {
+		d = 0
+	}
+	totalMinutes := int(d.Minutes())
+	years := totalMinutes / (60 * 24 * 365)
+	remainingDays := (totalMinutes / (60 * 24)) % 365
+	months := remainingDays / 30
+	days := remainingDays % 30
+	hours := (totalMinutes / 60) % 24
+	minutes := totalMinutes % 60
+
+	return fmt.Sprintf("%d years, %d months, %d days, %d hours, %d minutes", years, months, days, hours, minutes), nil
+}
+
+// getStreamUptimeString returns how long the broadcaster has been live this
+// session by querying Helix Get Streams and formatting the duration.
+func getStreamUptimeString(channelLogin string) (string, error) {
+	channelLogin = strings.ToLower(strings.TrimPrefix(channelLogin, "@"))
+	if channelLogin == "" {
+		return "", fmt.Errorf("empty channel login for uptime")
+	}
+
+	clientID := os.Getenv("TWITCH_CLIENT_ID")
+	if clientID == "" {
+		return "", fmt.Errorf("TWITCH_CLIENT_ID not set")
+	}
+	clientSecret := os.Getenv("TWITCH_CLIENT_SECRET")
+	if clientSecret == "" {
+		return "", fmt.Errorf("TWITCH_CLIENT_SECRET not set")
+	}
+
+	// ensure we have an app access token
+	helixChatMu.Lock()
+	token := appAccessToken
+	helixChatMu.Unlock()
+	if token == "" {
+		var err error
+		token, err = getAppAccessToken(clientID, clientSecret)
+		if err != nil {
+			return "", fmt.Errorf("failed to get app access token: %w", err)
+		}
+		helixChatMu.Lock()
+		appAccessToken = token
+		helixChatMu.Unlock()
+	}
+
+	// resolve broadcaster id
+	reqUser, err := http.NewRequest("GET", "https://api.twitch.tv/helix/users?login="+url.QueryEscape(channelLogin), nil)
+	if err != nil {
+		return "", err
+	}
+	reqUser.Header.Set("Client-ID", clientID)
+	reqUser.Header.Set("Authorization", "Bearer "+token)
+	client := &http.Client{Timeout: 10 * time.Second}
+	respUser, err := client.Do(reqUser)
+	if err != nil {
+		return "", err
+	}
+	defer respUser.Body.Close()
+	if respUser.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(respUser.Body)
+		return "", fmt.Errorf("helix users status %s: %s", respUser.Status, string(b))
+	}
+	var userRes struct {
+		Data []struct {
+			ID string `json:"id"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(respUser.Body).Decode(&userRes); err != nil {
+		return "", err
+	}
+	if len(userRes.Data) == 0 {
+		return "", fmt.Errorf("broadcaster not found: %s", channelLogin)
+	}
+	broadcasterID := userRes.Data[0].ID
+
+	// query current stream
+	streamsURL := fmt.Sprintf("https://api.twitch.tv/helix/streams?user_id=%s", url.QueryEscape(broadcasterID))
+	reqStreams, err := http.NewRequest("GET", streamsURL, nil)
+	if err != nil {
+		return "", err
+	}
+	reqStreams.Header.Set("Client-ID", clientID)
+	reqStreams.Header.Set("Authorization", "Bearer "+token)
+	respStreams, err := client.Do(reqStreams)
+	if err != nil {
+		return "", err
+	}
+	defer respStreams.Body.Close()
+	if respStreams.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(respStreams.Body)
+		return "", fmt.Errorf("helix streams status %s: %s", respStreams.Status, string(b))
+	}
+	var streamsRes struct {
+		Data []struct {
+			StartedAt string `json:"started_at"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(respStreams.Body).Decode(&streamsRes); err != nil {
+		return "", err
+	}
+	if len(streamsRes.Data) == 0 || streamsRes.Data[0].StartedAt == "" {
+		// not live
+		return "", nil
+	}
+	started, err := time.Parse(time.RFC3339, streamsRes.Data[0].StartedAt)
+	if err != nil {
+		return "", err
+	}
+
+	d := time.Since(started)
+	if d < 0 {
+		d = 0
+	}
+	totalMinutes := int(d.Minutes())
+	years := totalMinutes / (60 * 24 * 365)
+	remainingDays := (totalMinutes / (60 * 24)) % 365
+	months := remainingDays / 30
+	days := remainingDays % 30
+	hours := (totalMinutes / 60) % 24
+	minutes := totalMinutes % 60
+
+	return fmt.Sprintf("%d years, %d months, %d days, %d hours, %d minutes", years, months, days, hours, minutes), nil
+}
+
+// getWatchTimeString converts stored watch time seconds into a
+// human-readable years/months/days/hours/minutes string.
+func getWatchTimeString(broadcasterLogin, viewerLogin string) (string, error) {
+	secs, err := GetWatchTimeSeconds(strings.ToLower(broadcasterLogin), strings.ToLower(viewerLogin))
+	if err != nil {
+		return "", err
+	}
+	if secs < 0 {
+		secs = 0
+	}
+	totalMinutes := int(secs / 60)
+	years := totalMinutes / (60 * 24 * 365)
+	remainingDays := (totalMinutes / (60 * 24)) % 365
+	months := remainingDays / 30
+	days := remainingDays % 30
+	hours := (totalMinutes / 60) % 24
+	minutes := totalMinutes % 60
+
+	return fmt.Sprintf("%d years, %d months, %d days, %d hours, %d minutes", years, months, days, hours, minutes), nil
 }
 
 // active channel helpers
