@@ -879,6 +879,13 @@ func isBroadcasterOrModerator(channelLogin, chatterLogin string) (bool, error) {
 	defer modsResp.Body.Close()
 	if modsResp.StatusCode != http.StatusOK {
 		b, _ := io.ReadAll(modsResp.Body)
+		// If the bot token is missing moderation scopes, treat the user as not a
+		// moderator instead of failing the command, but log once for visibility.
+		if modsResp.StatusCode == http.StatusUnauthorized &&
+			strings.Contains(string(b), "Missing scope") {
+			log.Println("isBroadcasterOrModerator: missing moderation scope on bot token; treating as not-moderator")
+			return false, nil
+		}
 		return false, fmt.Errorf("helix moderators status %s: %s", modsResp.Status, string(b))
 	}
 	var modsRes struct {
@@ -988,6 +995,13 @@ func isChannelVIP(channelLogin, chatterLogin string) (bool, error) {
 	defer vipsResp.Body.Close()
 	if vipsResp.StatusCode != http.StatusOK {
 		b, _ := io.ReadAll(vipsResp.Body)
+		// If the bot token is missing VIP scopes, treat the user as not a VIP
+		// instead of failing the command, but log once for visibility.
+		if vipsResp.StatusCode == http.StatusUnauthorized &&
+			strings.Contains(string(b), "Missing scope") {
+			log.Println("isChannelVIP: missing VIP scope on bot token; treating as not-VIP")
+			return false, nil
+		}
 		return false, fmt.Errorf("helix vips status %s: %s", vipsResp.Status, string(b))
 	}
 	var vipsRes struct {
