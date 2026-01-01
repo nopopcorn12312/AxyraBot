@@ -415,6 +415,10 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 		}
 		if err := updateStreamInfoFromChat(channelLogin, text, ""); err != nil {
 			log.Println("failed to update title from !title:", err)
+		} else {
+			if err := sendHelixChatMessage(channelLogin, fmt.Sprintf("New title is set: %s", text)); err != nil {
+				log.Println("failed to send !title confirmation:", err)
+			}
 		}
 	}
 
@@ -439,6 +443,34 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 		}
 		if err := updateStreamInfoFromChat(channelLogin, "", text); err != nil {
 			log.Println("failed to update category from !game:", err)
+		} else {
+			if err := sendHelixChatMessage(channelLogin, fmt.Sprintf("New category %s", text)); err != nil {
+				log.Println("failed to send !game confirmation:", err)
+			}
+		}
+	}
+
+	// !accountage [username] - report when a user's account was created
+	if strings.HasPrefix(message, "!accountage") {
+		arg := strings.TrimSpace(strings.TrimPrefix(message, "!accountage"))
+		targetDisplay := chatterLogin
+		targetLogin := chatterLogin
+		if arg != "" {
+			// allow mentions like @user
+			clean := strings.TrimSpace(arg)
+			clean = strings.TrimPrefix(clean, "@")
+			if clean != "" {
+				targetDisplay = clean
+				targetLogin = clean
+			}
+		}
+		ageText, err := getAccountAgeString(targetLogin)
+		if err != nil {
+			log.Println("failed to get account age:", err)
+			return
+		}
+		if err := sendHelixChatMessage(channelLogin, fmt.Sprintf("%s's account was created %s ago", targetDisplay, ageText)); err != nil {
+			log.Println("failed to send !accountage response:", err)
 		}
 	}
 }
@@ -682,6 +714,84 @@ func updateStreamInfoFromChat(channelLogin, title, category string) error {
 		return fmt.Errorf("helix channels patch status %s: %s", resp.Status, string(b))
 	}
 	return nil
+}
+
+// getAccountAgeString retrieves a Twitch user's creation time and returns
+// a human-readable age in years, months, days, and hours.
+func getAccountAgeString(login string) (string, error) {
+	login = strings.ToLower(strings.TrimPrefix(login, "@"))
+	if login == "" {
+		return "", fmt.Errorf("empty login for account age")
+	}
+
+	clientID := os.Getenv("TWITCH_CLIENT_ID")
+	if clientID == "" {
+		return "", fmt.Errorf("TWITCH_CLIENT_ID not set")
+	}
+	clientSecret := os.Getenv("TWITCH_CLIENT_SECRET")
+	if clientSecret == "" {
+		return "", fmt.Errorf("TWITCH_CLIENT_SECRET not set")
+	}
+
+	// ensure we have an app access token for Helix
+	helixChatMu.Lock()
+	token := appAccessToken
+	helixChatMu.Unlock()
+	if token == "" {
+		var err error
+		token, err = getAppAccessToken(clientID, clientSecret)
+		if err != nil {
+			return "", fmt.Errorf("failed to get app access token: %w", err)
+		}
+		helixChatMu.Lock()
+		appAccessToken = token
+		helixChatMu.Unlock()
+	}
+
+	req, err := http.NewRequest("GET", "https://api.twitch.tv/helix/users?login="+url.QueryEscape(login), nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Client-ID", clientID)
+	req.Header.Set("Authorization", "Bearer "+token)
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("helix users status %s: %s", resp.Status, string(b))
+	}
+	var res struct {
+		Data []struct {
+			CreatedAt string `json:"created_at"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+		return "", err
+	}
+	if len(res.Data) == 0 || res.Data[0].CreatedAt == "" {
+		return "", fmt.Errorf("user not found: %s", login)
+	}
+	created, err := time.Parse(time.RFC3339, res.Data[0].CreatedAt)
+	if err != nil {
+		return "", err
+	}
+
+	d := time.Since(created)
+	if d < 0 {
+		d = 0
+	}
+	totalHours := int(d.Hours())
+	years := totalHours / (24 * 365)
+	remainingDays := (totalHours / 24) % 365
+	months := remainingDays / 30
+	days := remainingDays % 30
+	hours := totalHours % 24
+
+	return fmt.Sprintf("%d years, %d months, %d days, %d hours", years, months, days, hours), nil
 }
 
 // active channel helpers
