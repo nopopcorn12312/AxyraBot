@@ -83,34 +83,55 @@ export default function DashboardPage() {
       .finally(() => setLoadingStream(false));
   }, [login]);
 
-  // Load recent activity for the logged-in channel.
+  // Load recent activity for the logged-in channel and auto-refresh on an interval.
   useEffect(() => {
     if (!login) return;
-    setLoadingActivity(true);
-    setActivityError(null);
-    fetch(
-      `${backendUrl}/audit/logs?login=${encodeURIComponent(login)}&limit=20`,
-    )
-      .then(async (res) => {
-        if (!res.ok) {
-          throw new Error("Failed to load activity");
-        }
-        return res.json();
-      })
-      .then((data) => {
-        const logs = (data.logs || []) as {
-          source: string;
-          category: string;
-          description: string;
-          timestamp: string;
-        }[];
-        setActivity(logs);
-      })
-      .catch((err) => {
-        console.error(err);
-        setActivityError("Could not load recent activity.");
-      })
-      .finally(() => setLoadingActivity(false));
+
+    let cancelled = false;
+
+    const fetchActivity = () => {
+      setLoadingActivity(true);
+      setActivityError(null);
+      fetch(
+        `${backendUrl}/audit/logs?login=${encodeURIComponent(login)}&limit=20`,
+      )
+        .then(async (res) => {
+          if (!res.ok) {
+            throw new Error("Failed to load activity");
+          }
+          return res.json();
+        })
+        .then((data) => {
+          if (cancelled) return;
+          const logs = (data.logs || []) as {
+            source: string;
+            category: string;
+            description: string;
+            timestamp: string;
+          }[];
+          setActivity(logs);
+        })
+        .catch((err) => {
+          if (cancelled) return;
+          console.error(err);
+          setActivityError("Could not load recent activity.");
+        })
+        .finally(() => {
+          if (cancelled) return;
+          setLoadingActivity(false);
+        });
+    };
+
+    // Initial load
+    fetchActivity();
+
+    // Poll periodically to keep the feed fresh.
+    const intervalId = window.setInterval(fetchActivity, 15000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
   }, [login]);
 
   // Determine whether the current channel is already joined
