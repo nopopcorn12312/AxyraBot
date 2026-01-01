@@ -282,6 +282,10 @@ func EnsureSchema() error {
 	 id SERIAL PRIMARY KEY,
 	 login TEXT UNIQUE NOT NULL,
 	 twitch_user_id TEXT,
+	 access_token TEXT,
+	 refresh_token TEXT,
+	 scopes TEXT,
+	 expires_at TIMESTAMPTZ
 	);
 	CREATE TABLE IF NOT EXISTS default_command_settings (
 	 id SERIAL PRIMARY KEY,
@@ -298,10 +302,6 @@ func EnsureSchema() error {
 	 created_by TEXT,
 	 created_at TIMESTAMPTZ DEFAULT now(),
 	 UNIQUE (broadcaster_login, command)
-	 access_token TEXT,
-	 refresh_token TEXT,
-	 scopes TEXT,
-	 expires_at TIMESTAMPTZ
 	);
 	CREATE TABLE IF NOT EXISTS channels (
 	 id SERIAL PRIMARY KEY,
@@ -317,13 +317,6 @@ func EnsureSchema() error {
 	 total_seconds BIGINT NOT NULL DEFAULT 0,
 	 last_seen_at TIMESTAMPTZ,
 	 UNIQUE (broadcaster_login, viewer_login)
-	);
-	CREATE TABLE IF NOT EXISTS default_command_settings (
-	 id SERIAL PRIMARY KEY,
-	 broadcaster_login TEXT NOT NULL,
-	 command_name TEXT NOT NULL,
-	 enabled BOOLEAN NOT NULL DEFAULT TRUE,
-	 UNIQUE (broadcaster_login, command_name)
 	);
 	`)
 	if err != nil {
