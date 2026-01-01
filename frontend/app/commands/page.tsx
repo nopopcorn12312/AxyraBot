@@ -10,8 +10,16 @@ const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://your-backend.
 const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL;
 
 const defaultCommands = [
-  { name: "!hello", description: "Greets chat with the bot name." },
+  { name: "!hello", description: "Greets chat with the bot's name." },
   { name: "!test", description: "Sends a simple SUCCESS message." },
+  { name: "!testanc", description: "Sends a Twitch announcement using the bot account." },
+  { name: "!vanish", description: "Times out the user briefly with a playful message." },
+  { name: "!title <new title>", description: "Changes the stream title (broadcaster or mods only)." },
+  { name: "!game <category>", description: "Changes the Twitch category/game (broadcaster or mods only)." },
+  { name: "!accountage [username]", description: "Shows when a user's Twitch account was created." },
+  { name: "!followage [username]", description: "Shows how long a user has followed the channel." },
+  { name: "!uptime", description: "Shows how long the channel has been live this session." },
+  { name: "!watchtime [username]", description: "Shows approximate time a user has spent watching while live." },
 ];
 
 const customCommands = [

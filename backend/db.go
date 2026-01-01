@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -100,6 +101,8 @@ func UpdateWatchTime(broadcasterLogin, viewerLogin string, now time.Time) error 
 	if broadcasterLogin == "" || viewerLogin == "" {
 		return nil
 	}
+	broadcasterLogin = strings.ToLower(broadcasterLogin)
+	viewerLogin = strings.ToLower(viewerLogin)
 	_, err := db.Exec(`
 	INSERT INTO watch_time (broadcaster_login, viewer_login, total_seconds, last_seen_at)
 	VALUES ($1, $2, 0, $3)
@@ -120,6 +123,8 @@ func GetWatchTimeSeconds(broadcasterLogin, viewerLogin string) (int64, error) {
 	if db == nil {
 		return 0, nil
 	}
+	broadcasterLogin = strings.ToLower(broadcasterLogin)
+	viewerLogin = strings.ToLower(viewerLogin)
 	var secs int64
 	row := db.QueryRow(`SELECT total_seconds FROM watch_time WHERE broadcaster_login=$1 AND viewer_login=$2`, broadcasterLogin, viewerLogin)
 	if err := row.Scan(&secs); err != nil {

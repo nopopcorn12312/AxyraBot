@@ -1248,30 +1248,15 @@ func getWatchTimeString(broadcasterLogin, viewerLogin string) (string, error) {
 	), nil
 }
 
-// isChannelLive returns true if the broadcaster is currently live, with a
-// short-lived cache per channel to avoid calling Helix for every message.
+// isChannelLive returns true if the broadcaster is currently live.
 func isChannelLive(channelLogin string) bool {
-	channelLogin = strings.ToLower(channelLogin)
-	now := time.Now().UTC()
-
-	liveStatusMu.Lock()
-	entry, ok := liveStatusCache[channelLogin]
-	if ok && now.Sub(entry.checkedAt) < 60*time.Second {
-		liveStatusMu.Unlock()
-		return entry.live
+	uptime, err := getStreamUptimeString(channelLogin)
+	if err != nil {
+		// On error, assume offline so we don't over-count watchtime
+		log.Println("isChannelLive uptime check failed:", err)
+		return false
 	}
-	liveStatusMu.Unlock()
-
-	live := false
-	if uptime, err := getStreamUptimeString(channelLogin); err == nil && uptime != "" {
-		live = true
-	}
-
-	liveStatusMu.Lock()
-	liveStatusCache[channelLogin] = liveStatusEntry{live: live, checkedAt: now}
-	liveStatusMu.Unlock()
-
-	return live
+	return uptime != ""
 }
 
 // active channel helpers
