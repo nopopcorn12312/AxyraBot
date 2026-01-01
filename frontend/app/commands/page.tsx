@@ -27,13 +27,39 @@ const customCommands = [
   { name: "!discord", description: "Links to your Discord server (example)." },
 ];
 
+type CommandToggleProps = {
+  name: string;
+  enabled: boolean;
+  onChange: (next: boolean) => void;
+};
+
+function CommandToggle({ enabled, onChange }: CommandToggleProps) {
+  return (
+  <button
+    type="button"
+    onClick={() => onChange(!enabled)}
+    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+      enabled ? "bg-emerald-500" : "bg-slate-600"
+    }`}
+  >
+    <span
+      className={`inline-block h-4 w-4 transform rounded-full bg-slate-950 shadow transition-transform ${
+        enabled ? "translate-x-4" : "translate-x-1"
+      }`}
+    />
+  </button>
+  );
+}
+
 export default function CommandsPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [channelLogin, setChannelLogin] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [commandsOpen, setCommandsOpen] = useState(true);
   const [view, setView] = useState<"default" | "custom">("default");
+  const [defaultSettings, setDefaultSettings] = useState<Record<string, boolean>>({});
   const menuRef = useRef<HTMLDivElement | null>(null);
   const pathname = usePathname();
 
@@ -43,11 +69,37 @@ export default function CommandsPage() {
     const storedAvatar = window.localStorage.getItem("axyra.avatar");
     if (storedLogin) {
       setIsLoggedIn(true);
+      setChannelLogin(storedLogin.toLowerCase());
     }
     if (storedAvatar) {
       setAvatarUrl(storedAvatar);
     }
   }, []);
+
+  // Fetch per-command default settings for this broadcaster when viewing
+  // default commands.
+  useEffect(() => {
+    if (!channelLogin || view !== "default") return;
+    const controller = new AbortController();
+    (async () => {
+      try {
+        const res = await fetch(
+          `${backendUrl}/commands/default-settings?login=${encodeURIComponent(channelLogin)}`,
+          { signal: controller.signal },
+        );
+        if (!res.ok) return;
+        const data: { commands?: { name: string; enabled: boolean }[] } = await res.json();
+        const map: Record<string, boolean> = {};
+        for (const cmd of data.commands || []) {
+          map[cmd.name] = cmd.enabled;
+        }
+        setDefaultSettings(map);
+      } catch {
+        // ignore fetch errors; defaults will be treated as enabled
+      }
+    })();
+    return () => controller.abort();
+  }, [channelLogin, view]);
 
   useEffect(() => {
   if (typeof window === "undefined") return;
@@ -280,6 +332,7 @@ export default function CommandsPage() {
                   <tr>
                     <th className="px-4 py-3 font-semibold">Command</th>
                     <th className="px-4 py-3 font-semibold">Description</th>
+                    <th className="px-4 py-3 font-semibold w-32 text-center">Enabled</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -287,11 +340,37 @@ export default function CommandsPage() {
                     <tr key={row.name} className="border-t border-slate-800 hover:bg-slate-900/60">
                       <td className="px-4 py-2 font-mono text-slate-100">{row.name}</td>
                       <td className="px-4 py-2 text-slate-300">{row.description}</td>
+                      <td className="px-4 py-2 text-center">
+                        {view === "default" && channelLogin ? (
+                          <CommandToggle
+                            name={row.name}
+                            enabled={defaultSettings[row.name] ?? true}
+                            onChange={async (next) => {
+                              setDefaultSettings((prev) => ({ ...prev, [row.name]: next }));
+                              try {
+                                await fetch(`${backendUrl}/commands/default-settings`, {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({
+                                    login: channelLogin,
+                                    command: row.name,
+                                    enabled: next,
+                                  }),
+                                });
+                              } catch {
+                                // ignore network errors; UI state already updated
+                              }
+                            }}
+                          />
+                        ) : (
+                          <span className="text-slate-500 text-xs">—</span>
+                        )}
+                      </td>
                     </tr>
                   ))}
                   {rows.length === 0 && (
                     <tr>
-                      <td colSpan={2} className="px-4 py-4 text-center text-slate-400">
+                      <td colSpan={3} className="px-4 py-4 text-center text-slate-400">
                         No commands to display yet.
                       </td>
                     </tr>

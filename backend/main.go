@@ -36,6 +36,20 @@ var (
 	liveStatusCache = map[string]liveStatusEntry{}
 )
 
+// List of built-in default commands that can be toggled per broadcaster.
+var defaultCommandNames = []string{
+	"!hello",
+	"!test",
+	"!testanc",
+	"!vanish",
+	"!title",
+	"!game",
+	"!accountage",
+	"!followage",
+	"!uptime",
+	"!watchtime",
+}
+
 type liveStatusEntry struct {
 	live      bool
 	checkedAt time.Time
@@ -400,16 +414,25 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 
 	// basic commands migrated from IRC handler
 	if strings.HasPrefix(message, "!hello") {
+		if !isDefaultCommandEnabled(channelLogin, "!hello") {
+			return
+		}
 		if err := sendHelixChatMessage(channelLogin, fmt.Sprintf("Hello! I am %s", botName)); err != nil {
 			log.Println("failed to send !hello response:", err)
 		}
 	}
 	if strings.HasPrefix(message, "!test") {
+		if !isDefaultCommandEnabled(channelLogin, "!test") {
+			return
+		}
 		if err := sendHelixChatMessage(channelLogin, "SUCCESS"); err != nil {
 			log.Println("failed to send !test response:", err)
 		}
 	}
 	if strings.HasPrefix(message, "!testanc") {
+		if !isDefaultCommandEnabled(channelLogin, "!testanc") {
+			return
+		}
 		// Send a Twitch announcement using the Helix Chat Announcement API.
 		// The bot account must be a moderator or broadcaster in the channel
 		// and its token must include moderator:manage:announcements.
@@ -420,6 +443,9 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 
 	// !vanish - timeout the user for 1 second with a playful reason
 	if strings.HasPrefix(message, "!vanish") {
+		if !isDefaultCommandEnabled(channelLogin, "!vanish") {
+			return
+		}
 		if err := timeoutUser(channelLogin, chatterLogin, 1, "wanted to hide \"something\""); err != nil {
 			log.Println("failed to apply !vanish timeout:", err)
 		} else {
@@ -431,6 +457,9 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 
 	// !title (text) - change stream title (mods + broadcaster only)
 	if strings.HasPrefix(message, "!title") {
+		if !isDefaultCommandEnabled(channelLogin, "!title") {
+			return
+		}
 		// Require broadcaster or moderator
 		allowed, err := isBroadcasterOrModerator(channelLogin, chatterLogin)
 		if err != nil {
@@ -461,6 +490,9 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 
 	// !game (text) - change Twitch category (mods + broadcaster only)
 	if strings.HasPrefix(message, "!game") {
+		if !isDefaultCommandEnabled(channelLogin, "!game") {
+			return
+		}
 		allowed, err := isBroadcasterOrModerator(channelLogin, chatterLogin)
 		if err != nil {
 			log.Println("failed moderator check for !game:", err)
@@ -489,6 +521,9 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 
 	// !accountage [username] - report when a user's account was created
 	if strings.HasPrefix(message, "!accountage") {
+		if !isDefaultCommandEnabled(channelLogin, "!accountage") {
+			return
+		}
 		arg := strings.TrimSpace(strings.TrimPrefix(message, "!accountage"))
 		targetDisplay := chatterLogin
 		targetLogin := chatterLogin
@@ -513,6 +548,9 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 
 	// !followage [username] - report how long a user has been following the broadcaster
 	if strings.HasPrefix(message, "!followage") {
+		if !isDefaultCommandEnabled(channelLogin, "!followage") {
+			return
+		}
 		arg := strings.TrimSpace(strings.TrimPrefix(message, "!followage"))
 		targetDisplay := chatterLogin
 		targetLogin := chatterLogin
@@ -536,6 +574,9 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 
 	// !uptime - report how long the broadcaster has been live this session
 	if strings.HasPrefix(message, "!uptime") {
+		if !isDefaultCommandEnabled(channelLogin, "!uptime") {
+			return
+		}
 		uptime, err := getStreamUptimeString(channelLogin)
 		if err != nil {
 			log.Println("failed to get uptime:", err)
@@ -555,6 +596,9 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 
 	// !watchtime [username] - approximate time a user spent watching this channel
 	if strings.HasPrefix(message, "!watchtime") {
+		if !isDefaultCommandEnabled(channelLogin, "!watchtime") {
+			return
+		}
 		arg := strings.TrimSpace(strings.TrimPrefix(message, "!watchtime"))
 		targetDisplay := chatterLogin
 		targetLogin := strings.ToLower(chatterLogin)
@@ -1257,6 +1301,18 @@ func isChannelLive(channelLogin string) bool {
 		return false
 	}
 	return uptime != ""
+}
+
+// isDefaultCommandEnabled returns whether a built-in command is enabled for
+// the given broadcaster. If there is any error or no row, the command is
+// treated as enabled.
+func isDefaultCommandEnabled(channelLogin, commandName string) bool {
+	enabled, err := GetDefaultCommandEnabled(channelLogin, commandName)
+	if err != nil {
+		log.Println("failed to read default command setting:", err)
+		return true
+	}
+	return enabled
 }
 
 // active channel helpers

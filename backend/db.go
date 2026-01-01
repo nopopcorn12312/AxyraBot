@@ -136,6 +136,66 @@ func GetWatchTimeSeconds(broadcasterLogin, viewerLogin string) (int64, error) {
 	return secs, nil
 }
 
+// GetDefaultCommandSettings returns all stored default-command enable flags for
+// a broadcaster as a map[command_name]enabled.
+func GetDefaultCommandSettings(broadcasterLogin string) (map[string]bool, error) {
+	res := map[string]bool{}
+	if db == nil {
+		return res, nil
+	}
+	broadcasterLogin = strings.ToLower(broadcasterLogin)
+	rows, err := db.Query(`SELECT command_name, enabled FROM default_command_settings WHERE broadcaster_login=$1`, broadcasterLogin)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var name string
+		var enabled bool
+		if err := rows.Scan(&name, &enabled); err != nil {
+			return nil, err
+		}
+		res[name] = enabled
+	}
+	return res, nil
+}
+
+// GetDefaultCommandEnabled returns whether a given default command is enabled
+// for a broadcaster. If no row exists, it is treated as enabled.
+func GetDefaultCommandEnabled(broadcasterLogin, commandName string) (bool, error) {
+	if db == nil {
+		return true, nil
+	}
+	broadcasterLogin = strings.ToLower(broadcasterLogin)
+	commandName = strings.ToLower(commandName)
+	var enabled bool
+	row := db.QueryRow(`SELECT enabled FROM default_command_settings WHERE broadcaster_login=$1 AND command_name=$2`, broadcasterLogin, commandName)
+	if err := row.Scan(&enabled); err != nil {
+		if err == sql.ErrNoRows {
+			return true, nil
+		}
+		return true, err
+	}
+	return enabled, nil
+}
+
+// SetDefaultCommandEnabled upserts the enabled flag for a broadcaster's
+// default command.
+func SetDefaultCommandEnabled(broadcasterLogin, commandName string, enabled bool) error {
+	if db == nil {
+		return nil
+	}
+	broadcasterLogin = strings.ToLower(broadcasterLogin)
+	commandName = strings.ToLower(commandName)
+	_, err := db.Exec(`
+	INSERT INTO default_command_settings (broadcaster_login, command_name, enabled)
+	VALUES ($1, $2, $3)
+	ON CONFLICT (broadcaster_login, command_name) DO UPDATE
+	SET enabled = EXCLUDED.enabled;
+	`, broadcasterLogin, commandName, enabled)
+	return err
+}
+
 func EnsureSchema() error {
 	// create simple tables if not exist
 	_, err := db.Exec(`
@@ -162,6 +222,13 @@ func EnsureSchema() error {
 	 total_seconds BIGINT NOT NULL DEFAULT 0,
 	 last_seen_at TIMESTAMPTZ,
 	 UNIQUE (broadcaster_login, viewer_login)
+	);
+	CREATE TABLE IF NOT EXISTS default_command_settings (
+	 id SERIAL PRIMARY KEY,
+	 broadcaster_login TEXT NOT NULL,
+	 command_name TEXT NOT NULL,
+	 enabled BOOLEAN NOT NULL DEFAULT TRUE,
+	 UNIQUE (broadcaster_login, command_name)
 	);
 	`)
 	if err != nil {

@@ -20,6 +20,7 @@ func startHTTPServer(clientID, clientSecret string) {
 	mux.HandleFunc("/channels", withCORS(handleChannels))
 	mux.HandleFunc("/stream/info", withCORS(handleStreamInfo(clientID)))
 	mux.HandleFunc("/stream/update", withCORS(handleStreamUpdate(clientID)))
+	mux.HandleFunc("/commands/default-settings", withCORS(handleDefaultCommandSettings))
 	addr := ":8080"
 	if p := os.Getenv("PORT"); p != "" {
 		addr = ":" + p
@@ -27,6 +28,72 @@ func startHTTPServer(clientID, clientSecret string) {
 	log.Println("starting HTTP server on", addr)
 	if err := http.ListenAndServe(addr, mux); err != nil {
 		log.Println("http server error:", err)
+	}
+}
+
+// handleDefaultCommandSettings exposes per-broadcaster enable flags for
+// built-in commands. GET returns the full list for a broadcaster; POST
+// updates a single command flag.
+func handleDefaultCommandSettings(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		login := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("login")))
+		if login == "" {
+			http.Error(w, "missing login", http.StatusBadRequest)
+			return
+		}
+		settings, err := GetDefaultCommandSettings(login)
+		if err != nil {
+			log.Println("failed to load default command settings:", err)
+			http.Error(w, "db error", http.StatusInternalServerError)
+			return
+		}
+		// Ensure every known default command is present, defaulting to enabled.
+		var out []struct {
+			Name    string `json:"name"`
+			Enabled bool   `json:"enabled"`
+		}
+		for _, cmd := range defaultCommandNames {
+			enabled, ok := settings[strings.ToLower(cmd)]
+			if !ok {
+				enabled = true
+			}
+			out = append(out, struct {
+				Name    string `json:"name"`
+				Enabled bool   `json:"enabled"`
+			}{Name: cmd, Enabled: enabled})
+		}
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(struct {
+			Commands interface{} `json:"commands"`
+		}{Commands: out}); err != nil {
+			log.Println("encode default command settings:", err)
+		}
+	case http.MethodPost:
+		var body struct {
+			Login   string `json:"login"`
+			Command string `json:"command"`
+			Enabled bool   `json:"enabled"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "bad json", http.StatusBadRequest)
+			return
+		}
+		login := strings.ToLower(strings.TrimSpace(body.Login))
+		cmd := strings.TrimSpace(body.Command)
+		if login == "" || cmd == "" {
+			http.Error(w, "missing login or command", http.StatusBadRequest)
+			return
+		}
+		if err := SetDefaultCommandEnabled(login, cmd, body.Enabled); err != nil {
+			log.Println("failed to save default command setting:", err)
+			http.Error(w, "db error", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "ok")
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
 }
 
