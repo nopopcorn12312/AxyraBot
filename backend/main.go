@@ -393,6 +393,18 @@ func writeIRC(c *websocket.Conn, line string) {
 	}
 }
 
+// isChatCommand returns true if the message matches the given command token
+// exactly (e.g. "!test") or starts with the token followed by a space
+// (e.g. "!test foo"). This avoids overlap where a longer command like
+// !testanc would otherwise trigger the !test handler.
+func isChatCommand(message, command string) bool {
+	message = strings.TrimSpace(message)
+	if message == command {
+		return true
+	}
+	return strings.HasPrefix(message, command+" ")
+}
+
 // handleChatMessageEvent processes a chat message received via EventSub
 // channel.chat.message and runs simple command handlers.
 func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
@@ -412,7 +424,7 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 	}
 
 	// basic commands migrated from IRC handler
-	if strings.HasPrefix(message, "!hello") {
+	if isChatCommand(message, "!hello") {
 		if !isDefaultCommandEnabled(channelLogin, "!hello") {
 			return
 		}
@@ -420,7 +432,7 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 			log.Println("failed to send !hello response:", err)
 		}
 	}
-	if strings.HasPrefix(message, "!test") {
+	if isChatCommand(message, "!test") {
 		if !isDefaultCommandEnabled(channelLogin, "!test") {
 			return
 		}
@@ -428,7 +440,7 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 			log.Println("failed to send !test response:", err)
 		}
 	}
-	if strings.HasPrefix(message, "!testanc") {
+	if isChatCommand(message, "!testanc") {
 		if !isDefaultCommandEnabled(channelLogin, "!testanc") {
 			return
 		}
@@ -441,7 +453,7 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 	}
 
 	// !vanish - timeout the user for 1 second with a playful reason
-	if strings.HasPrefix(message, "!vanish") {
+	if isChatCommand(message, "!vanish") {
 		if !isDefaultCommandEnabled(channelLogin, "!vanish") {
 			return
 		}
@@ -455,7 +467,7 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 	}
 
 	// !title (text) - change stream title (mods + broadcaster only)
-	if strings.HasPrefix(message, "!title") {
+	if isChatCommand(message, "!title") {
 		if !isDefaultCommandEnabled(channelLogin, "!title") {
 			return
 		}
@@ -488,7 +500,7 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 	}
 
 	// !game (text) - change Twitch category (mods + broadcaster only)
-	if strings.HasPrefix(message, "!game") {
+	if isChatCommand(message, "!game") {
 		if !isDefaultCommandEnabled(channelLogin, "!game") {
 			return
 		}
@@ -519,7 +531,7 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 	}
 
 	// !accountage [username] - report when a user's account was created
-	if strings.HasPrefix(message, "!accountage") {
+	if isChatCommand(message, "!accountage") {
 		if !isDefaultCommandEnabled(channelLogin, "!accountage") {
 			return
 		}
@@ -546,7 +558,7 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 	}
 
 	// !followage [username] - report how long a user has been following the broadcaster
-	if strings.HasPrefix(message, "!followage") {
+	if isChatCommand(message, "!followage") {
 		if !isDefaultCommandEnabled(channelLogin, "!followage") {
 			return
 		}
@@ -572,7 +584,7 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 	}
 
 	// !uptime - report how long the broadcaster has been live this session
-	if strings.HasPrefix(message, "!uptime") {
+	if isChatCommand(message, "!uptime") {
 		if !isDefaultCommandEnabled(channelLogin, "!uptime") {
 			return
 		}
