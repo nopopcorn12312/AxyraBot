@@ -65,6 +65,9 @@ export default function CommandsPage() {
   const [editRole, setEditRole] = useState<CustomCommandRole>("all");
   const [savingEdit, setSavingEdit] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const pathname = usePathname();
 
@@ -488,32 +491,52 @@ export default function CommandsPage() {
                             </td>
                             <td className="px-4 py-2 text-center">
                               {isLoggedIn && channelLogin && loggedInLogin === channelLogin ? (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    if (editingCommand === row.name) {
-                                      setEditingCommand(null);
+                                <div className="inline-flex items-center gap-1 justify-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (editingCommand === row.name) {
+                                        setEditingCommand(null);
+                                        setEditError(null);
+                                        return;
+                                      }
+                                      setEditingCommand(row.name);
+                                      setEditName(row.name);
+                                      setEditResponse(row.description);
+                                      setEditRole(row.role);
                                       setEditError(null);
-                                      return;
-                                    }
-                                    setEditingCommand(row.name);
-                                    setEditName(row.name);
-                                    setEditResponse(row.description);
-                                    setEditRole(row.role);
-                                    setEditError(null);
-                                  }}
-                                  className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-700 bg-slate-900/80 text-slate-300 hover:bg-slate-800/80"
-                                >
-                                  <span className="sr-only">Edit command</span>
-                                  <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 20 20"
-                                    fill="currentColor"
-                                    className="h-3.5 w-3.5"
+                                    }}
+                                    className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-700 bg-slate-900/80 text-slate-300 hover:bg-slate-800/80"
                                   >
-                                    <path d="M13.586 3.586a2 2 0 0 1 2.828 2.828l-8.5 8.5a2 2 0 0 1-.878.518l-3 .8a.5.5 0 0 1-.606-.606l.8-3a2 2 0 0 1 .518-.878l8.5-8.5Z" />
-                                  </svg>
-                                </button>
+                                    <span className="sr-only">Edit command</span>
+                                    <svg
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      viewBox="0 0 20 20"
+                                      fill="currentColor"
+                                      className="h-3.5 w-3.5"
+                                    >
+                                      <path d="M13.586 3.586a2 2 0 0 1 2.828 2.828l-8.5 8.5a2 2 0 0 1-.878.518l-3 .8a.5.5 0 0 1-.606-.606l.8-3a2 2 0 0 1 .518-.878l8.5-8.5Z" />
+                                    </svg>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setDeleteTarget(row.name);
+                                      setDeleteError(null);
+                                    }}
+                                    className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-red-700 bg-red-700/80 text-white hover:bg-red-600/90"
+                                  >
+                                    <span className="sr-only">Delete command</span>
+                                    <svg
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      viewBox="0 0 20 20"
+                                      fill="currentColor"
+                                      className="h-3.5 w-3.5"
+                                    >
+                                      <path d="M6 2a1 1 0 0 0-1 1v1H3.5a.5.5 0 0 0 0 1h.54l.76 10.137A2 2 0 0 0 6.79 17h6.42a2 2 0 0 0 1.99-1.863L15.96 5H16.5a.5.5 0 0 0 0-1H15V3a1 1 0 0 0-1-1H6Zm1 2V3h6v1H7Z" />
+                                    </svg>
+                                  </button>
+                                </div>
                               ) : (
                                 <span className="text-slate-500 text-xs">—</span>
                               )}
@@ -642,6 +665,90 @@ export default function CommandsPage() {
           </div>
         </div>
       </div>
+      {deleteTarget && (
+        <DeleteCommandModal
+          commandName={deleteTarget}
+          deleting={deleting}
+          error={deleteError}
+          onCancel={() => {
+            if (deleting) return;
+            setDeleteTarget(null);
+            setDeleteError(null);
+          }}
+          onConfirm={async () => {
+            if (!channelLogin || !deleteTarget) return;
+            setDeleting(true);
+            setDeleteError(null);
+            try {
+              const res = await fetch(`${backendUrl}/commands/custom/delete`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  login: channelLogin,
+                  command: deleteTarget,
+                }),
+              });
+              if (!res.ok) {
+                setDeleteError("Failed to delete command. Please try again.");
+              } else {
+                setCustomCommands((prev) => prev.filter((cmd) => cmd.name !== deleteTarget));
+                setDeleteTarget(null);
+              }
+            } catch {
+              setDeleteError("Network error while deleting command.");
+            } finally {
+              setDeleting(false);
+            }
+          }}
+        />
+      )}
     </main>
+  );
+}
+
+// Delete confirmation modal overlay
+function DeleteCommandModal({
+  commandName,
+  onCancel,
+  onConfirm,
+  deleting,
+  error,
+}: {
+  commandName: string;
+  onCancel: () => void;
+  onConfirm: () => void;
+  deleting: boolean;
+  error: string | null;
+}) {
+  return (
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60">
+      <div className="w-full max-w-sm rounded-xl border border-slate-800 bg-slate-900/95 p-5 shadow-xl">
+        <h2 className="text-lg font-semibold text-slate-100 mb-2">Delete command</h2>
+        <p className="text-sm text-slate-300 mb-3">
+          Are you sure you want to delete
+          <span className="font-mono text-red-300"> {commandName} </span>
+          for this channel? This action cannot be undone.
+        </p>
+        {error && <div className="mb-2 text-xs text-red-400">{error}</div>}
+        <div className="mt-2 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={deleting}
+            className="rounded-md border border-slate-700 px-3 py-1 text-xs font-medium text-slate-200 hover:bg-slate-800/80 disabled:opacity-60"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={deleting}
+            className="rounded-md bg-red-600 px-3 py-1 text-xs font-medium text-white hover:bg-red-500 disabled:opacity-60"
+          >
+            {deleting ? "Deleting..." : "Yes, delete"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

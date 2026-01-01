@@ -23,6 +23,7 @@ func startHTTPServer(clientID, clientSecret string) {
 	mux.HandleFunc("/commands/default-settings", withCORS(handleDefaultCommandSettings))
 	mux.HandleFunc("/commands/custom", withCORS(handleCustomCommands))
 	mux.HandleFunc("/commands/custom/update", withCORS(handleCustomCommandsUpdate))
+	mux.HandleFunc("/commands/custom/delete", withCORS(handleCustomCommandsDelete))
 	mux.HandleFunc("/modules/settings", withCORS(handleModuleSettings))
 	addr := ":8080"
 	if p := os.Getenv("PORT"); p != "" {
@@ -204,6 +205,37 @@ func handleCustomCommandsUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := UpdateCustomCommand(login, orig, cmd, resp, role); err != nil {
 		log.Println("failed to update custom command:", err)
+		http.Error(w, "db error", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprint(w, "ok")
+}
+
+// handleCustomCommandsDelete deletes a single custom command for a
+// broadcaster. It is intended to be called from the dashboard when the
+// broadcaster confirms deletion in the UI.
+func handleCustomCommandsDelete(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	var body struct {
+		Login   string `json:"login"`
+		Command string `json:"command"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "bad json", http.StatusBadRequest)
+		return
+	}
+	login := strings.ToLower(strings.TrimSpace(body.Login))
+	cmd := strings.TrimSpace(body.Command)
+	if login == "" || cmd == "" {
+		http.Error(w, "missing login or command", http.StatusBadRequest)
+		return
+	}
+	if err := DeleteCustomCommand(login, cmd); err != nil {
+		log.Println("failed to delete custom command from HTTP:", err)
 		http.Error(w, "db error", http.StatusInternalServerError)
 		return
 	}
