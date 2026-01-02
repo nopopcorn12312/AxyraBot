@@ -10,6 +10,20 @@ import AxyraBotPFP from "../images/AxyraBotPFP.png";
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://your-backend.onrender.com";
 const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL;
 
+function formatTimeAgo(isoString: string): string {
+  const date = new Date(isoString);
+  if (Number.isNaN(date.getTime())) return "";
+  const diffMs = Date.now() - date.getTime();
+  const diffSec = Math.floor(diffMs / 1000);
+  if (diffSec < 60) return "just now";
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffH = Math.floor(diffMin / 60);
+  if (diffH < 24) return `${diffH}h ago`;
+  const diffD = Math.floor(diffH / 24);
+  return `${diffD}d ago`;
+}
+
 export default function DashboardPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -167,31 +181,30 @@ export default function DashboardPage() {
     setLogin(null);
     setMenuOpen(false);
   };
+  const redirectTarget = frontendUrl || "http://localhost:3000";
+  const connectUrl = `${backendUrl}/auth/start?redirect=${encodeURIComponent(redirectTarget)}`;
+  const primaryHref = isLoggedIn ? "/dashboard" : connectUrl;
+  const primaryLabel = isLoggedIn ? "Dashboard" : "Login with Twitch";
 
   const handleJoinChannel = async () => {
     if (!login) return;
     setJoining(true);
     setStatusMessage(null);
-    const endpoint = joined ? "/part" : "/join";
-    const verb = joined ? "part" : "join";
     try {
+      const endpoint = joined ? "/part" : "/join";
       const res = await fetch(`${backendUrl}${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ login }),
       });
       if (!res.ok) {
-        throw new Error(`${verb} failed`);
+        throw new Error("Failed to update bot connection");
       }
       setJoined(!joined);
-      setStatusMessage(
-        verb === "join" ? "Channel joined successfully." : "Channel parted.",
-      );
+      setStatusMessage(!joined ? "Bot joined your channel." : "Bot left your channel.");
     } catch (err) {
       console.error(err);
-      setStatusMessage(
-        verb === "join" ? "Could not join channel." : "Could not part channel.",
-      );
+      setStatusMessage("Could not update bot connection.");
     } finally {
       setJoining(false);
     }
@@ -201,6 +214,7 @@ export default function DashboardPage() {
     if (!login) return;
     setSavingStream(true);
     setStatusMessage(null);
+    setChangesConfirmed(false);
     try {
       const res = await fetch(`${backendUrl}/stream/update`, {
         method: "POST",
@@ -212,38 +226,17 @@ export default function DashboardPage() {
         }),
       });
       if (!res.ok && res.status !== 204) {
-        throw new Error("Update failed");
+        throw new Error("Failed to update stream details");
       }
-      setStatusMessage("Stream updated.");
       setChangesConfirmed(true);
-      setTimeout(() => setChangesConfirmed(false), 3000);
+      setStatusMessage("Stream details updated.");
     } catch (err) {
       console.error(err);
-      setStatusMessage("Could not update stream.");
+      setStatusMessage("Could not update stream details.");
     } finally {
       setSavingStream(false);
+      setTimeout(() => setChangesConfirmed(false), 3000);
     }
-  };
-
-  const redirectTarget = frontendUrl || "http://localhost:3000";
-  const connectUrl = `${backendUrl}/auth/start?redirect=${encodeURIComponent(
-    redirectTarget,
-  )}`;
-  const primaryHref = isLoggedIn ? "/dashboard" : connectUrl;
-  const primaryLabel = isLoggedIn ? "Dashboard" : "Login with Twitch";
-
-  const formatTimeAgo = (iso: string) => {
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return "";
-    const diffMs = Date.now() - d.getTime();
-    const seconds = Math.floor(diffMs / 1000);
-    if (seconds < 60) return `${seconds}s ago`;
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m ago`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
-    const days = Math.floor(hours / 24);
-    return `${days}d ago`;
   };
 
   return (
@@ -272,10 +265,7 @@ export default function DashboardPage() {
           </Link>
         </div>
         <div className="flex items-center gap-4">
-          <a
-            href={primaryHref}
-            className="hidden" // header CTA hidden on dashboard, but href kept for consistency
-          >
+          <a href={primaryHref} className="hidden">
             {primaryLabel}
           </a>
           {isLoggedIn && (
@@ -315,112 +305,123 @@ export default function DashboardPage() {
         <div
           className={`${sidebarOpen ? "w-60" : "w-16"} flex flex-col rounded-2xl border border-slate-800 bg-slate-900/80 p-3 transition-all duration-200`}
         >
-          <nav className="mt-1 flex flex-col gap-2 text-sm text-slate-200">
-            {/** Dashboard */}
-            <Link
-              href="/dashboard"
-              className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
-                pathname === "/dashboard"
-                  ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                  : "text-slate-200 hover:bg-slate-800/80"
-              }`}
-            >
-              <span className="text-lg">📊</span>
-              {sidebarOpen && <span>Dashboard</span>}
-            </Link>
-
-            {/** Commands dropdown */}
-            <button
-              type="button"
-              onClick={() => setCommandsOpen((open) => !open)}
-              className="flex items-center justify-between gap-3 rounded-xl px-3 py-2 text-left font-medium text-slate-200 hover:bg-slate-800/80 transition"
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-lg">❓</span>
-                {sidebarOpen && <span>Commands</span>}
+          <nav className="mt-1 flex flex-col gap-4 text-sm text-slate-200">
+            {/* Main section */}
+            <div className="flex flex-col gap-2">
+              <div className="px-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                Main
               </div>
-              {sidebarOpen && (
-                <span className="text-xs text-slate-400">{commandsOpen ? "▾" : "▸"}</span>
+              <Link
+                href="/dashboard"
+                className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                  pathname === "/dashboard"
+                    ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
+                    : "text-slate-200 hover:bg-slate-800/80"
+                }`}
+              >
+                <span className="text-lg">📊</span>
+                {sidebarOpen && <span>Dashboard</span>}
+              </Link>
+
+              <button
+                type="button"
+                onClick={() => setCommandsOpen((open) => !open)}
+                className="flex items-center justify-between gap-3 rounded-xl px-3 py-2 text-left font-medium text-slate-200 hover:bg-slate-800/80 transition"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-lg">❓</span>
+                  {sidebarOpen && <span>Commands</span>}
+                </div>
+                {sidebarOpen && (
+                  <span className="text-xs text-slate-400">{commandsOpen ? "▾" : "▸"}</span>
+                )}
+              </button>
+              {commandsOpen && (
+                <div className="mt-1 ml-6 flex flex-col gap-1 text-xs text-slate-200">
+                  <Link
+                    href="/commands?view=default"
+                    className={`rounded-lg px-3 py-1.5 transition ${
+                      pathname === "/commands"
+                        ? "bg-slate-800/80 text-slate-50"
+                        : "hover:bg-slate-800/60"
+                    }`}
+                  >
+                    Default commands
+                  </Link>
+                  <Link
+                    href="/commands?view=custom"
+                    className={`rounded-lg px-3 py-1.5 transition ${
+                      pathname === "/commands"
+                        ? "bg-slate-800/80 text-slate-50"
+                        : "hover:bg-slate-800/60"
+                    }`}
+                  >
+                    Custom commands
+                  </Link>
+                </div>
               )}
-            </button>
-            {commandsOpen && (
-              <div className="mt-1 ml-6 flex flex-col gap-1 text-xs text-slate-200">
-                <Link
-                  href="/commands?view=default"
-                  className={`rounded-lg px-3 py-1.5 transition ${
-                    pathname === "/commands"
-                      ? "bg-slate-800/80 text-slate-50"
-                      : "hover:bg-slate-800/60"
-                  }`}
-                >
-                  Default commands
-                </Link>
-                <Link
-                  href="/commands?view=custom"
-                  className={`rounded-lg px-3 py-1.5 transition ${
-                    pathname === "/commands"
-                      ? "bg-slate-800/80 text-slate-50"
-                      : "hover:bg-slate-800/60"
-                  }`}
-                >
-                  Custom commands
-                </Link>
+            </div>
+
+            {/* Vanity section */}
+            <div className="flex flex-col gap-2">
+              <div className="px-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                Vanity
               </div>
-            )}
+              <Link
+                href="/modules"
+                className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                  pathname === "/modules"
+                    ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
+                    : "text-slate-200 hover:bg-slate-800/80"
+                }`}
+              >
+                <span className="text-lg">🧩</span>
+                {sidebarOpen && <span>Modules</span>}
+              </Link>
+            </div>
 
-            {/** Modules */}
-            <Link
-              href="/modules"
-              className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
-                pathname === "/modules"
-                  ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                  : "text-slate-200 hover:bg-slate-800/80"
-              }`}
-            >
-              <span className="text-lg">🧩</span>
-              {sidebarOpen && <span>Modules</span>}
-            </Link>
-
-            {/** Privacy */}
-            <Link
-              href="/privacy"
-              className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
-                pathname === "/privacy"
-                  ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                  : "text-slate-200 hover:bg-slate-800/80"
-              }`}
-            >
-              <span className="text-lg">🔒</span>
-              {sidebarOpen && <span>Privacy</span>}
-            </Link>
-
-            {/** Terms */}
-            <Link
-              href="/terms"
-              className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
-                pathname === "/terms"
-                  ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                  : "text-slate-200 hover:bg-slate-800/80"
-              }`}
-            >
-              <span className="text-lg">📜</span>
-              {sidebarOpen && <span>Terms</span>}
-            </Link>
-
-            {/** API Docs */}
-            <Link
-              href="/api-docs"
-              className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
-                pathname === "/api-docs"
-                  ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                  : "text-slate-200 hover:bg-slate-800/80"
-              }`}
-            >
-              <span className="text-lg">📘</span>
-              {sidebarOpen && <span>API Docs</span>}
-            </Link>
+            {/* Other section */}
+            <div className="flex flex-col gap-2">
+              <div className="px-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                Other
+              </div>
+              <Link
+                href="/privacy"
+                className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                  pathname === "/privacy"
+                    ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
+                    : "text-slate-200 hover:bg-slate-800/80"
+                }`}
+              >
+                <span className="text-lg">🔒</span>
+                {sidebarOpen && <span>Privacy</span>}
+              </Link>
+              <Link
+                href="/terms"
+                className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                  pathname === "/terms"
+                    ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
+                    : "text-slate-200 hover:bg-slate-800/80"
+                }`}
+              >
+                <span className="text-lg">📜</span>
+                {sidebarOpen && <span>Terms</span>}
+              </Link>
+              <Link
+                href="/api-docs"
+                className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                  pathname === "/api-docs"
+                    ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
+                    : "text-slate-200 hover:bg-slate-800/80"
+                }`}
+              >
+                <span className="text-lg">📘</span>
+                {sidebarOpen && <span>API Docs</span>}
+              </Link>
+            </div>
           </nav>
         </div>
+
         <div className="flex-1 flex flex-col lg:flex-row gap-6 text-slate-50">
           <div className="flex-1 lg:basis-2/3 max-h-80 rounded-2xl border border-slate-800 bg-slate-900/80 p-6 flex flex-col">
             <div className="flex items-center justify-between mb-3">
@@ -486,6 +487,7 @@ export default function DashboardPage() {
               </div>
             )}
           </div>
+
           <div className="w-full lg:basis-1/3 h-72 rounded-2xl border border-slate-800 bg-slate-900/80 p-6 flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between mb-4">
@@ -561,6 +563,9 @@ export default function DashboardPage() {
                     : "Confirm Changes"}
                 </button>
               </div>
+              {statusMessage && (
+                <p className="mt-2 text-xs text-slate-400">{statusMessage}</p>
+              )}
             </div>
           </div>
         </div>
