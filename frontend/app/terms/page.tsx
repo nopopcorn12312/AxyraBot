@@ -73,7 +73,7 @@ export default function TermsPage() {
               alt="AxyraBot logo"
               width={32}
               height={32}
-              className="rounded-full shadow-sm shadow-sky-500/40"
+              className="rounded-full"
             />
             <div className="text-2xl font-semibold tracking-tight">
               <span className="text-accent">Axyra</span>
@@ -93,7 +93,7 @@ export default function TermsPage() {
               <button
                 type="button"
                 onClick={() => setMenuOpen((open) => !open)}
-                className="flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900/80 px-1.5 py-1 hover:bg-slate-800 transition"
+                className="flex items-center gap-2 rounded-full bg-slate-900/80 px-1.5 py-1 hover:bg-slate-800 transition"
               >
                 {avatarUrl && (
                   <Image

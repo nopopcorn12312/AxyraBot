@@ -143,7 +143,7 @@ export default function HomePage() {
                     alt="Twitch profile picture"
                     width={36}
                     height={36}
-                    className="rounded-full shadow-md shadow-sky-500/50"
+                    className="rounded-full"
                   />
             </button>
           )}
