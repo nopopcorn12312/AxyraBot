@@ -123,8 +123,8 @@ export default function DashboardPage() {
         })
         .finally(() => {
           if (cancelled) return;
-          if (!hasLoadedActivityRef.current) {
-            // Only show the loading state during the very first load.
+          if (isInitial) {
+            // Only change the loading flag for the very first load.
             setLoadingActivity(false);
           }
         });
