@@ -55,6 +55,7 @@ var defaultCommandNames = []string{
 	"!followage",
 	"!uptime",
 	"!commands",
+	"!ai",
 }
 
 type liveStatusEntry struct {
@@ -465,6 +466,42 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 	botName := os.Getenv("TWITCH_BOT_USERNAME")
 	if botName == "" {
 		botName = "AxyraBot"
+	}
+
+	// !ai (message) - ask ChatGPT a question or send a prompt and reply in chat.
+	if isChatCommand(message, "!ai") {
+		if !isDefaultCommandEnabled(channelLogin, "!ai") {
+			return
+		}
+		prompt := strings.TrimSpace(strings.TrimPrefix(message, "!ai"))
+		if prompt == "" {
+			if err := sendHelixChatMessage(channelLogin, "Usage: !ai <your question or prompt>"); err != nil {
+				log.Println("failed to send !ai usage response:", err)
+			}
+			return
+		}
+		// Call the external AI provider (e.g., OpenAI) to get a short answer.
+		reply, err := getAIResponse(channelLogin, chatterLogin, prompt)
+		if err != nil {
+			log.Println("failed to get !ai response:", err)
+			if err := sendHelixChatMessage(channelLogin, "Sorry, the AI is not available right now."); err != nil {
+				log.Println("failed to send !ai error response:", err)
+			}
+			return
+		}
+		if strings.TrimSpace(reply) == "" {
+			return
+		}
+		// Prefix with the requesting user so chat can see who asked.
+		msg := fmt.Sprintf("@%s %s", chatterLogin, reply)
+		if err := sendHelixChatMessage(channelLogin, msg); err != nil {
+			log.Println("failed to send !ai chat response:", err)
+		}
+		// Optionally log usage in the audit log (best-effort, ignore errors).
+		if err := InsertAuditLog(channelLogin, "bot", "ai_command", fmt.Sprintf("%s used !ai", chatterLogin)); err != nil {
+			log.Println("failed to insert audit log for !ai:", err)
+		}
+		return
 	}
 
 	// !addcom !trigger response - add or update a custom command (mods + broadcaster only)
@@ -1888,6 +1925,76 @@ func getFrontendBaseURL() string {
 		return strings.TrimRight(u, "/")
 	}
 	return "http://localhost:3000"
+}
+
+// getAIResponse calls an external AI provider (such as OpenAI) to generate
+// a short answer for the given prompt. It is used by the !ai default
+// command. If the provider is not configured or an error occurs, an error
+// is returned and the caller should handle a fallback message.
+func getAIResponse(channelLogin, chatterLogin, prompt string) (string, error) {
+	apiKey := strings.TrimSpace(os.Getenv("OPENAI_API_KEY"))
+	if apiKey == "" {
+		return "", fmt.Errorf("OPENAI_API_KEY not set")
+	}
+
+	// Build a concise prompt so responses fit comfortably in Twitch chat.
+	system := "You are AxyraBot's AI assistant answering questions from Twitch chat. Respond concisely in one or two sentences, suitable for a fast-moving chat."
+
+	body := map[string]interface{}{
+		"model": "gpt-4.1-mini",
+		"messages": []map[string]string{
+			{"role": "system", "content": system},
+			{"role": "user", "content": prompt},
+		},
+		"max_tokens": 120,
+	}
+
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return "", err
+	}
+
+	req, err := http.NewRequest("POST", "https://api.openai.com/v1/chat/completions", bytes.NewReader(buf))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+	req.Header.Set("Content-Type", "application/json")
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode/100 != 2 {
+		b, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("openai status %s: %s", resp.Status, string(b))
+	}
+
+	var parsed struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
+		return "", err
+	}
+	if len(parsed.Choices) == 0 {
+		return "", fmt.Errorf("no choices from openai")
+	}
+	text := strings.TrimSpace(parsed.Choices[0].Message.Content)
+	if text == "" {
+		return "", fmt.Errorf("empty response from openai")
+	}
+	// Twitch messages have practical length limits; trim overly long outputs.
+	const maxChars = 350
+	if len([]rune(text)) > maxChars {
+		runes := []rune(text)
+		text = string(runes[:maxChars]) + "…"
+	}
+	return text, nil
 }
 
 // active channel helpers
