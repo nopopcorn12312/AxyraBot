@@ -165,8 +165,8 @@ export default function HomePage() {
       <div className="flex-1 flex items-center justify-center">
         <div className="max-w-3xl w-full flex flex-col items-center text-center space-y-10">
           <div className="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900/70 px-4 py-1 text-xs text-slate-300">
-            <span className="h-2 w-2 rounded-full bg-emerald-400" />
-            <span>AxyraBot is online</span>
+            <span className="h-2 w-2 rounded-full bg-ruby-400" />
+            <span>AxyraBot is offline</span>
           </div>
 
           <div className="relative w-full max-w-2xl rounded-3xl border border-slate-800 bg-slate-900/70 p-8 shadow-glow backdrop-blur-md">
