@@ -31,6 +31,7 @@ export default function DashboardPage() {
   const [loadingActivity, setLoadingActivity] = useState(false);
   const [activityError, setActivityError] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const hasLoadedActivityRef = useRef(false);
   const pathname = usePathname();
 
   useEffect(() => {
@@ -90,8 +91,11 @@ export default function DashboardPage() {
     let cancelled = false;
 
     const fetchActivity = () => {
-      setLoadingActivity(true);
-      setActivityError(null);
+      const isInitial = !hasLoadedActivityRef.current;
+      if (isInitial) {
+        setLoadingActivity(true);
+        setActivityError(null);
+      }
       fetch(
         `${backendUrl}/audit/logs?login=${encodeURIComponent(login)}&limit=20`,
       )
@@ -110,6 +114,7 @@ export default function DashboardPage() {
             timestamp: string;
           }[];
           setActivity(logs);
+          hasLoadedActivityRef.current = true;
         })
         .catch((err) => {
           if (cancelled) return;
@@ -118,7 +123,10 @@ export default function DashboardPage() {
         })
         .finally(() => {
           if (cancelled) return;
-          setLoadingActivity(false);
+          if (!hasLoadedActivityRef.current) {
+            // Only show the loading state during the very first load.
+            setLoadingActivity(false);
+          }
         });
     };
 
