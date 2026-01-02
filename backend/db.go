@@ -271,6 +271,32 @@ func GetCustomCommandResponse(broadcasterLogin, commandName string) (string, str
 	return resp, role, nil
 }
 
+// IncrementCustomCommandCount increments the usage counter for a single
+// custom command and returns the new value. If the command does not exist
+// or the DB is not initialized, it returns 0 without error.
+func IncrementCustomCommandCount(broadcasterLogin, commandName string) (int64, error) {
+	if db == nil {
+		return 0, nil
+	}
+	broadcasterLogin = strings.ToLower(broadcasterLogin)
+	commandName = strings.ToLower(commandName)
+	var count int64
+	row := db.QueryRow(`
+UPDATE custom_commands
+SET usage_count = COALESCE(usage_count, 0) + 1
+WHERE broadcaster_login=$1 AND command=$2
+RETURNING usage_count;
+`, broadcasterLogin, commandName)
+	if err := row.Scan(&count); err != nil {
+		if err == sql.ErrNoRows {
+			// Command missing; treat as zero without failing the caller.
+			return 0, nil
+		}
+		return 0, err
+	}
+	return count, nil
+}
+
 // CustomCommand represents a single stored custom command.
 type CustomCommand struct {
 	Command   string
@@ -482,6 +508,12 @@ func EnsureSchema() error {
 	// Backfill: ensure custom_commands has a permitted_role field for
 	// per-command role restrictions.
 	if _, err := db.Exec(`ALTER TABLE custom_commands ADD COLUMN IF NOT EXISTS permitted_role TEXT NOT NULL DEFAULT 'all'`); err != nil {
+		return err
+	}
+
+	// Backfill: ensure custom_commands has a usage_count field for
+	// per-command counters used by the $(count) template variable.
+	if _, err := db.Exec(`ALTER TABLE custom_commands ADD COLUMN IF NOT EXISTS usage_count BIGINT NOT NULL DEFAULT 0`); err != nil {
 		return err
 	}
 

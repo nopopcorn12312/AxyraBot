@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -497,10 +498,6 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 		if err := sendHelixChatMessage(channelLogin, msg); err != nil {
 			log.Println("failed to send !ai chat response:", err)
 		}
-		// Optionally log usage in the audit log (best-effort, ignore errors).
-		if err := InsertAuditLog(channelLogin, "bot", "ai_command", fmt.Sprintf("%s used !ai", chatterLogin)); err != nil {
-			log.Println("failed to insert audit log for !ai:", err)
-		}
 		return
 	}
 
@@ -872,7 +869,18 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 				log.Println("failed to look up custom command:", err)
 			} else if resp != "" {
 				if canUseCustomCommand(channelLogin, chatterLogin, role) {
-					// Render template variables like $(user), $(touser), and $(random.chatter).
+					// Increment the per-command usage counter used by the $(count)
+					// template variable. Errors here should not block command usage.
+					usageCount, err := IncrementCustomCommandCount(channelLogin, trigger)
+					if err != nil {
+						log.Println("failed to increment custom command count:", err)
+					}
+					if usageCount <= 0 {
+						usageCount = 1
+					}
+
+					// Render template variables like $(user), $(touser), $(random.chatter),
+					// and $(count).
 					// For $(touser), use the text after the trigger word, e.g.
 					//   !hug someName  => touser = "someName".
 					toUser := ""
@@ -880,7 +888,7 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 						toUser = strings.TrimSpace(strings.Join(fields[1:], " "))
 						toUser = strings.TrimPrefix(toUser, "@")
 					}
-					text := renderCustomCommandResponse(channelLogin, chatterLogin, toUser, resp)
+					text := renderCustomCommandResponse(channelLogin, chatterLogin, toUser, resp, usageCount)
 					if err := sendHelixChatMessage(channelLogin, text); err != nil {
 						log.Println("failed to send custom command response:", err)
 					}
@@ -1279,6 +1287,24 @@ func updateStreamInfoFromChat(channelLogin, title, category string) error {
 		b, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("helix channels patch status %s: %s", resp.Status, string(b))
 	}
+
+	// Record the change in the audit log as a stream_update event so the
+	// dashboard's Recent Activity feed shows title/category changes that
+	// originated from chat commands (!title / !game).
+	descParts := []string{}
+	if strings.TrimSpace(title) != "" {
+		descParts = append(descParts, fmt.Sprintf("title=\"%s\"", title))
+	}
+	if strings.TrimSpace(category) != "" {
+		descParts = append(descParts, fmt.Sprintf("category=\"%s\"", category))
+	}
+	if len(descParts) > 0 {
+		desc := "Updated stream settings from chat: " + strings.Join(descParts, ", ")
+		if err := InsertAuditLog(channelLogin, "bot", "stream_update", desc); err != nil {
+			log.Println("failed to insert audit log for chat-based stream update:", err)
+		}
+	}
+
 	return nil
 }
 
@@ -1838,7 +1864,9 @@ func getRandomChatterFromAPI(channelLogin string) string {
 //	                    "!hug someName" this would be "someName" (without @)
 //	$(random.chatter) - a random current chatter in the channel (falls back
 //	                    to $(user) if none are available)
-func renderCustomCommandResponse(channelLogin, chatterLogin, toUser, template string) string {
+//	$(count)          - a per-command counter that increments each time the
+//	                    command is successfully used in that channel
+func renderCustomCommandResponse(channelLogin, chatterLogin, toUser, template string, usageCount int64) string {
 	channelLogin = strings.ToLower(strings.TrimSpace(channelLogin))
 	chatterLogin = strings.TrimSpace(chatterLogin)
 	toUser = strings.TrimSpace(toUser)
@@ -1865,6 +1893,14 @@ func renderCustomCommandResponse(channelLogin, chatterLogin, toUser, template st
 		rc = chatterLogin
 	}
 	out = strings.ReplaceAll(out, "$(random.chatter)", rc)
+
+	// $(count) - per-command usage counter
+	if strings.Contains(out, "$(count)") {
+		if usageCount < 0 {
+			usageCount = 0
+		}
+		out = strings.ReplaceAll(out, "$(count)", strconv.FormatInt(usageCount, 10))
+	}
 	return out
 }
 
