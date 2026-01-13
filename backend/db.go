@@ -91,6 +91,19 @@ func GetUserAccessToken(login string) (string, error) {
 	return token, nil
 }
 
+// GetUserTokens returns both access and refresh tokens for a given Twitch login.
+func GetUserTokens(login string) (string, string, error) {
+	if db == nil {
+		return "", "", fmt.Errorf("db not initialized")
+	}
+	var access, refresh string
+	row := db.QueryRow(`SELECT access_token, refresh_token FROM users WHERE login = $1`, login)
+	if err := row.Scan(&access, &refresh); err != nil {
+		return "", "", err
+	}
+	return access, refresh, nil
+}
+
 // UpdateWatchTime increments the watch_time counter for a viewer in a
 // broadcaster's channel based on the provided timestamp. It caps each
 // increment to a few minutes to avoid large jumps between sparse messages.

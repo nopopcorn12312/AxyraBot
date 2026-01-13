@@ -670,15 +670,9 @@ func handleStreamInfo(clientID string) http.HandlerFunc {
 			http.Error(w, "missing login", http.StatusBadRequest)
 			return
 		}
-		access, err := GetUserAccessToken(login)
-		if err != nil || access == "" {
-			log.Println("GetUserAccessToken failed:", err)
-			http.Error(w, "no user token", http.StatusInternalServerError)
-			return
-		}
-		userID, err := getUserIDFromToken(access)
+		userID, access, err := ensureValidUserToken(login)
 		if err != nil {
-			log.Println("getUserIDFromToken failed:", err)
+			log.Println("ensureValidUserToken failed:", err)
 			http.Error(w, "validate token failed", http.StatusInternalServerError)
 			return
 		}
@@ -739,15 +733,9 @@ func handleStreamUpdate(clientID string) http.HandlerFunc {
 			http.Error(w, "missing login", http.StatusBadRequest)
 			return
 		}
-		access, err := GetUserAccessToken(body.Login)
-		if err != nil || access == "" {
-			log.Println("GetUserAccessToken failed:", err)
-			http.Error(w, "no user token", http.StatusInternalServerError)
-			return
-		}
-		userID, err := getUserIDFromToken(access)
+		userID, access, err := ensureValidUserToken(body.Login)
 		if err != nil {
-			log.Println("getUserIDFromToken failed:", err)
+			log.Println("ensureValidUserToken failed:", err)
 			http.Error(w, "validate token failed", http.StatusInternalServerError)
 			return
 		}
@@ -877,4 +865,66 @@ func getRedirectURI(r *http.Request) string {
 		scheme = "http"
 	}
 	return scheme + "://" + r.Host + "/auth/callback"
+}
+
+// ensureValidUserToken makes sure the stored user token for a login is valid
+// for Helix calls. If validation fails, it attempts to refresh the token
+// using the stored refresh_token and updates the database on success.
+func ensureValidUserToken(login string) (string, string, error) {
+	login = strings.ToLower(strings.TrimSpace(login))
+	if login == "" {
+		return "", "", fmt.Errorf("missing login")
+	}
+	access, refresh, err := GetUserTokens(login)
+	if err != nil || access == "" {
+		if err == nil {
+			return "", "", fmt.Errorf("no user token")
+		}
+		return "", "", err
+	}
+	userID, err := getUserIDFromToken(access)
+	if err == nil && userID != "" {
+		return userID, access, nil
+	}
+
+	clientID := os.Getenv("TWITCH_CLIENT_ID")
+	clientSecret := os.Getenv("TWITCH_CLIENT_SECRET")
+	if clientID == "" || clientSecret == "" || refresh == "" {
+		return "", "", fmt.Errorf("cannot refresh token; missing client credentials or refresh token")
+	}
+
+	v := url.Values{}
+	v.Set("client_id", clientID)
+	v.Set("client_secret", clientSecret)
+	v.Set("grant_type", "refresh_token")
+	v.Set("refresh_token", refresh)
+	resp, err := http.PostForm("https://id.twitch.tv/oauth2/token", v)
+	if err != nil {
+		return "", "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode/100 != 2 {
+		return "", "", fmt.Errorf("refresh failed: %s", resp.Status)
+	}
+	var tr struct {
+		AccessToken  string `json:"access_token"`
+		RefreshToken string `json:"refresh_token"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&tr); err != nil {
+		return "", "", err
+	}
+	if tr.AccessToken == "" {
+		return "", "", fmt.Errorf("refresh response missing access_token")
+	}
+	if err := SaveUserTokens(login, tr.AccessToken, tr.RefreshToken); err != nil {
+		log.Println("failed to save refreshed user tokens:", err)
+	}
+	userID, err = getUserIDFromToken(tr.AccessToken)
+	if err != nil || userID == "" {
+		if err == nil {
+			return "", "", fmt.Errorf("validate after refresh returned empty user id")
+		}
+		return "", "", err
+	}
+	return userID, tr.AccessToken, nil
 }
