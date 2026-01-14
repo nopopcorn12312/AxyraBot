@@ -7,6 +7,8 @@ import { usePathname } from "next/navigation";
 import AxyraBotPFP from "../images/AxyraBotPFP.png";
 import NightbotPFP from "../images/NightbotPFP.png";
 import NightbotBanner from "../images/NightbotBanner.png";
+import SteamelementsBanner from "../images/SteamelementsBanner.png";
+import FossabotBanner from "../images/FossabotBanner.png";
 
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://your-backend.onrender.com";
 const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL;
@@ -466,8 +468,14 @@ export default function ImportPage() {
                         : "border-slate-800"
                     } bg-slate-950/80`}
                   >
-                    <div className="relative h-28 bg-gradient-to-r from-emerald-500/35 via-cyan-500/35 to-slate-950">
-                      <div className="absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_top,_rgba(45,212,191,0.5),_transparent_65%)]" />
+                    <div className="relative h-28">
+                      <Image
+                        src={SteamelementsBanner}
+                        alt="StreamElements banner"
+                        fill
+                        className="object-cover"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-r from-slate-950/40 via-slate-950/10 to-slate-950/70" />
                     </div>
                     <div className="flex flex-1 flex-col justify-between px-5 py-4 text-sm">
                       <div className="space-y-3">
@@ -503,8 +511,14 @@ export default function ImportPage() {
                         : "border-slate-800"
                     } bg-slate-950/80`}
                   >
-                    <div className="relative h-28 bg-gradient-to-r from-fuchsia-500/35 via-purple-500/35 to-slate-950">
-                      <div className="absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_top,_rgba(244,114,182,0.5),_transparent_65%)]" />
+                    <div className="relative h-28">
+                      <Image
+                        src={FossabotBanner}
+                        alt="Fossabot banner"
+                        fill
+                        className="object-cover"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-r from-slate-950/40 via-slate-950/10 to-slate-950/70" />
                     </div>
                     <div className="flex flex-1 flex-col justify-between px-5 py-4 text-sm">
                       <div className="space-y-3">
