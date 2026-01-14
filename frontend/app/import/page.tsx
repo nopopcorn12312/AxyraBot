@@ -430,28 +430,16 @@ export default function ImportPage() {
                         className="object-cover"
                         priority
                       />
-                      <div className="absolute inset-0 bg-gradient-to-r from-slate-950/30 via-slate-950/10 to-slate-950/60" />
-                      <div className="relative flex h-full items-end px-5 pb-4">
-                        <div className="flex items-center gap-3">
-                          <div className="relative h-10 w-10 overflow-hidden rounded-full border border-slate-900/70 bg-slate-950/80">
-                            <Image
-                              src={NightbotPFP}
-                              alt="Nightbot avatar"
-                              fill
-                              className="object-cover"
-                            />
-                          </div>
-                          <div>
-                            <div className="text-sm font-semibold uppercase tracking-wide text-slate-100">
-                              Nightbot
-                            </div>
-                            <div className="text-xs text-slate-300">Import existing Nightbot commands</div>
-                          </div>
-                        </div>
-                      </div>
+                      <div className="absolute inset-0 bg-gradient-to-r from-slate-950/40 via-slate-950/10 to-slate-950/70" />
                     </div>
                     <div className="flex flex-1 flex-col justify-between px-5 py-4 text-sm">
-                      <div className="space-y-2">
+                      <div className="space-y-3">
+                        <div>
+                          <div className="text-sm font-semibold uppercase tracking-wide text-slate-100">
+                            Nightbot
+                          </div>
+                          <div className="text-xs text-slate-300">Import existing Nightbot commands</div>
+                        </div>
                         <p className="text-xs text-slate-400">Imports</p>
                         <ul className="space-y-1 text-xs text-slate-200">
                           <li>✔ Commands</li>
@@ -480,22 +468,15 @@ export default function ImportPage() {
                   >
                     <div className="relative h-28 bg-gradient-to-r from-emerald-500/35 via-cyan-500/35 to-slate-950">
                       <div className="absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_top,_rgba(45,212,191,0.5),_transparent_65%)]" />
-                      <div className="relative flex h-full items-end px-5 pb-4">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-950/80 text-xl">
-                            SE
-                          </div>
-                          <div>
-                            <div className="text-sm font-semibold uppercase tracking-wide text-slate-100">
-                              StreamElements
-                            </div>
-                            <div className="text-xs text-slate-300">Import from StreamElements (coming soon)</div>
-                          </div>
-                        </div>
-                      </div>
                     </div>
                     <div className="flex flex-1 flex-col justify-between px-5 py-4 text-sm">
-                      <div className="space-y-2">
+                      <div className="space-y-3">
+                        <div>
+                          <div className="text-sm font-semibold uppercase tracking-wide text-slate-100">
+                            StreamElements
+                          </div>
+                          <div className="text-xs text-slate-300">Import from StreamElements (coming soon)</div>
+                        </div>
                         <p className="text-xs text-slate-400">Planned support</p>
                         <ul className="space-y-1 text-xs text-slate-200">
                           <li>✔ Commands</li>
@@ -524,22 +505,15 @@ export default function ImportPage() {
                   >
                     <div className="relative h-28 bg-gradient-to-r from-fuchsia-500/35 via-purple-500/35 to-slate-950">
                       <div className="absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_top,_rgba(244,114,182,0.5),_transparent_65%)]" />
-                      <div className="relative flex h-full items-end px-5 pb-4">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-950/80 text-xl">
-                            F
-                          </div>
-                          <div>
-                            <div className="text-sm font-semibold uppercase tracking-wide text-slate-100">
-                              Fossabot
-                            </div>
-                            <div className="text-xs text-slate-300">Import from Fossabot (coming soon)</div>
-                          </div>
-                        </div>
-                      </div>
                     </div>
                     <div className="flex flex-1 flex-col justify-between px-5 py-4 text-sm">
-                      <div className="space-y-2">
+                      <div className="space-y-3">
+                        <div>
+                          <div className="text-sm font-semibold uppercase tracking-wide text-slate-100">
+                            Fossabot
+                          </div>
+                          <div className="text-xs text-slate-300">Import from Fossabot (coming soon)</div>
+                        </div>
                         <p className="text-xs text-slate-400">Planned support</p>
                         <ul className="space-y-1 text-xs text-slate-200">
                           <li>✔ Commands</li>
