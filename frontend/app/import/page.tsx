@@ -33,7 +33,15 @@ export default function ImportPage() {
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const manualSectionRef = useRef<HTMLDivElement | null>(null);
   const pathname = usePathname();
+
+  const providerLabels: Record<Provider, string> = {
+    nightbot: "Nightbot",
+    streamelements: "StreamElements",
+    fossabot: "Fossabot",
+    other: "Other / generic",
+  };
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -124,6 +132,19 @@ export default function ImportPage() {
     url.searchParams.set("login", login);
     url.searchParams.set("redirect", importUrl);
     window.location.href = url.toString();
+  };
+
+  const scrollToManualSection = () => {
+    if (manualSectionRef.current) {
+      manualSectionRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
+  const handleChooseProvider = (next: Provider) => {
+    setProvider(next);
+    setParseError(null);
+    setImportResult(null);
+    scrollToManualSection();
   };
 
   const handleParse = () => {
@@ -434,39 +455,110 @@ export default function ImportPage() {
             )}
             {isLoggedIn && (
               <>
-                <p className="text-sm text-slate-400 mb-3">
-                  Choose your existing bot, paste a list of custom commands (one per line), then parse and import
-                  them as AxyraBot custom commands.
+                <p className="text-sm text-slate-400 mb-4">
+                  Import your commands from other chat bots into AxyraBot. Choose a platform card below, then use direct
+                  import or the manual section.
                 </p>
-                <div className="flex flex-col md:flex-row gap-4 mb-4">
-                  <div className="flex-1">
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
-                      Source bot
-                    </label>
-                    <select
-                      value={provider}
-                      onChange={(e) => setProvider(e.target.value as Provider)}
-                      className="w-full rounded-md border border-slate-700 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent/70"
-                    >
-                      <option value="nightbot">Nightbot</option>
-                      <option value="streamelements">StreamElements</option>
-                      <option value="fossabot">Fossabot</option>
-                      <option value="other">Other</option>
-                    </select>
-                    <p className="mt-1 text-[11px] text-slate-400">
-                      This is used for audit logs only; paste commands in the format <span className="font-mono">!hello Hello chat!</span>.
-                    </p>
-                    {provider === "nightbot" && (
-                      <button
-                        type="button"
-                        onClick={handleNightbotOAuth}
-                        className="mt-2 inline-flex items-center gap-1 rounded-md border border-emerald-500/70 bg-emerald-600/90 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-emerald-500 hover:border-emerald-400 transition"
-                      >
-                        <span className="text-xs">⬆</span>
-                        <span>Import directly from Nightbot</span>
-                      </button>
-                    )}
+
+                <div className="mb-6 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+                  {/* Nightbot card */}
+                  <div
+                    className={`flex flex-col overflow-hidden rounded-2xl border ${
+                      provider === "nightbot"
+                        ? "border-accent shadow-[0_0_18px_rgba(129,140,248,0.6)]"
+                        : "border-slate-800"
+                    } bg-slate-900/80`}
+                  >
+                    <div className="flex items-center justify-center bg-slate-800/80 px-6 py-6">
+                      <span className="text-2xl font-semibold tracking-tight text-white">Nightbot</span>
+                    </div>
+                    <div className="flex flex-1 flex-col justify-between bg-slate-950/80 px-5 py-4 text-sm">
+                      <div className="space-y-2">
+                        <p className="text-xs text-slate-400">Imports</p>
+                        <ul className="space-y-1 text-xs text-slate-200">
+                          <li>✔ Commands</li>
+                          <li>✔ Usage counters (where applicable)</li>
+                        </ul>
+                      </div>
+                      <div className="mt-4 flex justify-end">
+                        <button
+                          type="button"
+                          onClick={handleNightbotOAuth}
+                          className="inline-flex items-center rounded-md bg-accent px-4 py-1.5 text-xs font-semibold text-slate-900 shadow-sm hover:bg-sky-400"
+                        >
+                          Import
+                        </button>
+                      </div>
+                    </div>
                   </div>
+
+                  {/* StreamElements card */}
+                  <div
+                    className={`flex flex-col overflow-hidden rounded-2xl border ${
+                      provider === "streamelements"
+                        ? "border-accent shadow-[0_0_18px_rgba(129,140,248,0.6)]"
+                        : "border-slate-800"
+                    } bg-slate-900/80`}
+                  >
+                    <div className="flex items-center justify-center bg-slate-800/80 px-6 py-6">
+                      <span className="text-2xl font-semibold tracking-tight text-white">StreamElements</span>
+                    </div>
+                    <div className="flex flex-1 flex-col justify-between bg-slate-950/80 px-5 py-4 text-sm">
+                      <div className="space-y-2">
+                        <p className="text-xs text-slate-400">Manual import</p>
+                        <ul className="space-y-1 text-xs text-slate-200">
+                          <li>✔ Commands</li>
+                          <li>✔ Timers (via copied messages)</li>
+                        </ul>
+                      </div>
+                      <div className="mt-4 flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => handleChooseProvider("streamelements")}
+                          className="inline-flex items-center rounded-md bg-slate-700 px-4 py-1.5 text-xs font-semibold text-slate-100 hover:bg-slate-600"
+                        >
+                          Import
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Fossabot card */}
+                  <div
+                    className={`flex flex-col overflow-hidden rounded-2xl border ${
+                      provider === "fossabot"
+                        ? "border-accent shadow-[0_0_18px_rgba(129,140,248,0.6)]"
+                        : "border-slate-800"
+                    } bg-slate-900/80`}
+                  >
+                    <div className="flex items-center justify-center bg-slate-800/80 px-6 py-6">
+                      <span className="text-2xl font-semibold tracking-tight text-white">Fossabot</span>
+                    </div>
+                    <div className="flex flex-1 flex-col justify-between bg-slate-950/80 px-5 py-4 text-sm">
+                      <div className="space-y-2">
+                        <p className="text-xs text-slate-400">Manual import</p>
+                        <ul className="space-y-1 text-xs text-slate-200">
+                          <li>✔ Commands</li>
+                          <li>✔ Timers (via copied messages)</li>
+                        </ul>
+                      </div>
+                      <div className="mt-4 flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => handleChooseProvider("fossabot")}
+                          className="inline-flex items-center rounded-md bg-slate-700 px-4 py-1.5 text-xs font-semibold text-slate-100 hover:bg-slate-600"
+                        >
+                          Import
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div ref={manualSectionRef} className="mt-2">
+                  <p className="mb-2 text-xs text-slate-400">
+                    Manual import source: <span className="font-semibold text-slate-200">{providerLabels[provider]}</span>
+                  </p>
                 </div>
 
                 <label className="block text-xs font-semibold text-slate-300 mb-1">
