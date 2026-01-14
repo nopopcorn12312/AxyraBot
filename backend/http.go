@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -26,12 +27,25 @@ func startHTTPServer(clientID, clientSecret string) {
 	mux.HandleFunc("/commands/custom", withCORS(handleCustomCommands))
 	mux.HandleFunc("/commands/custom/update", withCORS(handleCustomCommandsUpdate))
 	mux.HandleFunc("/commands/custom/delete", withCORS(handleCustomCommandsDelete))
+	mux.HandleFunc("/commands/import", withCORS(handleCustomCommandsImport))
 	mux.HandleFunc("/modules/settings", withCORS(handleModuleSettings))
 	mux.HandleFunc("/birthdays/list", withCORS(handleBirthdaysList))
 	mux.HandleFunc("/birthdays/settings", withCORS(handleBirthdaysSettings))
 	mux.HandleFunc("/birthdays/command-messages", withCORS(handleBirthdayCommandMessages))
-	
-	
+
+	// Optional Nightbot OAuth integration for importing commands without
+	// copy/paste. These handlers are only registered when all required
+	// environment variables are present.
+	nbClientID := strings.TrimSpace(os.Getenv("NIGHTBOT_CLIENT_ID"))
+	nbClientSecret := strings.TrimSpace(os.Getenv("NIGHTBOT_CLIENT_SECRET"))
+	nbRedirectURL := strings.TrimSpace(os.Getenv("NIGHTBOT_REDIRECT_URL"))
+	if nbClientID != "" && nbClientSecret != "" && nbRedirectURL != "" {
+		mux.HandleFunc("/nightbot/auth/start", handleNightbotAuthStart(nbClientID, nbRedirectURL))
+		mux.HandleFunc("/nightbot/auth/callback", handleNightbotAuthCallback(nbClientID, nbClientSecret, nbRedirectURL))
+	} else {
+		log.Println("Nightbot OAuth not configured; set NIGHTBOT_CLIENT_ID, NIGHTBOT_CLIENT_SECRET, and NIGHTBOT_REDIRECT_URL to enable Nightbot import")
+	}
+
 	mux.HandleFunc("/audit/logs", withCORS(handleAuditLogs))
 	addr := ":8080"
 	if p := os.Getenv("PORT"); p != "" {
@@ -212,6 +226,282 @@ func handleCustomCommands(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "ok")
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
+}
+
+// handleCustomCommandsImport bulk-imports custom commands for a broadcaster
+// from another bot. The caller is expected to have already parsed the
+// provider-specific format into a simple list of name/response pairs.
+func handleCustomCommandsImport(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	var body struct {
+		Login    string `json:"login"`
+		Provider string `json:"provider"`
+		Commands []struct {
+			Name     string `json:"name"`
+			Response string `json:"response"`
+		} `json:"commands"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "bad json", http.StatusBadRequest)
+		return
+	}
+	login := strings.ToLower(strings.TrimSpace(body.Login))
+	provider := strings.TrimSpace(body.Provider)
+	if provider == "" {
+		provider = "other"
+	}
+	if login == "" {
+		http.Error(w, "missing login", http.StatusBadRequest)
+		return
+	}
+	if len(body.Commands) == 0 {
+		http.Error(w, "no commands provided", http.StatusBadRequest)
+		return
+	}
+
+	imported := 0
+	for _, c := range body.Commands {
+		name := strings.TrimSpace(c.Name)
+		resp := strings.TrimSpace(c.Response)
+		if name == "" || resp == "" {
+			continue
+		}
+		if !strings.HasPrefix(name, "!") {
+			name = "!" + name
+		}
+		if err := UpsertCustomCommand(login, "import:"+strings.ToLower(provider), name, resp); err != nil {
+			log.Println("failed to import custom command:", name, err)
+			continue
+		}
+		imported++
+	}
+
+	if imported == 0 {
+		http.Error(w, "no commands imported", http.StatusBadRequest)
+		return
+	}
+
+	if err := InsertAuditLog(login, "bot", "custom_command_import", fmt.Sprintf("Imported %d commands from %s", imported, provider)); err != nil {
+		log.Println("failed to insert audit log for custom command import:", err)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(struct {
+		Imported int    `json:"imported"`
+		Provider string `json:"provider"`
+	}{Imported: imported, Provider: provider})
+}
+
+// handleNightbotAuthStart redirects the user to Nightbot's OAuth
+// authorization page so we can fetch their custom commands directly
+// via the Nightbot API. The login and desired frontend redirect are
+// encoded into the OAuth state parameter.
+func handleNightbotAuthStart(clientID, redirectURI string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		login := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("login")))
+		frontendRedirect := strings.TrimSpace(r.URL.Query().Get("redirect"))
+		if frontendRedirect == "" {
+			frontendRedirect = getFrontendBaseURL() + "/import"
+		}
+
+		statePayload := struct {
+			Login    string `json:"login"`
+			Redirect string `json:"redirect"`
+		}{
+			Login:    login,
+			Redirect: frontendRedirect,
+		}
+		stateJSON, err := json.Marshal(statePayload)
+		if err != nil {
+			log.Println("failed to marshal nightbot state:", err)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		state := base64.URLEncoding.EncodeToString(stateJSON)
+
+		authURL, err := url.Parse("https://api.nightbot.tv/oauth2/authorize")
+		if err != nil {
+			log.Println("failed to parse nightbot authorize url:", err)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		q := authURL.Query()
+		q.Set("response_type", "code")
+		q.Set("client_id", clientID)
+		q.Set("redirect_uri", redirectURI)
+		q.Set("scope", "commands")
+		q.Set("state", state)
+		authURL.RawQuery = q.Encode()
+
+		http.Redirect(w, r, authURL.String(), http.StatusFound)
+	}
+}
+
+// handleNightbotAuthCallback exchanges the authorization code for an
+// access token, fetches the user's Nightbot custom commands, imports
+// them as Axyra custom commands, and then redirects back to the
+// frontend import page with a status indicator.
+func handleNightbotAuthCallback(clientID, clientSecret, redirectURI string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		code := strings.TrimSpace(q.Get("code"))
+		stateParam := q.Get("state")
+		var statePayload struct {
+			Login    string `json:"login"`
+			Redirect string `json:"redirect"`
+		}
+		if stateParam != "" {
+			if decoded, err := base64.URLEncoding.DecodeString(stateParam); err == nil {
+				if err := json.Unmarshal(decoded, &statePayload); err != nil {
+					log.Println("failed to unmarshal nightbot state:", err)
+				}
+			} else {
+				log.Println("failed to decode nightbot state:", err)
+			}
+		}
+
+		login := strings.ToLower(strings.TrimSpace(statePayload.Login))
+		frontendRedirect := strings.TrimSpace(statePayload.Redirect)
+		if frontendRedirect == "" {
+			frontendRedirect = getFrontendBaseURL() + "/import"
+		}
+
+		redirectWithStatus := func(status string, count int) {
+			u, err := url.Parse(frontendRedirect)
+			if err != nil {
+				log.Println("failed to parse frontend redirect for nightbot callback:", err)
+				http.Error(w, "nightbot import complete", http.StatusOK)
+				return
+			}
+			params := u.Query()
+			params.Set("provider", "nightbot")
+			params.Set("nightbot", status)
+			if count > 0 {
+				params.Set("count", strconv.Itoa(count))
+			}
+			u.RawQuery = params.Encode()
+			http.Redirect(w, r, u.String(), http.StatusFound)
+		}
+
+		// If Nightbot returned an error (e.g., access_denied), just
+		// bounce back to the frontend with an error flag.
+		if errParam := strings.TrimSpace(q.Get("error")); errParam != "" {
+			log.Println("nightbot oauth error:", errParam)
+			redirectWithStatus("error", 0)
+			return
+		}
+
+		if code == "" {
+			redirectWithStatus("error", 0)
+			return
+		}
+
+		// Exchange authorization code for access token.
+		form := url.Values{}
+		form.Set("client_id", clientID)
+		form.Set("client_secret", clientSecret)
+		form.Set("grant_type", "authorization_code")
+		form.Set("redirect_uri", redirectURI)
+		form.Set("code", code)
+		resp, err := http.PostForm("https://api.nightbot.tv/oauth2/token", form)
+		if err != nil {
+			log.Println("nightbot token exchange failed:", err)
+			redirectWithStatus("error", 0)
+			return
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			log.Println("nightbot token exchange non-200:", resp.StatusCode)
+			redirectWithStatus("error", 0)
+			return
+		}
+		var tokenResp struct {
+			AccessToken string `json:"access_token"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
+			log.Println("failed to decode nightbot token response:", err)
+			redirectWithStatus("error", 0)
+			return
+		}
+		accessToken := strings.TrimSpace(tokenResp.AccessToken)
+		if accessToken == "" {
+			log.Println("nightbot token response missing access_token")
+			redirectWithStatus("error", 0)
+			return
+		}
+
+		// Fetch custom commands from Nightbot.
+		req, err := http.NewRequest(http.MethodGet, "https://api.nightbot.tv/1/commands", nil)
+		if err != nil {
+			log.Println("failed to build nightbot commands request:", err)
+			redirectWithStatus("error", 0)
+			return
+		}
+		req.Header.Set("Authorization", "Bearer "+accessToken)
+		cmdResp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			log.Println("nightbot commands request failed:", err)
+			redirectWithStatus("error", 0)
+			return
+		}
+		defer cmdResp.Body.Close()
+		if cmdResp.StatusCode != http.StatusOK {
+			log.Println("nightbot commands non-200:", cmdResp.StatusCode)
+			redirectWithStatus("error", 0)
+			return
+		}
+		var nb struct {
+			Status   int `json:"status"`
+			Commands []struct {
+				Name    string `json:"name"`
+				Message string `json:"message"`
+			} `json:"commands"`
+		}
+		if err := json.NewDecoder(cmdResp.Body).Decode(&nb); err != nil {
+			log.Println("failed to decode nightbot commands response:", err)
+			redirectWithStatus("error", 0)
+			return
+		}
+
+		if login == "" {
+			log.Println("nightbot import missing login in state; skipping import")
+			redirectWithStatus("error", 0)
+			return
+		}
+
+		imported := 0
+		for _, c := range nb.Commands {
+			name := strings.TrimSpace(c.Name)
+			respText := strings.TrimSpace(c.Message)
+			if name == "" || respText == "" {
+				continue
+			}
+			if !strings.HasPrefix(name, "!") {
+				name = "!" + name
+			}
+			if err := UpsertCustomCommand(login, "import:nightbot", name, respText); err != nil {
+				log.Println("failed to import nightbot command:", name, err)
+				continue
+			}
+			imported++
+		}
+
+		if imported > 0 {
+			if err := InsertAuditLog(login, "bot", "custom_command_import", fmt.Sprintf("Imported %d commands from nightbot via oauth", imported)); err != nil {
+				log.Println("failed to insert audit log for nightbot import:", err)
+			}
+		}
+
+		status := "none"
+		if imported > 0 {
+			status = "success"
+		} else {
+			status = "error"
+		}
+		redirectWithStatus(status, imported)
 	}
 }
 

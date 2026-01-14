@@ -92,34 +92,43 @@ export default function PrivacyPage() {
             {primaryLabel}
           </a>
           {isLoggedIn && (
-            <div className="relative" ref={menuRef}>
-              <button
-                type="button"
-                onClick={() => setMenuOpen((open) => !open)}
-                className="flex items-center gap-2 rounded-full bg-slate-900/80 px-1.5 py-1 hover:bg-slate-800 transition"
+            <>
+              <Link
+                href="/import"
+                className="inline-flex items-center gap-1 rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1.5 text-xs font-medium text-slate-100 hover:bg-slate-800 hover:border-slate-500 transition"
               >
-                {avatarUrl && (
-                  <Image
-                    src={avatarUrl}
-                    alt="Twitch profile picture"
-                    width={32}
-                    height={32}
-                    className="rounded-full"
-                  />
+                <span className="text-xs">⬆</span>
+                <span>Import</span>
+              </Link>
+              <div className="relative" ref={menuRef}>
+                <button
+                  type="button"
+                  onClick={() => setMenuOpen((open) => !open)}
+                  className="flex items-center gap-2 rounded-full bg-slate-900/80 px-1.5 py-1 hover:bg-slate-800 transition"
+                >
+                  {avatarUrl && (
+                    <Image
+                      src={avatarUrl}
+                      alt="Twitch profile picture"
+                      width={32}
+                      height={32}
+                      className="rounded-full"
+                    />
+                  )}
+                </button>
+                {menuOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-36 rounded-lg border border-slate-700 bg-slate-900/95 py-2 shadow-lg">
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="w-full px-4 py-2 text-sm text-left text-slate-200 hover:bg-slate-800"
+                    >
+                      Log out
+                    </button>
+                  </div>
                 )}
-              </button>
-              {menuOpen && (
-                <div className="absolute right-0 top-full mt-2 w-36 rounded-lg border border-slate-700 bg-slate-900/95 py-2 shadow-lg">
-                  <button
-                    type="button"
-                    onClick={handleLogout}
-                    className="w-full px-4 py-2 text-sm text-left text-slate-200 hover:bg-slate-800"
-                  >
-                    Log out
-                  </button>
-                </div>
-              )}
-            </div>
+              </div>
+            </>
           )}
         </div>
       </header>

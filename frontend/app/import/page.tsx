@@ -9,15 +9,29 @@ import AxyraBotPFP from "../images/AxyraBotPFP.png";
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://your-backend.onrender.com";
 const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL;
 
-export default function TermsPage() {
+type Provider = "nightbot" | "streamelements" | "fossabot" | "other";
+
+type ParsedCommand = {
+  name: string;
+  response: string;
+};
+
+export default function ImportPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [login, setLogin] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mainSectionOpen, setMainSectionOpen] = useState(true);
   const [vanitySectionOpen, setVanitySectionOpen] = useState(true);
   const [otherSectionOpen, setOtherSectionOpen] = useState(true);
-  const [commandsOpen, setCommandsOpen] = useState(false);
+  const [commandsOpen, setCommandsOpen] = useState(true);
+  const [provider, setProvider] = useState<Provider>("nightbot");
+  const [rawInput, setRawInput] = useState("");
+  const [parsed, setParsed] = useState<ParsedCommand[]>([]);
+  const [parseError, setParseError] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const pathname = usePathname();
 
@@ -27,9 +41,47 @@ export default function TermsPage() {
     const storedAvatar = window.localStorage.getItem("axyra.avatar");
     if (storedLogin) {
       setIsLoggedIn(true);
+      setLogin(storedLogin.toLowerCase());
     }
     if (storedAvatar) {
       setAvatarUrl(storedAvatar);
+    }
+  }, []);
+
+  // Pick up Nightbot OAuth redirect status and provider selection from the URL.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const providerParam = params.get("provider");
+    if (
+      providerParam === "nightbot" ||
+      providerParam === "streamelements" ||
+      providerParam === "fossabot" ||
+      providerParam === "other"
+    ) {
+      setProvider(providerParam as Provider);
+    }
+    const nightbotStatus = params.get("nightbot");
+    const count = params.get("count");
+    if (nightbotStatus === "success") {
+      const num = count ? parseInt(count, 10) : NaN;
+      const label = !isNaN(num) && num > 0 ? `${num} command${num === 1 ? "" : "s"}` : "your commands";
+      setImportResult(`Imported ${label} from Nightbot via OAuth.`);
+      setParseError(null);
+      setParsed([]);
+      setRawInput("");
+    } else if (nightbotStatus === "error") {
+      setParseError("Nightbot import failed or was cancelled. You can try again or use manual paste.");
+      setImportResult(null);
+    }
+
+    // Clean up query params after consuming them so refreshes don't repeat messages.
+    if (nightbotStatus || providerParam) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("nightbot");
+      url.searchParams.delete("count");
+      // Keep provider so the selection persists.
+      window.history.replaceState({}, "", url.toString());
     }
   }, []);
 
@@ -51,6 +103,7 @@ export default function TermsPage() {
     }
     setIsLoggedIn(false);
     setAvatarUrl(null);
+    setLogin(null);
     setMenuOpen(false);
   };
 
@@ -58,6 +111,81 @@ export default function TermsPage() {
   const connectUrl = `${backendUrl}/auth/start?redirect=${encodeURIComponent(redirectTarget)}`;
   const primaryHref = isLoggedIn ? "/dashboard" : connectUrl;
   const primaryLabel = isLoggedIn ? "Dashboard" : "Login with Twitch";
+
+  const handleNightbotOAuth = () => {
+    if (!login) {
+      setParseError("Log in with Twitch first to import commands.");
+      return;
+    }
+    if (typeof window === "undefined") return;
+    const base = frontendUrl || window.location.origin;
+    const importUrl = `${base.replace(/\/$/, "")}/import`;
+    const url = new URL(`${backendUrl}/nightbot/auth/start`);
+    url.searchParams.set("login", login);
+    url.searchParams.set("redirect", importUrl);
+    window.location.href = url.toString();
+  };
+
+  const handleParse = () => {
+    setParseError(null);
+    setImportResult(null);
+    const text = rawInput || "";
+    const lines = text.split(/\r?\n/);
+    const seen = new Map<string, string>();
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || !trimmed.startsWith("!")) continue;
+      const firstSpace = trimmed.indexOf(" ");
+      if (firstSpace === -1) continue;
+      const name = trimmed.slice(0, firstSpace).trim();
+      const response = trimmed.slice(firstSpace + 1).trim();
+      if (!name || !response) continue;
+      seen.set(name, response);
+    }
+    const result: ParsedCommand[] = Array.from(seen.entries()).map(([name, response]) => ({
+      name,
+      response,
+    }));
+    if (result.length === 0) {
+      setParsed([]);
+      setParseError("No commands detected. Paste lines like `!hello Hello chat!`.");
+      return;
+    }
+    setParsed(result);
+  };
+
+  const handleImport = async () => {
+    if (!login) return;
+    if (parsed.length === 0) {
+      setParseError("Parse commands first before importing.");
+      return;
+    }
+    setImporting(true);
+    setImportResult(null);
+    setParseError(null);
+    try {
+      const res = await fetch(`${backendUrl}/commands/import`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          login,
+          provider,
+          commands: parsed,
+        }),
+      });
+      if (!res.ok) {
+        throw new Error("Import failed");
+      }
+      const data = await res.json().catch(() => ({} as any));
+      const count = (data && typeof data.imported === "number") ? data.imported : parsed.length;
+      setImportResult(`Imported ${count} command${count === 1 ? "" : "s"}.`);
+    } catch (err) {
+      console.error(err);
+      setParseError("Could not import commands. Please try again.");
+    } finally {
+      setImporting(false);
+    }
+  };
 
   return (
     <main className="min-h-screen flex flex-col bg-[radial-gradient(circle_at_top,_#1e293b,_#020617)]">
@@ -85,10 +213,7 @@ export default function TermsPage() {
           </Link>
         </div>
         <div className="flex items-center gap-4">
-          <a
-            href={primaryHref}
-            className="hidden"
-          >
+          <a href={primaryHref} className="hidden">
             {primaryLabel}
           </a>
           {isLoggedIn && (
@@ -292,142 +417,118 @@ export default function TermsPage() {
           </nav>
         </div>
 
-        <div className="flex-1 flex flex-col gap-6 text-slate-50 overflow-y-auto">
-          <div className="w-full rounded-2xl border border-slate-800 bg-slate-900/80 p-6 space-y-5">
-            <header className="space-y-1">
-              <h1 className="text-2xl font-semibold">Terms of Service for AxyraBot</h1>
-              <p className="text-xs text-slate-400">Last updated: January 1, 2026</p>
-            </header>
-
-            <p className="text-sm text-slate-300">
-              These Terms of Service ("Terms") govern the use of AxyraBot, a Twitch chat bot designed to provide
-              moderation, automation, and engagement features. By adding or using AxyraBot in a Twitch channel, you
-              agree to these Terms.
-            </p>
-
-            <section className="space-y-2">
-              <h2 className="text-lg font-semibold text-slate-100">1. Acceptance of Terms</h2>
-              <p className="text-sm text-slate-300">
-                By authorizing, installing, or using AxyraBot, you confirm that you have read, understood, and agree to
-                be bound by these Terms, as well as Twitch&apos;s Terms of Service, Community Guidelines, and Developer
-                Agreement.
+        <div className="flex-1 flex flex-col gap-6 text-slate-50">
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-6">
+            <div className="flex items-center justify-between mb-2">
+              <h1 className="text-2xl font-semibold">Import custom commands</h1>
+              {login && (
+                <span className="text-xs text-slate-400">
+                  Importing for <span className="font-semibold">{login}</span>
+                </span>
+              )}
+            </div>
+            {!isLoggedIn && (
+              <p className="text-sm text-slate-400">
+                Log in with Twitch on the homepage to import commands into your channel.
               </p>
-              <p className="text-sm text-slate-300">
-                If you do not agree to these Terms, you must not use AxyraBot.
-              </p>
-            </section>
+            )}
+            {isLoggedIn && (
+              <>
+                <p className="text-sm text-slate-400 mb-3">
+                  Choose your existing bot, paste a list of custom commands (one per line), then parse and import
+                  them as AxyraBot custom commands.
+                </p>
+                <div className="flex flex-col md:flex-row gap-4 mb-4">
+                  <div className="flex-1">
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      Source bot
+                    </label>
+                    <select
+                      value={provider}
+                      onChange={(e) => setProvider(e.target.value as Provider)}
+                      className="w-full rounded-md border border-slate-700 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent/70"
+                    >
+                      <option value="nightbot">Nightbot</option>
+                      <option value="streamelements">StreamElements</option>
+                      <option value="fossabot">Fossabot</option>
+                      <option value="other">Other</option>
+                    </select>
+                    <p className="mt-1 text-[11px] text-slate-400">
+                      This is used for audit logs only; paste commands in the format <span className="font-mono">!hello Hello chat!</span>.
+                    </p>
+                  </div>
+                </div>
 
-            <section className="space-y-2">
-              <h2 className="text-lg font-semibold text-slate-100">2. Description of Service</h2>
-              <p className="text-sm text-slate-300">
-                AxyraBot provides automated moderation, chat utilities, engagement tools, and other features within
-                Twitch channels. Features may change, be added, or be removed at any time without notice.
-              </p>
-            </section>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Paste commands
+                </label>
+                <textarea
+                  rows={6}
+                  value={rawInput}
+                  onChange={(e) => setRawInput(e.target.value)}
+                  className="w-full rounded-md border border-slate-700 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent/70"
+                  placeholder="!hello Hello chat!\n!discord Join the server at https://..."
+                />
+                <div className="mt-3 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handleParse}
+                    className="inline-flex items-center justify-center rounded-md bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-100 hover:bg-slate-700"
+                  >
+                    Parse commands
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleImport}
+                    disabled={importing || parsed.length === 0 || !login}
+                    className="inline-flex items-center justify-center rounded-md bg-accent px-4 py-2 text-sm font-semibold text-slate-900 shadow-sky-500/40 hover:bg-sky-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {importing ? "Importing..." : "Import parsed commands"}
+                  </button>
+                </div>
+                {parseError && (
+                  <p className="mt-2 text-xs text-rose-400">{parseError}</p>
+                )}
+                {importResult && !parseError && (
+                  <p className="mt-2 text-xs text-emerald-400">{importResult}</p>
+                )}
 
-            <section className="space-y-2">
-              <h2 className="text-lg font-semibold text-slate-100">3. Eligibility and Authority</h2>
-              <p className="text-sm text-slate-300">
-                You must have the authority to manage or moderate a Twitch channel to configure or enable AxyraBot
-                within that channel. Channel owners and moderators are responsible for how AxyraBot is configured and
-                used.
-              </p>
-            </section>
-
-            <section className="space-y-2">
-              <h2 className="text-lg font-semibold text-slate-100">4. Proper Use</h2>
-              <p className="text-sm text-slate-300">You agree not to use AxyraBot to:</p>
-              <ul className="list-disc list-inside text-sm text-slate-300 space-y-1 ml-2">
-                <li>Violate Twitch&apos;s Terms of Service or Community Guidelines</li>
-                <li>Harass, abuse, or harm others</li>
-                <li>Engage in spam, scams, or misleading activity</li>
-                <li>Circumvent moderation, safety, or platform restrictions</li>
-                <li>Collect or misuse personal data</li>
-              </ul>
-              <p className="text-sm text-slate-300">
-                Misuse of AxyraBot may result in feature restrictions or service termination.
-              </p>
-            </section>
-
-            <section className="space-y-2">
-              <h2 className="text-lg font-semibold text-slate-100">5. Data and Privacy</h2>
-              <p className="text-sm text-slate-300">
-                Use of AxyraBot is subject to the AxyraBot Privacy Policy. AxyraBot only processes Twitch-provided data
-                as necessary to operate its features and complies with Twitch API requirements.
-              </p>
-            </section>
-
-            <section className="space-y-2">
-              <h2 className="text-lg font-semibold text-slate-100">6. Availability and Reliability</h2>
-              <p className="text-sm text-slate-300">
-                AxyraBot is provided on an &quot;as is&quot; and &quot;as available&quot; basis. There is no guarantee of uptime,
-                availability, or error-free operation. Features may be interrupted due to maintenance, updates, or
-                technical issues.
-              </p>
-            </section>
-
-            <section className="space-y-2">
-              <h2 className="text-lg font-semibold text-slate-100">7. Limitation of Liability</h2>
-              <p className="text-sm text-slate-300">To the maximum extent permitted by law:</p>
-              <ul className="list-disc list-inside text-sm text-slate-300 space-y-1 ml-2">
-                <li>
-                  AxyraBot and its owner shall not be liable for any direct, indirect, incidental, or consequential
-                  damages
-                </li>
-                <li>
-                  This includes, but is not limited to, loss of data, moderation errors, channel penalties, or service
-                  interruptions
-                </li>
-              </ul>
-              <p className="text-sm text-slate-300">You use AxyraBot at your own risk.</p>
-            </section>
-
-            <section className="space-y-2">
-              <h2 className="text-lg font-semibold text-slate-100">8. Indemnification</h2>
-              <p className="text-sm text-slate-300">
-                You agree to indemnify and hold harmless the owner of AxyraBot from any claims, damages, liabilities,
-                or expenses arising from your use or misuse of the service.
-              </p>
-            </section>
-
-            <section className="space-y-2">
-              <h2 className="text-lg font-semibold text-slate-100">9. Suspension or Termination</h2>
-              <p className="text-sm text-slate-300">
-                Access to AxyraBot may be suspended or terminated at any time, with or without notice, if:
-              </p>
-              <ul className="list-disc list-inside text-sm text-slate-300 space-y-1 ml-2">
-                <li>These Terms are violated</li>
-                <li>Twitch policies are violated</li>
-                <li>Continued operation poses technical, legal, or security risks</li>
-              </ul>
-            </section>
-
-            <section className="space-y-2">
-              <h2 className="text-lg font-semibold text-slate-100">10. Changes to the Service or Terms</h2>
-              <p className="text-sm text-slate-300">
-                These Terms may be updated at any time to reflect changes in functionality, Twitch requirements, or
-                legal obligations. Continued use of AxyraBot after updates constitutes acceptance of the revised Terms.
-              </p>
-            </section>
-
-            <section className="space-y-2">
-              <h2 className="text-lg font-semibold text-slate-100">11. Governing Law</h2>
-              <p className="text-sm text-slate-300">
-                These Terms shall be governed by and interpreted in accordance with applicable laws, without regard to
-                conflict of law principles.
-              </p>
-            </section>
-
-            <section className="space-y-2">
-              <h2 className="text-lg font-semibold text-slate-100">12. Contact</h2>
-              <p className="text-sm text-slate-300">
-                For questions regarding these Terms or AxyraBot, please contact the bot owner via the official support,
-                repository, or contact method provided with AxyraBot.
-              </p>
-              <p className="text-sm text-slate-300">
-                By using AxyraBot, you acknowledge that you have read and agreed to these Terms of Service.
-              </p>
-            </section>
+                {parsed.length > 0 && (
+                    {provider === "nightbot" && (
+                      <button
+                        type="button"
+                        onClick={handleNightbotOAuth}
+                        className="mt-2 inline-flex items-center gap-1 rounded-md border border-emerald-500/70 bg-emerald-600/90 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-emerald-500 hover:border-emerald-400 transition"
+                      >
+                        <span className="text-xs">⬆</span>
+                        <span>Import directly from Nightbot</span>
+                      </button>
+                    )}
+                  <div className="mt-4 max-h-64 overflow-y-auto rounded-md border border-slate-800 bg-slate-950/60">
+                    <table className="min-w-full text-left text-xs">
+                      <thead className="bg-slate-900/80 text-slate-300">
+                        <tr>
+                          <th className="px-3 py-2 font-semibold">Command</th>
+                          <th className="px-3 py-2 font-semibold">Response (preview)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {parsed.map((cmd) => (
+                          <tr key={cmd.name} className="border-t border-slate-800">
+                            <td className="px-3 py-1.5 font-mono text-slate-100 whitespace-nowrap">{cmd.name}</td>
+                            <td className="px-3 py-1.5 text-slate-200">
+                              {cmd.response.length > 120
+                                ? `${cmd.response.slice(0, 117)}...`
+                                : cmd.response}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
       </div>
