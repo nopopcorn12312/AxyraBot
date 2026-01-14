@@ -924,7 +924,7 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 					return
 				}
 				var (
-					bestDate time.Time
+					bestDate  time.Time
 					bestNames []string
 				)
 				for _, b := range birthdays {
