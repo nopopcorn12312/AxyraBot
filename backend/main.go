@@ -73,6 +73,28 @@ var defaultCommandNames = func() []string {
 	return append(base, birthdayCommandNames...)
 }()
 
+// renderBirthdayCommandMessage allows per-command custom wording for
+// birthday-related commands. If a custom template is stored for the
+// given command, it is used with simple $(key) replacements based on
+// the provided vars; otherwise defaultText is returned.
+func renderBirthdayCommandMessage(channelLogin, commandName, defaultText string, vars map[string]string) string {
+	tmpl, err := GetBirthdayCommandMessage(channelLogin, commandName)
+	if err != nil {
+		log.Println("failed to load birthday command template:", commandName, err)
+		return defaultText
+	}
+	tmpl = strings.TrimSpace(tmpl)
+	if tmpl == "" {
+		return defaultText
+	}
+	out := tmpl
+	for k, v := range vars {
+		placeholder := "$(" + k + ")"
+		out = strings.ReplaceAll(out, placeholder, v)
+	}
+	return out
+}
+
 type liveStatusEntry struct {
 	live      bool
 	checkedAt time.Time
@@ -919,6 +941,10 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 						text = fmt.Sprintf("Today's birthdays are %s!", strings.Join(today, ", "))
 					}
 				}
+				text = renderBirthdayCommandMessage(channelLogin, "!birthday", text, map[string]string{
+					"names": strings.Join(today, ", "),
+					"count": strconv.Itoa(len(today)),
+				})
 				if err := sendHelixChatMessage(channelLogin, text); err != nil {
 					log.Println("failed to send !birthday response:", err)
 				}
@@ -938,7 +964,11 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 					return
 				}
 				if len(birthdays) == 0 {
-					if err := sendHelixChatMessage(channelLogin, "No birthdays have been saved yet."); err != nil {
+					text := renderBirthdayCommandMessage(channelLogin, "!nextbday", "No birthdays have been saved yet.", map[string]string{
+						"names": "",
+						"date": "",
+					})
+					if err := sendHelixChatMessage(channelLogin, text); err != nil {
 						log.Println("failed to send !nextbday empty response:", err)
 					}
 					return
@@ -974,6 +1004,10 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 				} else {
 					text = fmt.Sprintf("The next birthdays are %s on %s.", strings.Join(bestNames, ", "), dateStr)
 				}
+				text = renderBirthdayCommandMessage(channelLogin, "!nextbday", text, map[string]string{
+					"names": strings.Join(bestNames, ", "),
+					"date": dateStr,
+				})
 				if err := sendHelixChatMessage(channelLogin, text); err != nil {
 					log.Println("failed to send !nextbday response:", err)
 				}
@@ -1004,7 +1038,13 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 					log.Println("UpsertBirthday(!addbday) failed:", err)
 					return
 				}
-				if err := sendHelixChatMessage(channelLogin, fmt.Sprintf("Saved birthday for %s as %02d/%02d.", name, m, d)); err != nil {
+				text := fmt.Sprintf("Saved birthday for %s as %02d/%02d.", name, m, d)
+				text = renderBirthdayCommandMessage(channelLogin, "!addbday", text, map[string]string{
+					"name":  name,
+					"month": fmt.Sprintf("%02d", m),
+					"day":   fmt.Sprintf("%02d", d),
+				})
+				if err := sendHelixChatMessage(channelLogin, text); err != nil {
 					log.Println("failed to send !addbday response:", err)
 				}
 				return
@@ -1038,7 +1078,12 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 					log.Println("UpsertBirthday(!addmybday) failed:", err)
 					return
 				}
-				if err := sendHelixChatMessage(channelLogin, fmt.Sprintf("Saved your birthday as %02d/%02d.", m, d)); err != nil {
+				text := fmt.Sprintf("Saved your birthday as %02d/%02d.", m, d)
+				text = renderBirthdayCommandMessage(channelLogin, "!addmybday", text, map[string]string{
+					"month": fmt.Sprintf("%02d", m),
+					"day":   fmt.Sprintf("%02d", d),
+				})
+				if err := sendHelixChatMessage(channelLogin, text); err != nil {
 					log.Println("failed to send !addmybday response:", err)
 				}
 				return
@@ -1063,7 +1108,11 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 					log.Println("DeleteBirthday failed:", err)
 					return
 				}
-				if err := sendHelixChatMessage(channelLogin, fmt.Sprintf("Deleted birthday for %s if it existed.", parts[1])); err != nil {
+				text := fmt.Sprintf("Deleted birthday for %s if it existed.", parts[1])
+				text = renderBirthdayCommandMessage(channelLogin, "!delbday", text, map[string]string{
+					"name": parts[1],
+				})
+				if err := sendHelixChatMessage(channelLogin, text); err != nil {
 					log.Println("failed to send !delbday response:", err)
 				}
 				return
@@ -1093,7 +1142,13 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 					log.Println("UpsertBirthday(!editbday) failed:", err)
 					return
 				}
-				if err := sendHelixChatMessage(channelLogin, fmt.Sprintf("Updated birthday for %s to %02d/%02d.", target, m, d)); err != nil {
+				text := fmt.Sprintf("Updated birthday for %s to %02d/%02d.", target, m, d)
+				text = renderBirthdayCommandMessage(channelLogin, "!editbday", text, map[string]string{
+					"name":  target,
+					"month": fmt.Sprintf("%02d", m),
+					"day":   fmt.Sprintf("%02d", d),
+				})
+				if err := sendHelixChatMessage(channelLogin, text); err != nil {
 					log.Println("failed to send !editbday response:", err)
 				}
 				return

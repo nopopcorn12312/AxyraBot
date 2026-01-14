@@ -19,6 +19,12 @@ type ModuleRow = {
   message: string;
 };
 
+type BirthdayCommandConfig = {
+  name: string;
+  enabled: boolean;
+  message: string;
+};
+
 type ToggleProps = {
   enabled: boolean;
   onChange: (next: boolean) => void;
@@ -55,10 +61,14 @@ export default function ModulesPage() {
   const [modules, setModules] = useState<ModuleRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [openModule, setOpenModule] = useState<string | null>(null);
   const [editingModule, setEditingModule] = useState<string | null>(null);
   const [editMessage, setEditMessage] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
+  const [birthdayCommands, setBirthdayCommands] = useState<BirthdayCommandConfig[]>([]);
+  const [loadingBirthdayCommands, setLoadingBirthdayCommands] = useState(false);
+  const [birthdayCommandsError, setBirthdayCommandsError] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const pathname = usePathname();
 
@@ -112,6 +122,73 @@ export default function ModulesPage() {
     return () => controller.abort();
   }, [login]);
 
+  // When the birthdays module dropdown is opened, load per-command defaults
+  // and any custom messages.
+  useEffect(() => {
+    if (!login || openModule !== "birthdays") return;
+    let cancelled = false;
+    setLoadingBirthdayCommands(true);
+    setBirthdayCommandsError(null);
+    (async () => {
+      try {
+        const [defaultsRes, messagesRes] = await Promise.all([
+          fetch(
+            `${backendUrl}/commands/default-settings?login=${encodeURIComponent(login)}`,
+          ),
+          fetch(
+            `${backendUrl}/birthdays/command-messages?login=${encodeURIComponent(login)}`,
+          ),
+        ]);
+        if (!defaultsRes.ok || !messagesRes.ok) {
+          throw new Error("Failed to load birthday command settings");
+        }
+        const defaultsJson: { commands?: { name: string; enabled: boolean }[] } =
+          await defaultsRes.json();
+        const messagesJson: { commands?: { name: string; message: string }[] } =
+          await messagesRes.json();
+        const defaultsMap: Record<string, boolean> = {};
+        for (const row of defaultsJson.commands || []) {
+          defaultsMap[row.name.toLowerCase()] = row.enabled;
+        }
+        const messagesMap: Record<string, string> = {};
+        for (const row of messagesJson.commands || []) {
+          messagesMap[row.name.toLowerCase()] = row.message ?? "";
+        }
+        const birthdayNames = [
+          "!birthday",
+          "!nextbday",
+          "!addbday",
+          "!addmybday",
+          "!delbday",
+          "!editbday",
+        ];
+        const configs: BirthdayCommandConfig[] = birthdayNames.map((name) => {
+          const key = name.toLowerCase();
+          return {
+            name,
+            enabled: defaultsMap[key] ?? true,
+            message: messagesMap[key] ?? "",
+          };
+        });
+        if (!cancelled) {
+          setBirthdayCommands(configs);
+        }
+      } catch (err) {
+        console.error(err);
+        if (!cancelled) {
+          setBirthdayCommandsError("Could not load birthday command settings.");
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingBirthdayCommands(false);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [login, openModule]);
+
   const handleLogout = () => {
     if (typeof window !== "undefined") {
       window.localStorage.removeItem("axyra.login");
@@ -150,6 +227,81 @@ export default function ModulesPage() {
           m.name === moduleName ? { ...m, enabled: !next } : m,
         ),
       );
+    }
+  };
+
+  const handleBirthdayCommandToggle = async (commandName: string, next: boolean) => {
+    if (!login) return;
+    setBirthdayCommands((prev) =>
+      prev.map((c) => (c.name === commandName ? { ...c, enabled: next } : c)),
+    );
+    try {
+      const res = await fetch(`${backendUrl}/commands/default-settings`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ login, command: commandName, enabled: next }),
+      });
+      if (!res.ok) {
+        throw new Error("Failed to save command setting");
+      }
+      if (commandName.toLowerCase() === "!birthday") {
+        setModules((prev) =>
+          prev.map((m) =>
+            m.name === "birthdays" ? { ...m, enabled: next } : m,
+          ),
+        );
+      }
+    } catch (err) {
+      console.error(err);
+      setBirthdayCommands((prev) =>
+        prev.map((c) =>
+          c.name === commandName ? { ...c, enabled: !next } : c,
+        ),
+      );
+    }
+  };
+
+  const handleBirthdayCommandMessageSave = async (
+    commandName: string,
+    message: string,
+  ) => {
+    if (!login) return;
+    const trimmed = message.trim();
+    if (!trimmed) return;
+    try {
+      const res = await fetch(`${backendUrl}/birthdays/command-messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ login, command: commandName, message: trimmed }),
+      });
+      if (!res.ok) {
+        throw new Error("Failed to save message");
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleBirthdayCommandMessageReset = async (commandName: string) => {
+    if (!login) return;
+    try {
+      const res = await fetch(`${backendUrl}/birthdays/command-messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          login,
+          command: commandName,
+          resetToDefault: true,
+        }),
+      });
+      if (!res.ok) {
+        throw new Error("Failed to reset message");
+      }
+      setBirthdayCommands((prev) =>
+        prev.map((c) => (c.name === commandName ? { ...c, message: "" } : c)),
+      );
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -397,56 +549,67 @@ export default function ModulesPage() {
                   {modules.map((m) => (
                     <div
                       key={m.name}
-                      className="rounded-xl border border-slate-800 bg-slate-950/50 px-4 py-3"
+                      className="rounded-xl border border-slate-800 bg-slate-950/50"
                     >
-                      <div className="flex items-center justify-between gap-4">
-                        <div className="flex flex-col">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setOpenModule((current) =>
+                            current === m.name ? null : m.name,
+                          )
+                        }
+                        className="flex w-full items-center justify-between gap-4 px-4 py-3"
+                      >
+                        <div className="flex flex-col items-start text-left">
                           <span className="text-sm font-medium text-slate-100">
                             {m.label}
                           </span>
                           <span className="text-xs text-slate-400">
                             {m.description}
                           </span>
-                          <span className="mt-1 text-xs text-slate-300">
-                            <span className="font-semibold text-slate-200">Message:</span>{" "}
-                            {m.message}
-                          </span>
                         </div>
                         <div className="flex items-center gap-3">
-                          {isLoggedIn && login && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (editingModule === m.name) {
-                                  setEditingModule(null);
-                                  setEditError(null);
-                                  return;
-                                }
-                                setEditingModule(m.name);
-                                setEditMessage(m.message ?? "");
-                                setEditError(null);
-                              }}
-                              className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-700 bg-slate-900/80 text-slate-300 hover:bg-slate-800/80"
-                            >
-                              <span className="sr-only">Edit module message</span>
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                viewBox="0 0 20 20"
-                                fill="currentColor"
-                                className="h-3.5 w-3.5"
-                              >
-                                <path d="M13.586 3.586a2 2 0 0 1 2.828 2.828l-8.5 8.5a2 2 0 0 1-.878.518l-3 .8a.5.5 0 0 1-.606-.606l.8-3a2 2 0 0 1 .518-.878l8.5-8.5Z" />
-                              </svg>
-                            </button>
-                          )}
+                          <span className="text-[10px] text-slate-400">
+                            {openModule === m.name ? "▾" : "▸"}
+                          </span>
                           <ModuleToggle
                             enabled={m.enabled}
                             onChange={(next) => handleToggle(m.name, next)}
                           />
                         </div>
-                      </div>
-                      {editingModule === m.name && (
-                        <div className="mt-3 border-t border-slate-800 pt-3">
+                      </button>
+
+                      {/* Live announcement dropdown */}
+                      {openModule === m.name && m.name === "live_announcement" && (
+                        <div className="border-t border-slate-800 px-4 py-3">
+                          <div className="mb-2 flex items-center justify-between gap-4">
+                            <span className="text-xs font-semibold text-slate-200">
+                              Announcement message
+                            </span>
+                            {isLoggedIn && login && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (editingModule === m.name) {
+                                    setEditingModule(null);
+                                    setEditError(null);
+                                    return;
+                                  }
+                                  setEditingModule(m.name);
+                                  setEditMessage(m.message ?? "");
+                                  setEditError(null);
+                                }}
+                                className="inline-flex h-7 items-center justify-center rounded-md border border-slate-700 bg-slate-900/80 px-2 text-[11px] text-slate-300 hover:bg-slate-800/80"
+                              >
+                                Edit message
+                              </button>
+                            )}
+                          </div>
+                          <p className="mb-1 text-xs text-slate-400">
+                            Current message: {m.message || defaultLiveAnnouncementMessage}
+                          </p>
+                          {editingModule === m.name && (
+                            <div className="mt-3 border-t border-slate-800 pt-3">
                           <div className="flex flex-col gap-2">
                             <label className="text-xs font-medium text-slate-300">
                               Announcement message
@@ -565,6 +728,107 @@ export default function ModulesPage() {
                               </button>
                             </div>
                           </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Birthdays module dropdown */}
+                      {openModule === m.name && m.name === "birthdays" && (
+                        <div className="border-t border-slate-800 px-4 py-3 text-xs text-slate-200">
+                          <p className="mb-2 text-slate-400">
+                            Control individual birthday commands and customize how the bot responds.
+                          </p>
+                          {birthdayCommandsError && (
+                            <p className="mb-2 text-red-400">{birthdayCommandsError}</p>
+                          )}
+                          {loadingBirthdayCommands && (
+                            <p className="mb-2 text-slate-400">Loading birthday commands…</p>
+                          )}
+                          {!loadingBirthdayCommands && (
+                            <div className="space-y-3">
+                              {birthdayCommands.map((cmd) => (
+                                <div
+                                  key={cmd.name}
+                                  className="rounded-lg border border-slate-800 bg-slate-950/80 px-3 py-2"
+                                >
+                                  <div className="flex items-center justify-between gap-3">
+                                    <div>
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-semibold text-slate-100">
+                                          {cmd.name}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <ModuleToggle
+                                      enabled={cmd.enabled}
+                                      onChange={(next) =>
+                                        handleBirthdayCommandToggle(cmd.name, next)
+                                      }
+                                    />
+                                  </div>
+                                  <div className="mt-2 flex flex-col gap-1">
+                                    <input
+                                      type="text"
+                                      value={cmd.message}
+                                      onChange={(e) =>
+                                        setBirthdayCommands((prev) =>
+                                          prev.map((c) =>
+                                            c.name === cmd.name
+                                              ? { ...c, message: e.target.value }
+                                              : c,
+                                          ),
+                                        )
+                                      }
+                                      className="w-full rounded-md border border-slate-700 bg-slate-900/80 px-2 py-1 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-accent/60"
+                                      placeholder="Leave empty to use the default response"
+                                    />
+                                    <p className="text-[10px] text-slate-400">
+                                      You can use simple placeholders like
+                                      {" "}
+                                      <code className="rounded bg-slate-800 px-1 py-0.5 text-[10px]">
+                                        $(names)
+                                      </code>
+                                      ,
+                                      {" "}
+                                      <code className="rounded bg-slate-800 px-1 py-0.5 text-[10px]">
+                                        $(date)
+                                      </code>
+                                      , or
+                                      {" "}
+                                      <code className="rounded bg-slate-800 px-1 py-0.5 text-[10px]">
+                                        $(month)
+                                      </code>
+                                      .
+                                    </p>
+                                    <div className="mt-1 flex justify-end gap-2">
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          handleBirthdayCommandMessageReset(cmd.name)
+                                        }
+                                        className="rounded-md border border-slate-700 px-2 py-0.5 text-[11px] text-slate-200 hover:bg-slate-800/80"
+                                      >
+                                        Reset
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          handleBirthdayCommandMessageSave(
+                                            cmd.name,
+                                            cmd.message,
+                                          )
+                                        }
+                                        className="rounded-md bg-accent px-2 py-0.5 text-[11px] font-medium text-white hover:bg-accent/90"
+                                      >
+                                        Save
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>

@@ -645,6 +645,12 @@ func EnsureSchema() error {
 	 updated_at TIMESTAMPTZ DEFAULT now(),
 	 UNIQUE (broadcaster_login, user_login)
 	);
+	CREATE TABLE IF NOT EXISTS birthday_command_messages (
+	 broadcaster_login TEXT NOT NULL,
+	 command_name TEXT NOT NULL,
+	 message TEXT NOT NULL,
+	 PRIMARY KEY (broadcaster_login, command_name)
+	);
 	CREATE TABLE IF NOT EXISTS watch_time (
 	 id SERIAL PRIMARY KEY,
 	 broadcaster_login TEXT NOT NULL,
@@ -746,5 +752,57 @@ func SetModuleMessage(broadcasterLogin, moduleName, message string) error {
 	ON CONFLICT (broadcaster_login, module_name) DO UPDATE
 	SET message = EXCLUDED.message;
 	`, broadcasterLogin, moduleName, message)
+	return err
+}
+
+// GetBirthdayCommandMessage returns a custom message template for a
+// birthday-related command for the given broadcaster. If no row exists,
+// an empty string is returned.
+func GetBirthdayCommandMessage(broadcasterLogin, commandName string) (string, error) {
+	if db == nil {
+		return "", nil
+	}
+	broadcasterLogin = strings.ToLower(broadcasterLogin)
+	commandName = strings.ToLower(commandName)
+	var msg sql.NullString
+	row := db.QueryRow(`SELECT message FROM birthday_command_messages WHERE broadcaster_login=$1 AND command_name=$2`, broadcasterLogin, commandName)
+	if err := row.Scan(&msg); err != nil {
+		if err == sql.ErrNoRows {
+			return "", nil
+		}
+		return "", err
+	}
+	if msg.Valid {
+		return msg.String, nil
+	}
+	return "", nil
+}
+
+// SetBirthdayCommandMessage upserts a custom message template for a
+// birthday-related command without affecting other commands.
+func SetBirthdayCommandMessage(broadcasterLogin, commandName, message string) error {
+	if db == nil {
+		return nil
+	}
+	broadcasterLogin = strings.ToLower(broadcasterLogin)
+	commandName = strings.ToLower(commandName)
+	_, err := db.Exec(`
+	INSERT INTO birthday_command_messages (broadcaster_login, command_name, message)
+	VALUES ($1, $2, $3)
+	ON CONFLICT (broadcaster_login, command_name) DO UPDATE
+	SET message = EXCLUDED.message;
+	`, broadcasterLogin, commandName, message)
+	return err
+}
+
+// DeleteBirthdayCommandMessage removes any custom message for a
+// birthday-related command so the default wording is used again.
+func DeleteBirthdayCommandMessage(broadcasterLogin, commandName string) error {
+	if db == nil {
+		return nil
+	}
+	broadcasterLogin = strings.ToLower(broadcasterLogin)
+	commandName = strings.ToLower(commandName)
+	_, err := db.Exec(`DELETE FROM birthday_command_messages WHERE broadcaster_login=$1 AND command_name=$2`, broadcasterLogin, commandName)
 	return err
 }

@@ -29,6 +29,9 @@ func startHTTPServer(clientID, clientSecret string) {
 	mux.HandleFunc("/modules/settings", withCORS(handleModuleSettings))
 	mux.HandleFunc("/birthdays/list", withCORS(handleBirthdaysList))
 	mux.HandleFunc("/birthdays/settings", withCORS(handleBirthdaysSettings))
+	mux.HandleFunc("/birthdays/command-messages", withCORS(handleBirthdayCommandMessages))
+	
+	
 	mux.HandleFunc("/audit/logs", withCORS(handleAuditLogs))
 	addr := ":8080"
 	if p := os.Getenv("PORT"); p != "" {
@@ -998,6 +1001,83 @@ func handleBirthdaysSettings(w http.ResponseWriter, r *http.Request) {
 		// Audit the timezone change for visibility on the activity feed.
 		if err := InsertAuditLog(login, "bot", "birthday_settings", fmt.Sprintf("Set birthday timezone to %s", tzName)); err != nil {
 			log.Println("failed to insert audit log for birthday settings:", err)
+		}
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "ok")
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
+}
+
+// handleBirthdayCommandMessages manages per-command custom messages for the
+// birthday-related built-in commands. GET returns the current templates for
+// each birthday command; POST updates or resets a single command template.
+func handleBirthdayCommandMessages(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		login := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("login")))
+		if login == "" {
+			http.Error(w, "missing login", http.StatusBadRequest)
+			return
+		}
+		// For each known birthday command, load any stored custom message.
+		var rows []struct {
+			Name    string `json:"name"`
+			Message string `json:"message"`
+		}
+		for _, cmd := range birthdayCommandNames {
+			msg, err := GetBirthdayCommandMessage(login, cmd)
+			if err != nil {
+				log.Println("failed to load birthday command message:", cmd, err)
+				msg = ""
+			}
+			rows = append(rows, struct {
+				Name    string `json:"name"`
+				Message string `json:"message"`
+			}{Name: cmd, Message: msg})
+		}
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(struct {
+			Commands interface{} `json:"commands"`
+		}{Commands: rows}); err != nil {
+			log.Println("encode birthday command messages:", err)
+		}
+	case http.MethodPost:
+		var body struct {
+			Login          string `json:"login"`
+			Command        string `json:"command"`
+			Message        string `json:"message"`
+			ResetToDefault bool   `json:"resetToDefault"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "bad json", http.StatusBadRequest)
+			return
+		}
+		login := strings.ToLower(strings.TrimSpace(body.Login))
+		cmd := strings.TrimSpace(body.Command)
+		if login == "" || cmd == "" {
+			http.Error(w, "missing login or command", http.StatusBadRequest)
+			return
+		}
+		if body.ResetToDefault {
+			if err := DeleteBirthdayCommandMessage(login, cmd); err != nil {
+				log.Println("failed to delete birthday command message:", err)
+				http.Error(w, "db error", http.StatusInternalServerError)
+				return
+			}
+		} else {
+			trimmed := strings.TrimSpace(body.Message)
+			if trimmed == "" {
+				// Empty message when not resetting is treated as a no-op to avoid
+				// accidentally blanking responses.
+				http.Error(w, "message cannot be empty", http.StatusBadRequest)
+				return
+			}
+			if err := SetBirthdayCommandMessage(login, cmd, trimmed); err != nil {
+				log.Println("failed to save birthday command message:", err)
+				http.Error(w, "db error", http.StatusInternalServerError)
+				return
+			}
 		}
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprint(w, "ok")
