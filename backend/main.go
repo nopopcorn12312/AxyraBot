@@ -46,18 +46,32 @@ var (
 // per-broadcaster via the module_settings table.
 const defaultLiveAnnouncementTemplate = "$(channel) is now live! Streaming $(game) | $(title)"
 
-// List of built-in default commands that can be toggled per broadcaster.
-var defaultCommandNames = []string{
-	"!hello",
-	"!vanish",
-	"!title",
-	"!game",
-	"!accountage",
-	"!followage",
-	"!uptime",
-	"!commands",
-	"!ai",
+// List of all birthday-related commands that are treated as default
+// commands and controlled by the birthdays module.
+var birthdayCommandNames = []string{
+	"!birthday",
+	"!nextbday",
+	"!addbday",
+	"!addmybday",
+	"!delbday",
+	"!editbday",
 }
+
+// List of built-in default commands that can be toggled per broadcaster.
+var defaultCommandNames = func() []string {
+	base := []string{
+		"!hello",
+		"!vanish",
+		"!title",
+		"!game",
+		"!accountage",
+		"!followage",
+		"!uptime",
+		"!commands",
+		"!ai",
+	}
+	return append(base, birthdayCommandNames...)
+}()
 
 type liveStatusEntry struct {
 	live      bool
@@ -873,6 +887,9 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 
 			// !birthday - show today's birthdays in the broadcaster's timezone.
 			if isChatCommand(lower, "!birthday") {
+				if !isDefaultCommandEnabled(channelLogin, "!birthday") {
+					return
+				}
 				loc := getBroadcasterLocation(channelLogin)
 				now := time.Now().In(loc)
 				birthdays, err := ListBirthdays(channelLogin)
@@ -910,6 +927,9 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 
 			// !nextbday - show the next upcoming birthday.
 			if isChatCommand(lower, "!nextbday") {
+				if !isDefaultCommandEnabled(channelLogin, "!nextbday") {
+					return
+				}
 				loc := getBroadcasterLocation(channelLogin)
 				now := time.Now().In(loc)
 				birthdays, err := ListBirthdays(channelLogin)
@@ -962,6 +982,9 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 
 			// !addbday NAME MM DD — mods only.
 			if strings.HasPrefix(lower, "!addbday") {
+				if !isDefaultCommandEnabled(channelLogin, "!addbday") {
+					return
+				}
 				args := strings.Fields(msg)
 				if len(args) < 4 {
 					_ = sendHelixChatMessage(channelLogin, "Usage: !addbday NAME MM DD")
@@ -989,6 +1012,9 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 
 			// !addmybday MM DD — add or refuse if already set.
 			if strings.HasPrefix(lower, "!addmybday") {
+				if !isDefaultCommandEnabled(channelLogin, "!addmybday") {
+					return
+				}
 				args := strings.Fields(msg)
 				if len(args) < 3 {
 					_ = sendHelixChatMessage(channelLogin, "Usage: !addmybday MM DD")
@@ -1020,6 +1046,9 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 
 			// !delbday NAME — delete a saved birthday by name (mods only).
 			if strings.HasPrefix(lower, "!delbday") {
+				if !isDefaultCommandEnabled(channelLogin, "!delbday") {
+					return
+				}
 				parts := strings.Fields(msg)
 				if len(parts) < 2 {
 					_ = sendHelixChatMessage(channelLogin, "Usage: !delbday NAME")
@@ -1042,6 +1071,9 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 
 			// !editbday USER MM DD — change a user's birthday (mods/broadcaster).
 			if strings.HasPrefix(lower, "!editbday") {
+				if !isDefaultCommandEnabled(channelLogin, "!editbday") {
+					return
+				}
 				args := strings.Fields(msg)
 				if len(args) < 4 {
 					_ = sendHelixChatMessage(channelLogin, "Usage: !editbday USER MM DD")

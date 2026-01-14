@@ -107,6 +107,22 @@ func handleDefaultCommandSettings(w http.ResponseWriter, r *http.Request) {
 		if err := InsertAuditLog(login, "bot", "default_command", fmt.Sprintf("Set %s %s", cmd, state)); err != nil {
 			log.Println("failed to insert audit log for default command:", err)
 		}
+
+		// If the broadcaster toggles the !birthday command, keep the
+		// birthdays module in sync. Disabling !birthday disables the
+		// birthdays module; enabling it turns the module back on and
+		// ensures all birthday-related commands default to enabled.
+		if strings.EqualFold(cmd, "!birthday") {
+			if err := SetModuleEnabled(login, "birthdays", body.Enabled); err != nil {
+				log.Println("failed to sync birthdays module from !birthday toggle:", err)
+			} else if body.Enabled {
+				for _, bcmd := range birthdayCommandNames {
+					if err := SetDefaultCommandEnabled(login, bcmd, true); err != nil {
+						log.Println("failed to enable birthday default command from !birthday toggle:", bcmd, err)
+					}
+				}
+			}
+		}
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprint(w, "ok")
 	default:
@@ -367,6 +383,15 @@ func handleModuleSettings(w http.ResponseWriter, r *http.Request) {
 			log.Println("failed to save module setting:", err)
 			http.Error(w, "db error", http.StatusInternalServerError)
 			return
+		}
+		// When the birthdays module is enabled, ensure all birthday
+		// commands are defaulted to enabled for this broadcaster.
+		if strings.EqualFold(module, "birthdays") && body.Enabled {
+			for _, bcmd := range birthdayCommandNames {
+				if err := SetDefaultCommandEnabled(login, bcmd, true); err != nil {
+					log.Println("failed to enable birthday default command from module toggle:", bcmd, err)
+				}
+			}
 		}
 		// If the caller requested restoring the default template, clear any
 		// stored custom message so the backend falls back to its default.

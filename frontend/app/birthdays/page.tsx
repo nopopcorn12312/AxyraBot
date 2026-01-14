@@ -880,14 +880,8 @@ export default function BirthdaysPage() {
 
         <div className="flex-1 flex flex-col gap-6 text-slate-50">
           <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-6">
-            <div className="mb-4 flex items-start justify-between gap-4">
-              <div>
-                <h1 className="text-2xl font-semibold mb-1">Birthdays</h1>
-                <p className="text-sm text-slate-400">
-                  View birthdays saved for your channel and choose the timezone the bot
-                  should use when announcing birthdays.
-                </p>
-              </div>
+            <div className="mb-2 flex items-center justify-between gap-4">
+              <h1 className="text-2xl font-semibold">Birthdays</h1>
               {login && (
                 <button
                   type="button"
@@ -895,14 +889,18 @@ export default function BirthdaysPage() {
                   disabled={moduleSaving}
                   className={`inline-flex items-center rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
                     moduleEnabled
-                      ? "bg-emerald-600 text-white hover:bg-emerald-500 disabled:bg-emerald-700"
-                      : "bg-slate-800 text-slate-200 hover:bg-slate-700 disabled:bg-slate-900"
+                      ? "bg-red-600 text-white hover:bg-red-500 disabled:bg-red-700"
+                      : "bg-emerald-600 text-white hover:bg-emerald-500 disabled:bg-emerald-700"
                   }`}
                 >
-                  {moduleEnabled ? "Disable birthdays" : "Enable birthdays"}
+                  {moduleEnabled ? "Disable Birthdays" : "Enable Birthdays"}
                 </button>
               )}
             </div>
+            <p className="mb-4 text-sm text-slate-400">
+              View birthdays saved for your channel and choose the timezone the bot
+              should use when announcing birthdays.
+            </p>
             {moduleError && (
               <p className="-mt-2 mb-2 text-xs text-red-400">{moduleError}</p>
             )}
