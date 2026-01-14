@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import AxyraBotPFP from "../images/AxyraBotPFP.png";
+import NightbotPFP from "../images/NightbotPFP.png";
+import NightbotBanner from "../images/NightbotBanner.png";
 
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://your-backend.onrender.com";
 const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL;
@@ -420,12 +422,24 @@ export default function ImportPage() {
                         : "border-slate-800"
                     } bg-slate-950/80`}
                   >
-                    <div className="relative h-28 bg-gradient-to-r from-sky-500/40 via-indigo-500/40 to-slate-950">
-                      <div className="absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_top,_rgba(148,163,184,0.6),_transparent_60%)]" />
+                    <div className="relative h-28">
+                      <Image
+                        src={NightbotBanner}
+                        alt="Nightbot banner"
+                        fill
+                        className="object-cover"
+                        priority
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-r from-slate-950/30 via-slate-950/10 to-slate-950/60" />
                       <div className="relative flex h-full items-end px-5 pb-4">
                         <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-950/80 text-xl">
-                            N
+                          <div className="relative h-10 w-10 overflow-hidden rounded-full border border-slate-900/70 bg-slate-950/80">
+                            <Image
+                              src={NightbotPFP}
+                              alt="Nightbot avatar"
+                              fill
+                              className="object-cover"
+                            />
                           </div>
                           <div>
                             <div className="text-sm font-semibold uppercase tracking-wide text-slate-100">
