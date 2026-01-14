@@ -27,6 +27,8 @@ func startHTTPServer(clientID, clientSecret string) {
 	mux.HandleFunc("/commands/custom/update", withCORS(handleCustomCommandsUpdate))
 	mux.HandleFunc("/commands/custom/delete", withCORS(handleCustomCommandsDelete))
 	mux.HandleFunc("/modules/settings", withCORS(handleModuleSettings))
+	mux.HandleFunc("/birthdays/list", withCORS(handleBirthdaysList))
+	mux.HandleFunc("/birthdays/settings", withCORS(handleBirthdaysSettings))
 	mux.HandleFunc("/audit/logs", withCORS(handleAuditLogs))
 	addr := ":8080"
 	if p := os.Getenv("PORT"); p != "" {
@@ -315,6 +317,27 @@ func handleModuleSettings(w http.ResponseWriter, r *http.Request) {
 			Description: "Send a chat message when your stream goes live.",
 			Enabled:     enabled,
 			Message:     msgTmpl,
+		})
+
+		// Birthdays module controlling all birthday-related chat commands.
+		bdayEnabled, err := GetModuleEnabled(login, "birthdays")
+		if err != nil {
+			log.Println("failed to load birthdays module setting:", err)
+			// treat as enabled on error
+			bdayEnabled = true
+		}
+		modules = append(modules, struct {
+			Name        string `json:"name"`
+			Label       string `json:"label"`
+			Description string `json:"description"`
+			Enabled     bool   `json:"enabled"`
+			Message     string `json:"message"`
+		}{
+			Name:        "birthdays",
+			Label:       "Birthdays",
+			Description: "Enable birthday chat commands like !birthday and !nextbday.",
+			Enabled:     bdayEnabled,
+			Message:     "",
 		})
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(struct {
@@ -851,6 +874,110 @@ func handleAuditLogs(w http.ResponseWriter, r *http.Request) {
 		Logs interface{} `json:"logs"`
 	}{Logs: out}); err != nil {
 		log.Println("encode audit logs:", err)
+	}
+}
+
+// handleBirthdaysList returns all stored birthdays for a broadcaster so the
+// dashboard vanity page can display and manage them.
+func handleBirthdaysList(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	login := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("login")))
+	if login == "" {
+		http.Error(w, "missing login", http.StatusBadRequest)
+		return
+	}
+	birthdays, err := ListBirthdays(login)
+	if err != nil {
+		log.Println("failed to list birthdays:", err)
+		http.Error(w, "db error", http.StatusInternalServerError)
+		return
+	}
+	out := []struct {
+		UserLogin   string `json:"userLogin"`
+		DisplayName string `json:"displayName"`
+		Month       int    `json:"month"`
+		Day         int    `json:"day"`
+	}{}
+	for _, b := range birthdays {
+		out = append(out, struct {
+			UserLogin   string `json:"userLogin"`
+			DisplayName string `json:"displayName"`
+			Month       int    `json:"month"`
+			Day         int    `json:"day"`
+		}{
+			UserLogin:   b.UserLogin,
+			DisplayName: b.DisplayName,
+			Month:       b.Month,
+			Day:         b.Day,
+		})
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(struct {
+		Birthdays interface{} `json:"birthdays"`
+	}{Birthdays: out}); err != nil {
+		log.Println("encode birthdays list:", err)
+	}
+}
+
+// handleBirthdaysSettings exposes birthday-related settings for a
+// broadcaster, currently just the timezone used for computing "today" and
+// "next" birthdays.
+func handleBirthdaysSettings(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		login := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("login")))
+		if login == "" {
+			http.Error(w, "missing login", http.StatusBadRequest)
+			return
+		}
+		tz, err := GetBroadcasterTimezone(login)
+		if err != nil {
+			log.Println("failed to load broadcaster timezone:", err)
+			http.Error(w, "db error", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(struct {
+			Timezone string `json:"timezone"`
+		}{Timezone: tz}); err != nil {
+			log.Println("encode birthday settings:", err)
+		}
+	case http.MethodPost:
+		var body struct {
+			Login    string `json:"login"`
+			Timezone string `json:"timezone"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "bad json", http.StatusBadRequest)
+			return
+		}
+		login := strings.ToLower(strings.TrimSpace(body.Login))
+		tzName := strings.TrimSpace(body.Timezone)
+		if login == "" || tzName == "" {
+			http.Error(w, "missing login or timezone", http.StatusBadRequest)
+			return
+		}
+		// Validate that the timezone is a known IANA name before storing it.
+		if _, err := time.LoadLocation(tzName); err != nil {
+			http.Error(w, "invalid timezone", http.StatusBadRequest)
+			return
+		}
+		if err := SetBroadcasterTimezone(login, tzName); err != nil {
+			log.Println("failed to save broadcaster timezone:", err)
+			http.Error(w, "db error", http.StatusInternalServerError)
+			return
+		}
+		// Audit the timezone change for visibility on the activity feed.
+		if err := InsertAuditLog(login, "bot", "birthday_settings", fmt.Sprintf("Set birthday timezone to %s", tzName)); err != nil {
+			log.Println("failed to insert audit log for birthday settings:", err)
+		}
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "ok")
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
 }
 

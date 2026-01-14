@@ -329,6 +329,26 @@ type AuditLogEntry struct {
 	CreatedAt   time.Time
 }
 
+// BroadcasterSettings stores per-broadcaster configuration such as
+// timezone used for date-based features (e.g. birthdays).
+type BroadcasterSettings struct {
+	BroadcasterLogin string
+	Timezone         string
+}
+
+// Birthday represents a single stored birthday for a broadcaster's channel.
+// Each user_login can have at most one birthday per broadcaster.
+type Birthday struct {
+	ID               int64
+	BroadcasterLogin string
+	UserLogin        string
+	DisplayName      string
+	Month            int
+	Day              int
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+}
+
 // ListCustomCommands returns all custom commands for a broadcaster.
 func ListCustomCommands(broadcasterLogin string) ([]CustomCommand, error) {
 	res := []CustomCommand{}
@@ -360,6 +380,90 @@ func DeleteCustomCommand(broadcasterLogin, commandName string) error {
 	commandName = strings.ToLower(commandName)
 	_, err := db.Exec(`DELETE FROM custom_commands WHERE broadcaster_login=$1 AND command=$2`, broadcasterLogin, commandName)
 	return err
+}
+
+// UpsertBirthday creates or updates a birthday entry for a given broadcaster
+// and user. The userLogin key is stored in lowercase; displayName preserves
+// the casing used when the birthday was added.
+func UpsertBirthday(broadcasterLogin, userLogin, displayName string, month, day int) error {
+	if db == nil {
+		return nil
+	}
+	broadcasterLogin = strings.ToLower(broadcasterLogin)
+	userLogin = strings.ToLower(userLogin)
+	_, err := db.Exec(`
+INSERT INTO birthdays (broadcaster_login, user_login, display_name, month, day, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, now(), now())
+ON CONFLICT (broadcaster_login, user_login) DO UPDATE
+SET display_name = EXCLUDED.display_name,
+    month        = EXCLUDED.month,
+    day          = EXCLUDED.day,
+    updated_at   = now();
+`, broadcasterLogin, userLogin, displayName, month, day)
+	return err
+}
+
+// DeleteBirthday removes a single birthday for a broadcaster by user login
+// (case-insensitive). It returns nil if the row does not exist.
+func DeleteBirthday(broadcasterLogin, userLogin string) error {
+	if db == nil {
+		return nil
+	}
+	broadcasterLogin = strings.ToLower(broadcasterLogin)
+	userLogin = strings.ToLower(userLogin)
+	_, err := db.Exec(`DELETE FROM birthdays WHERE broadcaster_login=$1 AND user_login=$2`, broadcasterLogin, userLogin)
+	return err
+}
+
+// GetBirthdayForUser returns a birthday entry for a specific user in a
+// broadcaster's channel, or nil if none exists.
+func GetBirthdayForUser(broadcasterLogin, userLogin string) (*Birthday, error) {
+	if db == nil {
+		return nil, nil
+	}
+	broadcasterLogin = strings.ToLower(broadcasterLogin)
+	userLogin = strings.ToLower(userLogin)
+	row := db.QueryRow(`
+SELECT id, broadcaster_login, user_login, COALESCE(display_name, ''), month, day, COALESCE(created_at, now()), COALESCE(updated_at, now())
+FROM birthdays
+WHERE broadcaster_login=$1 AND user_login=$2
+`, broadcasterLogin, userLogin)
+	var b Birthday
+	if err := row.Scan(&b.ID, &b.BroadcasterLogin, &b.UserLogin, &b.DisplayName, &b.Month, &b.Day, &b.CreatedAt, &b.UpdatedAt); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &b, nil
+}
+
+// ListBirthdays returns all birthdays for a broadcaster ordered by month,day
+// and then display name.
+func ListBirthdays(broadcasterLogin string) ([]Birthday, error) {
+	res := []Birthday{}
+	if db == nil {
+		return res, nil
+	}
+	broadcasterLogin = strings.ToLower(broadcasterLogin)
+	rows, err := db.Query(`
+SELECT id, broadcaster_login, user_login, COALESCE(display_name, ''), month, day, COALESCE(created_at, now()), COALESCE(updated_at, now())
+FROM birthdays
+WHERE broadcaster_login=$1
+ORDER BY month, day, display_name;
+`, broadcasterLogin)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var b Birthday
+		if err := rows.Scan(&b.ID, &b.BroadcasterLogin, &b.UserLogin, &b.DisplayName, &b.Month, &b.Day, &b.CreatedAt, &b.UpdatedAt); err != nil {
+			return nil, err
+		}
+		res = append(res, b)
+	}
+	return res, nil
 }
 
 // SetCustomCommandEnabled updates the enabled flag for a custom command.
@@ -443,6 +547,50 @@ func GetRecentAuditLogs(broadcasterLogin string, limit int) ([]AuditLogEntry, er
 	return logs, nil
 }
 
+// GetBroadcasterTimezone returns the stored IANA timezone name for a
+// broadcaster, or an empty string if none has been set.
+func GetBroadcasterTimezone(broadcasterLogin string) (string, error) {
+	if db == nil {
+		return "", nil
+	}
+	broadcasterLogin = strings.ToLower(strings.TrimSpace(broadcasterLogin))
+	if broadcasterLogin == "" {
+		return "", nil
+	}
+	var tz sql.NullString
+	row := db.QueryRow(`SELECT timezone FROM broadcaster_settings WHERE broadcaster_login=$1`, broadcasterLogin)
+	if err := row.Scan(&tz); err != nil {
+		if err == sql.ErrNoRows {
+			return "", nil
+		}
+		return "", err
+	}
+	if tz.Valid {
+		return strings.TrimSpace(tz.String), nil
+	}
+	return "", nil
+}
+
+// SetBroadcasterTimezone upserts the timezone for a broadcaster. The timezone
+// must be a valid IANA name (validation is handled by the caller).
+func SetBroadcasterTimezone(broadcasterLogin, timezone string) error {
+	if db == nil {
+		return nil
+	}
+	broadcasterLogin = strings.ToLower(strings.TrimSpace(broadcasterLogin))
+	timezone = strings.TrimSpace(timezone)
+	if broadcasterLogin == "" {
+		return nil
+	}
+	_, err := db.Exec(`
+INSERT INTO broadcaster_settings (broadcaster_login, timezone)
+VALUES ($1, $2)
+ON CONFLICT (broadcaster_login) DO UPDATE
+SET timezone = EXCLUDED.timezone;
+`, broadcasterLogin, timezone)
+	return err
+}
+
 func EnsureSchema() error {
 	// create simple tables if not exist
 	_, err := db.Exec(`
@@ -486,6 +634,17 @@ func EnsureSchema() error {
 	 joined BOOLEAN DEFAULT FALSE,
 	 joined_at TIMESTAMPTZ
 	);
+	CREATE TABLE IF NOT EXISTS birthdays (
+	 id SERIAL PRIMARY KEY,
+	 broadcaster_login TEXT NOT NULL,
+	 user_login TEXT NOT NULL,
+	 display_name TEXT,
+	 month INTEGER NOT NULL,
+	 day INTEGER NOT NULL,
+	 created_at TIMESTAMPTZ DEFAULT now(),
+	 updated_at TIMESTAMPTZ DEFAULT now(),
+	 UNIQUE (broadcaster_login, user_login)
+	);
 	CREATE TABLE IF NOT EXISTS watch_time (
 	 id SERIAL PRIMARY KEY,
 	 broadcaster_login TEXT NOT NULL,
@@ -503,6 +662,10 @@ func EnsureSchema() error {
 	 created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 	);
 	CREATE INDEX IF NOT EXISTS idx_channel_audit_logs_login_created_at ON channel_audit_logs (broadcaster_login, created_at DESC);
+	CREATE TABLE IF NOT EXISTS broadcaster_settings (
+	 broadcaster_login TEXT PRIMARY KEY,
+	 timezone TEXT
+	);
 	`)
 	if err != nil {
 		return err

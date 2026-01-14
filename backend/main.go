@@ -845,6 +845,230 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 		}
 	}
 
+	// Birthday module commands (treated as a single toggleable module).
+	// If the module is disabled for this broadcaster, skip all birthday
+	// commands.
+	if db != nil && strings.HasPrefix(strings.TrimSpace(message), "!") {
+		enabled, err := GetModuleEnabled(channelLogin, "birthdays")
+		if err != nil {
+			log.Println("GetModuleEnabled(birthdays) failed:", err)
+		}
+		if enabled {
+			// Normalize message and split once for easier parsing.
+			msg := strings.TrimSpace(message)
+			lower := strings.ToLower(msg)
+
+			// Helper to parse MM DD from args slice.
+			parseMonthDay := func(args []string) (int, int, error) {
+				if len(args) < 2 {
+					return 0, 0, fmt.Errorf("usage: MM DD")
+				}
+				m, err1 := strconv.Atoi(args[0])
+				d, err2 := strconv.Atoi(args[1])
+				if err1 != nil || err2 != nil || m < 1 || m > 12 || d < 1 || d > 31 {
+					return 0, 0, fmt.Errorf("invalid date")
+				}
+				return m, d, nil
+			}
+
+			// !birthday - show today's birthdays in the broadcaster's timezone.
+			if isChatCommand(lower, "!birthday") {
+				loc := getBroadcasterLocation(channelLogin)
+				now := time.Now().In(loc)
+				birthdays, err := ListBirthdays(channelLogin)
+				if err != nil {
+					log.Println("ListBirthdays failed:", err)
+					return
+				}
+				mm := int(now.Month())
+				dd := now.Day()
+				var today []string
+				for _, b := range birthdays {
+					if b.Month == mm && b.Day == dd {
+						name := b.DisplayName
+						if strings.TrimSpace(name) == "" {
+							name = b.UserLogin
+						}
+						today = append(today, name)
+					}
+				}
+				var text string
+				if len(today) == 0 {
+					text = "There are no saved birthdays for today."
+				} else {
+					if len(today) == 1 {
+						text = fmt.Sprintf("Today's birthday is %s!", today[0])
+					} else {
+						text = fmt.Sprintf("Today's birthdays are %s!", strings.Join(today, ", "))
+					}
+				}
+				if err := sendHelixChatMessage(channelLogin, text); err != nil {
+					log.Println("failed to send !birthday response:", err)
+				}
+				return
+			}
+
+			// !nextbday - show the next upcoming birthday.
+			if isChatCommand(lower, "!nextbday") {
+				loc := getBroadcasterLocation(channelLogin)
+				now := time.Now().In(loc)
+				birthdays, err := ListBirthdays(channelLogin)
+				if err != nil {
+					log.Println("ListBirthdays failed:", err)
+					return
+				}
+				if len(birthdays) == 0 {
+					if err := sendHelixChatMessage(channelLogin, "No birthdays have been saved yet."); err != nil {
+						log.Println("failed to send !nextbday empty response:", err)
+					}
+					return
+				}
+				var (
+					bestDate time.Time
+					bestNames []string
+				)
+				for _, b := range birthdays {
+					candidate := time.Date(now.Year(), time.Month(b.Month), b.Day, 0, 0, 0, 0, loc)
+					if candidate.Before(now) {
+						candidate = candidate.AddDate(1, 0, 0)
+					}
+					if bestDate.IsZero() || candidate.Before(bestDate) {
+						bestDate = candidate
+						bestNames = nil
+					}
+					if candidate.Equal(bestDate) {
+						name := b.DisplayName
+						if strings.TrimSpace(name) == "" {
+							name = b.UserLogin
+						}
+						bestNames = append(bestNames, name)
+					}
+				}
+				if bestDate.IsZero() {
+					return
+				}
+				dateStr := bestDate.Format("Jan 2")
+				var text string
+				if len(bestNames) == 1 {
+					text = fmt.Sprintf("The next birthday is %s on %s.", bestNames[0], dateStr)
+				} else {
+					text = fmt.Sprintf("The next birthdays are %s on %s.", strings.Join(bestNames, ", "), dateStr)
+				}
+				if err := sendHelixChatMessage(channelLogin, text); err != nil {
+					log.Println("failed to send !nextbday response:", err)
+				}
+				return
+			}
+
+			// !addbday NAME MM DD — mods only.
+			if strings.HasPrefix(lower, "!addbday") {
+				args := strings.Fields(msg)
+				if len(args) < 4 {
+					_ = sendHelixChatMessage(channelLogin, "Usage: !addbday NAME MM DD")
+					return
+				}
+				name := args[1]
+				m, d, err := parseMonthDay(args[2:4])
+				if err != nil {
+					_ = sendHelixChatMessage(channelLogin, "Invalid date. Use MM DD, e.g. 02 14")
+					return
+				}
+				isMod, err := isBroadcasterOrModerator(channelLogin, chatterLogin)
+				if err != nil || !isMod {
+					return
+				}
+				if err := UpsertBirthday(channelLogin, strings.ToLower(name), name, m, d); err != nil {
+					log.Println("UpsertBirthday(!addbday) failed:", err)
+					return
+				}
+				if err := sendHelixChatMessage(channelLogin, fmt.Sprintf("Saved birthday for %s as %02d/%02d.", name, m, d)); err != nil {
+					log.Println("failed to send !addbday response:", err)
+				}
+				return
+			}
+
+			// !addmybday MM DD — add or refuse if already set.
+			if strings.HasPrefix(lower, "!addmybday") {
+				args := strings.Fields(msg)
+				if len(args) < 3 {
+					_ = sendHelixChatMessage(channelLogin, "Usage: !addmybday MM DD")
+					return
+				}
+				m, d, err := parseMonthDay(args[1:3])
+				if err != nil {
+					_ = sendHelixChatMessage(channelLogin, "Invalid date. Use MM DD, e.g. 02 14")
+					return
+				}
+				existing, err := GetBirthdayForUser(channelLogin, chatterLogin)
+				if err != nil {
+					log.Println("GetBirthdayForUser failed:", err)
+					return
+				}
+				if existing != nil {
+					_ = sendHelixChatMessage(channelLogin, "You already have a birthday saved. Ask a mod to use !editbday if it needs to change.")
+					return
+				}
+				if err := UpsertBirthday(channelLogin, chatterLogin, chatterLogin, m, d); err != nil {
+					log.Println("UpsertBirthday(!addmybday) failed:", err)
+					return
+				}
+				if err := sendHelixChatMessage(channelLogin, fmt.Sprintf("Saved your birthday as %02d/%02d.", m, d)); err != nil {
+					log.Println("failed to send !addmybday response:", err)
+				}
+				return
+			}
+
+			// !delbday NAME — delete a saved birthday by name (mods only).
+			if strings.HasPrefix(lower, "!delbday") {
+				parts := strings.Fields(msg)
+				if len(parts) < 2 {
+					_ = sendHelixChatMessage(channelLogin, "Usage: !delbday NAME")
+					return
+				}
+				isMod, err := isBroadcasterOrModerator(channelLogin, chatterLogin)
+				if err != nil || !isMod {
+					return
+				}
+				name := strings.ToLower(parts[1])
+				if err := DeleteBirthday(channelLogin, name); err != nil {
+					log.Println("DeleteBirthday failed:", err)
+					return
+				}
+				if err := sendHelixChatMessage(channelLogin, fmt.Sprintf("Deleted birthday for %s if it existed.", parts[1])); err != nil {
+					log.Println("failed to send !delbday response:", err)
+				}
+				return
+			}
+
+			// !editbday USER MM DD — change a user's birthday (mods/broadcaster).
+			if strings.HasPrefix(lower, "!editbday") {
+				args := strings.Fields(msg)
+				if len(args) < 4 {
+					_ = sendHelixChatMessage(channelLogin, "Usage: !editbday USER MM DD")
+					return
+				}
+				isMod, err := isBroadcasterOrModerator(channelLogin, chatterLogin)
+				if err != nil || !isMod {
+					return
+				}
+				target := args[1]
+				m, d, err := parseMonthDay(args[2:4])
+				if err != nil {
+					_ = sendHelixChatMessage(channelLogin, "Invalid date. Use MM DD, e.g. 02 14")
+					return
+				}
+				if err := UpsertBirthday(channelLogin, strings.ToLower(target), target, m, d); err != nil {
+					log.Println("UpsertBirthday(!editbday) failed:", err)
+					return
+				}
+				if err := sendHelixChatMessage(channelLogin, fmt.Sprintf("Updated birthday for %s to %02d/%02d.", target, m, d)); err != nil {
+					log.Println("failed to send !editbday response:", err)
+				}
+				return
+			}
+		}
+	}
+
 	// !commands - link to the broadcaster's custom commands page on the dashboard
 	if isChatCommand(message, "!commands") {
 		if !isDefaultCommandEnabled(channelLogin, "!commands") {
@@ -1014,6 +1238,29 @@ func isBroadcasterOrModerator(channelLogin, chatterLogin string) (bool, error) {
 		return false, err
 	}
 	return len(modsRes.Data) > 0, nil
+}
+
+// getBroadcasterLocation returns the time.Location to use for a given
+// broadcaster when computing date-based features like birthdays. For now it
+// falls back to a global default timezone (BIRTHDAY_DEFAULT_TZ) when set, or
+// the server's local time zone otherwise. This can be extended later to use
+// a per-broadcaster setting stored in the database.
+func getBroadcasterLocation(broadcasterLogin string) *time.Location {
+	// Prefer a per-broadcaster setting from the database when available.
+	if db != nil {
+		if tzName, err := GetBroadcasterTimezone(broadcasterLogin); err == nil && strings.TrimSpace(tzName) != "" {
+			if loc, err := time.LoadLocation(tzName); err == nil {
+				return loc
+			}
+		}
+	}
+	// Optional global override so deploys can pick a consistent timezone.
+	if tz := strings.TrimSpace(os.Getenv("BIRTHDAY_DEFAULT_TZ")); tz != "" {
+		if loc, err := time.LoadLocation(tz); err == nil {
+			return loc
+		}
+	}
+	return time.Local
 }
 
 // isChannelVIP determines whether chatterLogin is a VIP in channelLogin
