@@ -456,6 +456,16 @@ export default function ImportPage() {
                     <p className="mt-1 text-[11px] text-slate-400">
                       This is used for audit logs only; paste commands in the format <span className="font-mono">!hello Hello chat!</span>.
                     </p>
+                    {provider === "nightbot" && (
+                      <button
+                        type="button"
+                        onClick={handleNightbotOAuth}
+                        className="mt-2 inline-flex items-center gap-1 rounded-md border border-emerald-500/70 bg-emerald-600/90 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-emerald-500 hover:border-emerald-400 transition"
+                      >
+                        <span className="text-xs">⬆</span>
+                        <span>Import directly from Nightbot</span>
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -494,16 +504,6 @@ export default function ImportPage() {
                 )}
 
                 {parsed.length > 0 && (
-                    {provider === "nightbot" && (
-                      <button
-                        type="button"
-                        onClick={handleNightbotOAuth}
-                        className="mt-2 inline-flex items-center gap-1 rounded-md border border-emerald-500/70 bg-emerald-600/90 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-emerald-500 hover:border-emerald-400 transition"
-                      >
-                        <span className="text-xs">⬆</span>
-                        <span>Import directly from Nightbot</span>
-                      </button>
-                    )}
                   <div className="mt-4 max-h-64 overflow-y-auto rounded-md border border-slate-800 bg-slate-950/60">
                     <table className="min-w-full text-left text-xs">
                       <thead className="bg-slate-900/80 text-slate-300">
