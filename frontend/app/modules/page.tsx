@@ -747,7 +747,10 @@ export default function ModulesPage() {
                           )}
                           {!loadingBirthdayCommands && (
                             <div className="space-y-3">
-                              {birthdayCommands.map((cmd) => (
+                              {birthdayCommands.map((cmd) => {
+                                const canEditMessage =
+                                  cmd.name === "!birthday" || cmd.name === "!nextbday";
+                                return (
                                 <div
                                   key={cmd.name}
                                   className="rounded-lg border border-slate-800 bg-slate-950/80 px-3 py-2"
@@ -767,66 +770,63 @@ export default function ModulesPage() {
                                       }
                                     />
                                   </div>
-                                  <div className="mt-2 flex flex-col gap-1">
-                                    <input
-                                      type="text"
-                                      value={cmd.message}
-                                      onChange={(e) =>
-                                        setBirthdayCommands((prev) =>
-                                          prev.map((c) =>
-                                            c.name === cmd.name
-                                              ? { ...c, message: e.target.value }
-                                              : c,
-                                          ),
-                                        )
-                                      }
-                                      className="w-full rounded-md border border-slate-700 bg-slate-900/80 px-2 py-1 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-accent/60"
-                                      placeholder="Leave empty to use the default response"
-                                    />
-                                    <p className="text-[10px] text-slate-400">
-                                      You can use simple placeholders like
-                                      {" "}
-                                      <code className="rounded bg-slate-800 px-1 py-0.5 text-[10px]">
-                                        $(names)
-                                      </code>
-                                      ,
-                                      {" "}
-                                      <code className="rounded bg-slate-800 px-1 py-0.5 text-[10px]">
-                                        $(date)
-                                      </code>
-                                      , or
-                                      {" "}
-                                      <code className="rounded bg-slate-800 px-1 py-0.5 text-[10px]">
-                                        $(month)
-                                      </code>
-                                      .
-                                    </p>
-                                    <div className="mt-1 flex justify-end gap-2">
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          handleBirthdayCommandMessageReset(cmd.name)
-                                        }
-                                        className="rounded-md border border-slate-700 px-2 py-0.5 text-[11px] text-slate-200 hover:bg-slate-800/80"
-                                      >
-                                        Reset
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          handleBirthdayCommandMessageSave(
-                                            cmd.name,
-                                            cmd.message,
+                                  {canEditMessage && (
+                                    <div className="mt-2 flex flex-col gap-1">
+                                      <input
+                                        type="text"
+                                        value={cmd.message}
+                                        onChange={(e) =>
+                                          setBirthdayCommands((prev) =>
+                                            prev.map((c) =>
+                                              c.name === cmd.name
+                                                ? { ...c, message: e.target.value }
+                                                : c,
+                                            ),
                                           )
                                         }
-                                        className="rounded-md bg-accent px-2 py-0.5 text-[11px] font-medium text-white hover:bg-accent/90"
-                                      >
-                                        Save
-                                      </button>
+                                        className="w-full rounded-md border border-slate-700 bg-slate-900/80 px-2 py-1 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-accent/60"
+                                        placeholder="Leave empty to use the default response"
+                                      />
+                                      <p className="text-[10px] text-slate-400">
+                                        You can use simple placeholders like
+                                        {" "}
+                                        <code className="rounded bg-slate-800 px-1 py-0.5 text-[10px]">
+                                          $(names)
+                                        </code>
+                                        ,
+                                        {" "}
+                                        <code className="rounded bg-slate-800 px-1 py-0.5 text-[10px]">
+                                          $(date)
+                                        </code>
+                                        .
+                                      </p>
+                                      <div className="mt-1 flex justify-end gap-2">
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            handleBirthdayCommandMessageReset(cmd.name)
+                                          }
+                                          className="rounded-md border border-slate-700 px-2 py-0.5 text-[11px] text-slate-200 hover:bg-slate-800/80"
+                                        >
+                                          Reset
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            handleBirthdayCommandMessageSave(
+                                              cmd.name,
+                                              cmd.message,
+                                            )
+                                          }
+                                          className="rounded-md bg-accent px-2 py-0.5 text-[11px] font-medium text-white hover:bg-accent/90"
+                                        >
+                                          Save
+                                        </button>
+                                      </div>
                                     </div>
-                                  </div>
+                                  )}
                                 </div>
-                              ))}
+                              );})}
                             </div>
                           )}
                         </div>
