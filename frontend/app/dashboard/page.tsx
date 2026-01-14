@@ -613,9 +613,6 @@ export default function DashboardPage() {
                     : "Confirm Changes"}
                 </button>
               </div>
-              {statusMessage && (
-                <p className="mt-2 text-xs text-slate-400">{statusMessage}</p>
-              )}
             </div>
           </div>
         </div>
