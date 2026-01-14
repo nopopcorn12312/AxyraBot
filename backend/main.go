@@ -966,7 +966,7 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 				if len(birthdays) == 0 {
 					text := renderBirthdayCommandMessage(channelLogin, "!nextbday", "No birthdays have been saved yet.", map[string]string{
 						"names": "",
-						"date": "",
+						"date":  "",
 					})
 					if err := sendHelixChatMessage(channelLogin, text); err != nil {
 						log.Println("failed to send !nextbday empty response:", err)
@@ -1006,7 +1006,7 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 				}
 				text = renderBirthdayCommandMessage(channelLogin, "!nextbday", text, map[string]string{
 					"names": strings.Join(bestNames, ", "),
-					"date": dateStr,
+					"date":  dateStr,
 				})
 				if err := sendHelixChatMessage(channelLogin, text); err != nil {
 					log.Println("failed to send !nextbday response:", err)

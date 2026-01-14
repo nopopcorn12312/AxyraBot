@@ -11,11 +11,6 @@ const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL;
 
 type Provider = "nightbot" | "streamelements" | "fossabot" | "other";
 
-type ParsedCommand = {
-  name: string;
-  response: string;
-};
-
 export default function ImportPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -27,21 +22,10 @@ export default function ImportPage() {
   const [otherSectionOpen, setOtherSectionOpen] = useState(true);
   const [commandsOpen, setCommandsOpen] = useState(true);
   const [provider, setProvider] = useState<Provider>("nightbot");
-  const [rawInput, setRawInput] = useState("");
-  const [parsed, setParsed] = useState<ParsedCommand[]>([]);
   const [parseError, setParseError] = useState<string | null>(null);
-  const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
-  const manualSectionRef = useRef<HTMLDivElement | null>(null);
   const pathname = usePathname();
-
-  const providerLabels: Record<Provider, string> = {
-    nightbot: "Nightbot",
-    streamelements: "StreamElements",
-    fossabot: "Fossabot",
-    other: "Other / generic",
-  };
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -76,10 +60,8 @@ export default function ImportPage() {
       const label = !isNaN(num) && num > 0 ? `${num} command${num === 1 ? "" : "s"}` : "your commands";
       setImportResult(`Imported ${label} from Nightbot via OAuth.`);
       setParseError(null);
-      setParsed([]);
-      setRawInput("");
     } else if (nightbotStatus === "error") {
-      setParseError("Nightbot import failed or was cancelled. You can try again or use manual paste.");
+      setParseError("Nightbot import failed or was cancelled. You can try again.");
       setImportResult(null);
     }
 
@@ -134,78 +116,10 @@ export default function ImportPage() {
     window.location.href = url.toString();
   };
 
-  const scrollToManualSection = () => {
-    if (manualSectionRef.current) {
-      manualSectionRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  };
-
   const handleChooseProvider = (next: Provider) => {
     setProvider(next);
     setParseError(null);
     setImportResult(null);
-    scrollToManualSection();
-  };
-
-  const handleParse = () => {
-    setParseError(null);
-    setImportResult(null);
-    const text = rawInput || "";
-    const lines = text.split(/\r?\n/);
-    const seen = new Map<string, string>();
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed || !trimmed.startsWith("!")) continue;
-      const firstSpace = trimmed.indexOf(" ");
-      if (firstSpace === -1) continue;
-      const name = trimmed.slice(0, firstSpace).trim();
-      const response = trimmed.slice(firstSpace + 1).trim();
-      if (!name || !response) continue;
-      seen.set(name, response);
-    }
-    const result: ParsedCommand[] = Array.from(seen.entries()).map(([name, response]) => ({
-      name,
-      response,
-    }));
-    if (result.length === 0) {
-      setParsed([]);
-      setParseError("No commands detected. Paste lines like `!hello Hello chat!`.");
-      return;
-    }
-    setParsed(result);
-  };
-
-  const handleImport = async () => {
-    if (!login) return;
-    if (parsed.length === 0) {
-      setParseError("Parse commands first before importing.");
-      return;
-    }
-    setImporting(true);
-    setImportResult(null);
-    setParseError(null);
-    try {
-      const res = await fetch(`${backendUrl}/commands/import`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          login,
-          provider,
-          commands: parsed,
-        }),
-      });
-      if (!res.ok) {
-        throw new Error("Import failed");
-      }
-      const data = await res.json().catch(() => ({} as any));
-      const count = (data && typeof data.imported === "number") ? data.imported : parsed.length;
-      setImportResult(`Imported ${count} command${count === 1 ? "" : "s"}.`);
-    } catch (err) {
-      console.error(err);
-      setParseError("Could not import commands. Please try again.");
-    } finally {
-      setImporting(false);
-    }
   };
 
   return (
@@ -455,38 +369,58 @@ export default function ImportPage() {
             )}
             {isLoggedIn && (
               <>
-                <p className="text-sm text-slate-400 mb-4">
-                  Import your commands from other chat bots into AxyraBot. Choose a platform card below, then use direct
-                  import or the manual section.
+                <p className="text-sm text-slate-400 mb-3">
+                  Import your commands from other chat bots into AxyraBot. Choose a platform card below to start an
+                  import for your channel.
                 </p>
 
-                <div className="mb-6 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+                {importResult && (
+                  <p className="mb-3 text-xs text-emerald-400">{importResult}</p>
+                )}
+                {parseError && (
+                  <p className="mb-3 text-xs text-rose-400">{parseError}</p>
+                )}
+
+                <div className="mt-1 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
                   {/* Nightbot card */}
                   <div
-                    className={`flex flex-col overflow-hidden rounded-2xl border ${
+                    className={`flex flex-col overflow-hidden rounded-3xl border ${
                       provider === "nightbot"
-                        ? "border-accent shadow-[0_0_18px_rgba(129,140,248,0.6)]"
+                        ? "border-accent shadow-[0_0_22px_rgba(129,140,248,0.7)]"
                         : "border-slate-800"
-                    } bg-slate-900/80`}
+                    } bg-slate-950/80`}
                   >
-                    <div className="flex items-center justify-center bg-slate-800/80 px-6 py-6">
-                      <span className="text-2xl font-semibold tracking-tight text-white">Nightbot</span>
+                    <div className="relative h-28 bg-gradient-to-r from-sky-500/40 via-indigo-500/40 to-slate-950">
+                      <div className="absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_top,_rgba(148,163,184,0.6),_transparent_60%)]" />
+                      <div className="relative flex h-full items-end px-5 pb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-950/80 text-xl">
+                            N
+                          </div>
+                          <div>
+                            <div className="text-sm font-semibold uppercase tracking-wide text-slate-100">
+                              Nightbot
+                            </div>
+                            <div className="text-xs text-slate-300">Import existing Nightbot commands</div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex flex-1 flex-col justify-between bg-slate-950/80 px-5 py-4 text-sm">
+                    <div className="flex flex-1 flex-col justify-between px-5 py-4 text-sm">
                       <div className="space-y-2">
                         <p className="text-xs text-slate-400">Imports</p>
                         <ul className="space-y-1 text-xs text-slate-200">
                           <li>✔ Commands</li>
-                          <li>✔ Usage counters (where applicable)</li>
+                          <li>✔ Usage counters (where available)</li>
                         </ul>
                       </div>
                       <div className="mt-4 flex justify-end">
                         <button
                           type="button"
                           onClick={handleNightbotOAuth}
-                          className="inline-flex items-center rounded-md bg-accent px-4 py-1.5 text-xs font-semibold text-slate-900 shadow-sm hover:bg-sky-400"
+                          className="inline-flex items-center rounded-md bg-accent px-4 py-2 text-xs font-semibold text-slate-900 shadow-sm hover:bg-sky-400"
                         >
-                          Import
+                          Import from Nightbot
                         </button>
                       </div>
                     </div>
@@ -494,30 +428,43 @@ export default function ImportPage() {
 
                   {/* StreamElements card */}
                   <div
-                    className={`flex flex-col overflow-hidden rounded-2xl border ${
+                    className={`flex flex-col overflow-hidden rounded-3xl border ${
                       provider === "streamelements"
-                        ? "border-accent shadow-[0_0_18px_rgba(129,140,248,0.6)]"
+                        ? "border-accent shadow-[0_0_22px_rgba(129,140,248,0.7)]"
                         : "border-slate-800"
-                    } bg-slate-900/80`}
+                    } bg-slate-950/80`}
                   >
-                    <div className="flex items-center justify-center bg-slate-800/80 px-6 py-6">
-                      <span className="text-2xl font-semibold tracking-tight text-white">StreamElements</span>
+                    <div className="relative h-28 bg-gradient-to-r from-emerald-500/35 via-cyan-500/35 to-slate-950">
+                      <div className="absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_top,_rgba(45,212,191,0.5),_transparent_65%)]" />
+                      <div className="relative flex h-full items-end px-5 pb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-950/80 text-xl">
+                            SE
+                          </div>
+                          <div>
+                            <div className="text-sm font-semibold uppercase tracking-wide text-slate-100">
+                              StreamElements
+                            </div>
+                            <div className="text-xs text-slate-300">Import from StreamElements (coming soon)</div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex flex-1 flex-col justify-between bg-slate-950/80 px-5 py-4 text-sm">
+                    <div className="flex flex-1 flex-col justify-between px-5 py-4 text-sm">
                       <div className="space-y-2">
-                        <p className="text-xs text-slate-400">Manual import</p>
+                        <p className="text-xs text-slate-400">Planned support</p>
                         <ul className="space-y-1 text-xs text-slate-200">
                           <li>✔ Commands</li>
-                          <li>✔ Timers (via copied messages)</li>
+                          <li>✔ Timers</li>
                         </ul>
                       </div>
                       <div className="mt-4 flex justify-end">
                         <button
                           type="button"
                           onClick={() => handleChooseProvider("streamelements")}
-                          className="inline-flex items-center rounded-md bg-slate-700 px-4 py-1.5 text-xs font-semibold text-slate-100 hover:bg-slate-600"
+                          className="inline-flex items-center rounded-md bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-100 opacity-70 cursor-default"
                         >
-                          Import
+                          Coming soon
                         </button>
                       </div>
                     </div>
@@ -525,100 +472,48 @@ export default function ImportPage() {
 
                   {/* Fossabot card */}
                   <div
-                    className={`flex flex-col overflow-hidden rounded-2xl border ${
+                    className={`flex flex-col overflow-hidden rounded-3xl border ${
                       provider === "fossabot"
-                        ? "border-accent shadow-[0_0_18px_rgba(129,140,248,0.6)]"
+                        ? "border-accent shadow-[0_0_22px_rgba(129,140,248,0.7)]"
                         : "border-slate-800"
-                    } bg-slate-900/80`}
+                    } bg-slate-950/80`}
                   >
-                    <div className="flex items-center justify-center bg-slate-800/80 px-6 py-6">
-                      <span className="text-2xl font-semibold tracking-tight text-white">Fossabot</span>
+                    <div className="relative h-28 bg-gradient-to-r from-fuchsia-500/35 via-purple-500/35 to-slate-950">
+                      <div className="absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_top,_rgba(244,114,182,0.5),_transparent_65%)]" />
+                      <div className="relative flex h-full items-end px-5 pb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-950/80 text-xl">
+                            F
+                          </div>
+                          <div>
+                            <div className="text-sm font-semibold uppercase tracking-wide text-slate-100">
+                              Fossabot
+                            </div>
+                            <div className="text-xs text-slate-300">Import from Fossabot (coming soon)</div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex flex-1 flex-col justify-between bg-slate-950/80 px-5 py-4 text-sm">
+                    <div className="flex flex-1 flex-col justify-between px-5 py-4 text-sm">
                       <div className="space-y-2">
-                        <p className="text-xs text-slate-400">Manual import</p>
+                        <p className="text-xs text-slate-400">Planned support</p>
                         <ul className="space-y-1 text-xs text-slate-200">
                           <li>✔ Commands</li>
-                          <li>✔ Timers (via copied messages)</li>
+                          <li>✔ Timers</li>
                         </ul>
                       </div>
                       <div className="mt-4 flex justify-end">
                         <button
                           type="button"
                           onClick={() => handleChooseProvider("fossabot")}
-                          className="inline-flex items-center rounded-md bg-slate-700 px-4 py-1.5 text-xs font-semibold text-slate-100 hover:bg-slate-600"
+                          className="inline-flex items-center rounded-md bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-100 opacity-70 cursor-default"
                         >
-                          Import
+                          Coming soon
                         </button>
                       </div>
                     </div>
                   </div>
                 </div>
-
-                <div ref={manualSectionRef} className="mt-2">
-                  <p className="mb-2 text-xs text-slate-400">
-                    Manual import source: <span className="font-semibold text-slate-200">{providerLabels[provider]}</span>
-                  </p>
-                </div>
-
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Paste commands
-                </label>
-                <textarea
-                  rows={6}
-                  value={rawInput}
-                  onChange={(e) => setRawInput(e.target.value)}
-                  className="w-full rounded-md border border-slate-700 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent/70"
-                  placeholder="!hello Hello chat!\n!discord Join the server at https://..."
-                />
-                <div className="mt-3 flex gap-2">
-                  <button
-                    type="button"
-                    onClick={handleParse}
-                    className="inline-flex items-center justify-center rounded-md bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-100 hover:bg-slate-700"
-                  >
-                    Parse commands
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleImport}
-                    disabled={importing || parsed.length === 0 || !login}
-                    className="inline-flex items-center justify-center rounded-md bg-accent px-4 py-2 text-sm font-semibold text-slate-900 shadow-sky-500/40 hover:bg-sky-400 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {importing ? "Importing..." : "Import parsed commands"}
-                  </button>
-                </div>
-                {parseError && (
-                  <p className="mt-2 text-xs text-rose-400">{parseError}</p>
-                )}
-                {importResult && !parseError && (
-                  <p className="mt-2 text-xs text-emerald-400">{importResult}</p>
-                )}
-
-                {parsed.length > 0 && (
-                  <div className="mt-4 max-h-64 overflow-y-auto rounded-md border border-slate-800 bg-slate-950/60">
-                    <table className="min-w-full text-left text-xs">
-                      <thead className="bg-slate-900/80 text-slate-300">
-                        <tr>
-                          <th className="px-3 py-2 font-semibold">Command</th>
-                          <th className="px-3 py-2 font-semibold">Response (preview)</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {parsed.map((cmd) => (
-                          <tr key={cmd.name} className="border-t border-slate-800">
-                            <td className="px-3 py-1.5 font-mono text-slate-100 whitespace-nowrap">{cmd.name}</td>
-                            <td className="px-3 py-1.5 text-slate-200">
-                              {cmd.response.length > 120
-                                ? `${cmd.response.slice(0, 117)}...`
-                                : cmd.response}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
               </>
             )}
           </div>
