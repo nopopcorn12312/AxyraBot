@@ -586,150 +586,129 @@ export default function ModulesPage() {
                             <span className="text-xs font-semibold text-slate-200">
                               Announcement message
                             </span>
-                            {isLoggedIn && login && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  if (editingModule === m.name) {
-                                    setEditingModule(null);
-                                    setEditError(null);
-                                    return;
-                                  }
-                                  setEditingModule(m.name);
-                                  setEditMessage(m.message ?? "");
-                                  setEditError(null);
-                                }}
-                                className="inline-flex h-7 items-center justify-center rounded-md border border-slate-700 bg-slate-900/80 px-2 text-[11px] text-slate-300 hover:bg-slate-800/80"
-                              >
-                                Edit message
-                              </button>
-                            )}
                           </div>
                           <p className="mb-1 text-xs text-slate-400">
                             Current message: {m.message || defaultLiveAnnouncementMessage}
                           </p>
-                          {editingModule === m.name && (
-                            <div className="mt-3 border-t border-slate-800 pt-3">
-                          <div className="flex flex-col gap-2">
-                            <label className="text-xs font-medium text-slate-300">
-                              Announcement message
-                            </label>
-                            <input
-                              type="text"
-                              value={editMessage}
-                              onChange={(e) => setEditMessage(e.target.value)}
-                              className="w-full rounded-md border border-slate-700 bg-slate-900/80 px-2 py-1 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-accent/60"
-                              placeholder={defaultLiveAnnouncementMessage}
-                            />
-                            <p className="text-[11px] text-slate-400">
-                              You can use $(channel), $(game), and $(title) as
-                              variables.
-                            </p>
-                            {editError && (
-                              <div className="text-xs text-red-400">{editError}</div>
-                            )}
-                            <div className="mt-1 flex gap-2 justify-end">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setEditingModule(null);
-                                  setEditError(null);
-                                }}
-                                className="rounded-md border border-slate-700 px-3 py-1 text-xs font-medium text-slate-200 hover:bg-slate-800/80"
-                                disabled={savingEdit}
-                              >
-                                Cancel
-                              </button>
-                              <button
-                                type="button"
-                                onClick={async () => {
-                                  if (!login || !editingModule) return;
-                                  setSavingEdit(true);
-                                  setEditError(null);
-                                  try {
-                                    const res = await fetch(`${backendUrl}/modules/settings`, {
-                                      method: "POST",
-                                      headers: { "Content-Type": "application/json" },
-                                      body: JSON.stringify({
-                                        login,
-                                        module: editingModule,
-                                        enabled: m.enabled,
-                                        resetToDefault: true,
-                                      }),
-                                    });
-                                    if (!res.ok) {
-                                      setEditError("Failed to restore default. Please try again.");
-                                    } else {
-                                      const nextMessage = defaultLiveAnnouncementMessage;
-                                      setModules((prev) =>
-                                        prev.map((mod) =>
-                                          mod.name === editingModule
-                                            ? { ...mod, message: nextMessage }
-                                            : mod,
-                                        ),
-                                      );
-                                      setEditMessage(nextMessage);
+                          <div className="mt-3 border-t border-slate-800 pt-3">
+                            <div className="flex flex-col gap-2">
+                              <label className="text-xs font-medium text-slate-300">
+                                Announcement message
+                              </label>
+                              <input
+                                type="text"
+                                value={editMessage}
+                                onChange={(e) => setEditMessage(e.target.value)}
+                                className="w-full rounded-md border border-slate-700 bg-slate-900/80 px-2 py-1 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-accent/60"
+                                placeholder={defaultLiveAnnouncementMessage}
+                              />
+                              <p className="text-[11px] text-slate-400">
+                                You can use $(channel), $(game), and $(title) as
+                                variables.
+                              </p>
+                              {editError && (
+                                <div className="text-xs text-red-400">{editError}</div>
+                              )}
+                              <div className="mt-1 flex gap-2 justify-end">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditMessage(m.message ?? "");
+                                    setEditError(null);
+                                  }}
+                                  className="rounded-md border border-slate-700 px-3 py-1 text-xs font-medium text-slate-200 hover:bg-slate-800/80"
+                                  disabled={savingEdit}
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    if (!login) return;
+                                    setSavingEdit(true);
+                                    setEditError(null);
+                                    try {
+                                      const res = await fetch(`${backendUrl}/modules/settings`, {
+                                        method: "POST",
+                                        headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({
+                                          login,
+                                          module: "live_announcement",
+                                          enabled: m.enabled,
+                                          resetToDefault: true,
+                                        }),
+                                      });
+                                      if (!res.ok) {
+                                        setEditError("Failed to restore default. Please try again.");
+                                      } else {
+                                        const nextMessage = defaultLiveAnnouncementMessage;
+                                        setModules((prev) =>
+                                          prev.map((mod) =>
+                                            mod.name === "live_announcement"
+                                              ? { ...mod, message: nextMessage }
+                                              : mod,
+                                          ),
+                                        );
+                                        setEditMessage(nextMessage);
+                                      }
+                                    } catch {
+                                      setEditError("Network error while restoring default.");
+                                    } finally {
+                                      setSavingEdit(false);
                                     }
-                                  } catch {
-                                    setEditError("Network error while restoring default.");
-                                  } finally {
-                                    setSavingEdit(false);
-                                  }
-                                }}
-                                className="rounded-md border border-slate-700 px-3 py-1 text-xs font-medium text-slate-200 hover:bg-slate-800/80 disabled:opacity-60"
-                                disabled={savingEdit}
-                              >
-                                Restore Default
-                              </button>
-                              <button
-                                type="button"
-                                onClick={async () => {
-                                  if (!login || !editingModule) return;
-                                  const trimmed = editMessage.trim();
-                                  if (!trimmed) {
-                                    setEditError("Message cannot be empty.");
-                                    return;
-                                  }
-                                  setSavingEdit(true);
-                                  setEditError(null);
-                                  try {
-                                    const res = await fetch(`${backendUrl}/modules/settings`, {
-                                      method: "POST",
-                                      headers: { "Content-Type": "application/json" },
-                                      body: JSON.stringify({
-                                        login,
-                                        module: editingModule,
-                                        enabled: m.enabled,
-                                        message: trimmed,
-                                      }),
-                                    });
-                                    if (!res.ok) {
-                                      setEditError("Failed to save changes. Please try again.");
-                                    } else {
-                                      setModules((prev) =>
-                                        prev.map((mod) =>
-                                          mod.name === editingModule
-                                            ? { ...mod, message: trimmed }
-                                            : mod,
-                                        ),
-                                      );
-                                      setEditingModule(null);
+                                  }}
+                                  className="rounded-md border border-slate-700 px-3 py-1 text-xs font-medium text-slate-200 hover:bg-slate-800/80 disabled:opacity-60"
+                                  disabled={savingEdit}
+                                >
+                                  Restore Default
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    if (!login) return;
+                                    const trimmed = editMessage.trim();
+                                    if (!trimmed) {
+                                      setEditError("Message cannot be empty.");
+                                      return;
                                     }
-                                  } catch {
-                                    setEditError("Network error while saving changes.");
-                                  } finally {
-                                    setSavingEdit(false);
-                                  }
-                                }}
-                                className="rounded-md bg-accent px-3 py-1 text-xs font-medium text-white hover:bg-accent/90 disabled:opacity-60"
-                                disabled={savingEdit}
-                              >
-                                {savingEdit ? "Saving..." : "Save changes"}
-                              </button>
+                                    setSavingEdit(true);
+                                    setEditError(null);
+                                    try {
+                                      const res = await fetch(`${backendUrl}/modules/settings`, {
+                                        method: "POST",
+                                        headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({
+                                          login,
+                                          module: "live_announcement",
+                                          enabled: m.enabled,
+                                          message: trimmed,
+                                        }),
+                                      });
+                                      if (!res.ok) {
+                                        setEditError("Failed to save changes. Please try again.");
+                                      } else {
+                                        setModules((prev) =>
+                                          prev.map((mod) =>
+                                            mod.name === "live_announcement"
+                                              ? { ...mod, message: trimmed }
+                                              : mod,
+                                          ),
+                                        );
+                                      }
+                                    } catch {
+                                      setEditError("Network error while saving changes.");
+                                    } finally {
+                                      setSavingEdit(false);
+                                    }
+                                  }}
+                                  className="rounded-md bg-accent px-3 py-1 text-xs font-medium text-white hover:bg-accent/90 disabled:opacity-60"
+                                  disabled={savingEdit}
+                                >
+                                  {savingEdit ? "Saving..." : "Save changes"}
+                                </button>
+                              </div>
                             </div>
                           </div>
-                            </div>
-                          )}
                         </div>
                       )}
 
