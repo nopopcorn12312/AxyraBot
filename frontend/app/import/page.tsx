@@ -11,6 +11,13 @@ const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL;
 
 type Provider = "nightbot" | "streamelements" | "fossabot" | "other";
 
+const providerDisplay: Record<Provider, string> = {
+  nightbot: "Nightbot",
+  streamelements: "StreamElements",
+  fossabot: "Fossabot",
+  other: "Other",
+};
+
 export default function ImportPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -24,6 +31,8 @@ export default function ImportPage() {
   const [provider, setProvider] = useState<Provider>("nightbot");
   const [parseError, setParseError] = useState<string | null>(null);
   const [importResult, setImportResult] = useState<string | null>(null);
+    const [successModalOpen, setSuccessModalOpen] = useState(false);
+    const [successProvider, setSuccessProvider] = useState<Provider | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const pathname = usePathname();
 
@@ -60,6 +69,8 @@ export default function ImportPage() {
       const label = !isNaN(num) && num > 0 ? `${num} command${num === 1 ? "" : "s"}` : "your commands";
       setImportResult(`Imported ${label} from Nightbot via OAuth.`);
       setParseError(null);
+      setSuccessProvider("nightbot");
+      setSuccessModalOpen(true);
     } else if (nightbotStatus === "error") {
       setParseError("Nightbot import failed or was cancelled. You can try again.");
       setImportResult(null);
@@ -124,6 +135,25 @@ export default function ImportPage() {
 
   return (
     <main className="min-h-screen flex flex-col bg-[radial-gradient(circle_at_top,_#1e293b,_#020617)]">
+      {successModalOpen && successProvider && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="w-full max-w-sm rounded-2xl border border-slate-700 bg-slate-900 p-5 shadow-xl">
+            <h2 className="mb-1 text-lg font-semibold text-slate-50">Import complete</h2>
+            <p className="mb-4 text-sm text-slate-300">
+              Successfully imported from {providerDisplay[successProvider]}.
+            </p>
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setSuccessModalOpen(false)}
+                className="inline-flex items-center rounded-md bg-slate-800 px-4 py-1.5 text-sm font-semibold text-slate-100 hover:bg-slate-700"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <header className="w-full flex items-center justify-between px-6 py-4">
         <div className="flex items-center gap-4 flex-1">
           <button
