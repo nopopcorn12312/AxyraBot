@@ -444,43 +444,6 @@ export default function ModulesPage() {
                     </div>
                   )}
 
-                  <button
-                    type="button"
-                    onClick={() => setModerationOpen((open) => !open)}
-                    className="flex items-center justify-between gap-3 rounded-xl px-3 py-2 text-left font-medium text-slate-200 hover:bg-slate-800/80 transition"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="text-lg">🛡️</span>
-                      {sidebarOpen && <span>Moderation</span>}
-                    </div>
-                    {sidebarOpen && (
-                      <span className="text-xs text-slate-400">{moderationOpen ? "▾" : "▸"}</span>
-                    )}
-                  </button>
-                  {moderationOpen && (
-                    <div className="mt-1 ml-6 flex flex-col gap-1 text-xs text-slate-200">
-                      <Link
-                        href="/moderation/blocked-terms"
-                        className={`rounded-lg px-3 py-1.5 transition ${
-                          pathname === "/moderation/blocked-terms"
-                            ? "bg-slate-800/80 text-slate-50"
-                            : "hover:bg-slate-800/60"
-                        }`}
-                      >
-                        Blocked Terms
-                      </Link>
-                      <Link
-                        href="/moderation/spam-filters"
-                        className={`rounded-lg px-3 py-1.5 transition ${
-                          pathname === "/moderation/spam-filters"
-                            ? "bg-slate-800/80 text-slate-50"
-                            : "hover:bg-slate-800/60"
-                        }`}
-                      >
-                        Spam Filters
-                      </Link>
-                    </div>
-                  )}
                 </>
               )}
             </div>
