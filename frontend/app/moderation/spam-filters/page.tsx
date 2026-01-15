@@ -20,45 +20,38 @@ export default function SpamFiltersPage() {
   const [moderationOpen, setModerationOpen] = useState(true);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100">
-      <header className="flex items-center justify-between border-b border-slate-800 bg-slate-950/60 px-6 py-3">
-        <div className="flex items-center gap-3">
+    <main className="min-h-screen flex flex-col bg-[radial-gradient(circle_at_top,_#1e293b,_#020617)]">
+      <header className="w-full flex items-center justify-between px-6 py-4">
+        <div className="flex items-center gap-4 flex-1">
           <button
             type="button"
             onClick={() => setSidebarOpen((open) => !open)}
-            className="rounded-lg border border-slate-800 bg-slate-900 px-2 py-1 text-xs text-slate-300 hover:bg-slate-800"
+            className="mr-2 rounded-lg bg-slate-900/70 px-3 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800 border border-slate-700"
           >
-            {sidebarOpen ? "Hide Menu" : "Show Menu"}
+            ☰
           </button>
-
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="relative h-8 w-8">
-              <Image src={AxyraLogo} alt="AxyraBot Logo" className="h-full w-full" />
-            </div>
-            <div className="flex flex-col leading-tight">
-              <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                AxyraBot
-              </span>
-              <span className="text-sm font-semibold text-slate-100">Spam Filters</span>
+          <Link href="/" className="flex items-center gap-4">
+            <Image
+              src={AxyraLogo}
+              alt="AxyraBot logo"
+              width={32}
+              height={32}
+              className="rounded-full"
+            />
+            <div className="text-2xl font-semibold tracking-tight">
+              <span className="text-accent">Axyra</span>
+              <span className="text-white">Bot</span>
             </div>
           </Link>
         </div>
-
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
           <Link
             href={`${frontendUrl}/import`}
-            className="rounded-lg border border-indigo-500/40 bg-indigo-600/80 px-3 py-1.5 text-xs font-medium text-white shadow-sm shadow-indigo-500/40 hover:bg-indigo-500"
+            className="inline-flex items-center gap-1 rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1.5 text-xs font-medium text-slate-100 hover:bg-slate-800 hover:border-slate-500 transition"
           >
-            Import Commands
+            <span className="text-xs">⬆</span>
+            <span>Import</span>
           </Link>
-
-          <div className="flex items-center gap-3 rounded-full border border-slate-800 bg-slate-900/80 px-3 py-1.5 text-xs">
-            <div className="h-6 w-6 rounded-full bg-gradient-to-br from-indigo-500 to-sky-400" />
-            <div className="flex flex-col leading-tight">
-              <span className="font-medium text-slate-100">Streamer</span>
-              <span className="text-[10px] text-slate-400">axonelive</span>
-            </div>
-          </div>
         </div>
       </header>
 
@@ -148,21 +141,21 @@ export default function SpamFiltersPage() {
                         href="/moderation/blocked-terms"
                         className={`rounded-lg px-3 py-1.5 transition ${
                           pathname === "/moderation/blocked-terms"
-                            ? "bg-slate-800/80 text-slate-50"
+                            ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
                             : "hover:bg-slate-800/60"
                         }`}
                       >
-                        Blocked terms
+                        Blocked Terms
                       </Link>
                       <Link
                         href="/moderation/spam-filters"
                         className={`rounded-lg px-3 py-1.5 transition ${
                           pathname === "/moderation/spam-filters"
-                            ? "bg-slate-800/80 text-slate-50"
+                            ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
                             : "hover:bg-slate-800/60"
                         }`}
                       >
-                        Spam filters
+                        Spam Filters
                       </Link>
                     </div>
                   )}
@@ -280,6 +273,6 @@ export default function SpamFiltersPage() {
           </div>
         </main>
       </div>
-    </div>
+    </main>
   );
 }

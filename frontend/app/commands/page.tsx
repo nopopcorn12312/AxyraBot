@@ -362,7 +362,7 @@ export default function CommandsPage() {
                         href="/moderation/blocked-terms"
                         className={`rounded-lg px-3 py-1.5 transition ${
                           pathname === "/moderation/blocked-terms"
-                            ? "bg-slate-800/80 text-slate-50"
+                            ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
                             : "hover:bg-slate-800/60"
                         }`}
                       >
@@ -372,7 +372,7 @@ export default function CommandsPage() {
                         href="/moderation/spam-filters"
                         className={`rounded-lg px-3 py-1.5 transition ${
                           pathname === "/moderation/spam-filters"
-                            ? "bg-slate-800/80 text-slate-50"
+                            ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
                             : "hover:bg-slate-800/60"
                         }`}
                       >
