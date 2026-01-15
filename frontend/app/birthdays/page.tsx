@@ -747,7 +747,7 @@ export default function BirthdaysPage() {
 
       <div className="flex flex-1 w-full gap-6 px-4 pb-6 items-stretch">
         <div
-          className={`$${sidebarOpen ? "w-60" : "w-16"} flex flex-col rounded-2xl border border-slate-800 bg-slate-900/80 p-3 transition-all duration-200`}
+          className={`${sidebarOpen ? "w-60" : "w-16"} flex flex-col rounded-2xl border border-slate-800 bg-slate-900/80 p-3 transition-all duration-200`}
         >
           <nav className="mt-1 flex flex-col gap-4 text-sm text-slate-200">
             {/* Main section */}
