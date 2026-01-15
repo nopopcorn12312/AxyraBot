@@ -18,6 +18,7 @@ export default function ModerationPage() {
   const [vanitySectionOpen, setVanitySectionOpen] = useState(true);
   const [otherSectionOpen, setOtherSectionOpen] = useState(true);
   const [commandsOpen, setCommandsOpen] = useState(false);
+  const [moderationOpen, setModerationOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const pathname = usePathname();
 

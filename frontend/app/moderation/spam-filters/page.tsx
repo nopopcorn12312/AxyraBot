@@ -5,7 +5,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 
-import AxyraLogo from "@/public/images/AxyraBotLogo.png";
+import AxyraLogo from "../../images/AxyraBotPFP.png";
 
 const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL || "";
 
