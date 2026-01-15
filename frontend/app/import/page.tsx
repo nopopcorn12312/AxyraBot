@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import AxyraBotPFP from "../images/AxyraBotPFP.png";
+import { usePersistentSectionState } from "../hooks/usePersistentSectionState";
 import NightbotPFP from "../images/NightbotPFP.png";
 import NightbotBanner from "../images/NightbotBanner.png";
 import SteamelementsBanner from "../images/SteamelementsBanner.png";
@@ -28,11 +29,26 @@ export default function ImportPage() {
   const [login, setLogin] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [mainSectionOpen, setMainSectionOpen] = useState(true);
-  const [vanitySectionOpen, setVanitySectionOpen] = useState(true);
-  const [otherSectionOpen, setOtherSectionOpen] = useState(true);
-  const [commandsOpen, setCommandsOpen] = useState(true);
-  const [moderationOpen, setModerationOpen] = useState(false);
+  const [mainSectionOpen, setMainSectionOpen] = usePersistentSectionState(
+    "axyra.sidebar.mainSectionOpen",
+    true,
+  );
+  const [vanitySectionOpen, setVanitySectionOpen] = usePersistentSectionState(
+    "axyra.sidebar.vanitySectionOpen",
+    true,
+  );
+  const [otherSectionOpen, setOtherSectionOpen] = usePersistentSectionState(
+    "axyra.sidebar.otherSectionOpen",
+    true,
+  );
+  const [commandsOpen, setCommandsOpen] = usePersistentSectionState(
+    "axyra.sidebar.commandsOpen",
+    true,
+  );
+  const [moderationOpen, setModerationOpen] = usePersistentSectionState(
+    "axyra.sidebar.moderationOpen",
+    true,
+  );
   const [provider, setProvider] = useState<Provider>("nightbot");
   const [parseError, setParseError] = useState<string | null>(null);
   const [importResult, setImportResult] = useState<string | null>(null);

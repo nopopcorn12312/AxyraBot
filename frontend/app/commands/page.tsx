@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import AxyraBotPFP from "../images/AxyraBotPFP.png";
+import { usePersistentSectionState } from "../hooks/usePersistentSectionState";
 
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://your-backend.onrender.com";
 const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL;
@@ -53,11 +54,26 @@ export default function CommandsPage() {
   const [loggedInLogin, setLoggedInLogin] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [mainSectionOpen, setMainSectionOpen] = useState(true);
-  const [vanitySectionOpen, setVanitySectionOpen] = useState(true);
-  const [otherSectionOpen, setOtherSectionOpen] = useState(true);
-  const [commandsOpen, setCommandsOpen] = useState(true);
-  const [moderationOpen, setModerationOpen] = useState(false);
+  const [mainSectionOpen, setMainSectionOpen] = usePersistentSectionState(
+    "axyra.sidebar.mainSectionOpen",
+    true,
+  );
+  const [vanitySectionOpen, setVanitySectionOpen] = usePersistentSectionState(
+    "axyra.sidebar.vanitySectionOpen",
+    true,
+  );
+  const [otherSectionOpen, setOtherSectionOpen] = usePersistentSectionState(
+    "axyra.sidebar.otherSectionOpen",
+    true,
+  );
+  const [commandsOpen, setCommandsOpen] = usePersistentSectionState(
+    "axyra.sidebar.commandsOpen",
+    true,
+  );
+  const [moderationOpen, setModerationOpen] = usePersistentSectionState(
+    "axyra.sidebar.moderationOpen",
+    true,
+  );
   const [view, setView] = useState<"default" | "custom">("default");
   const [defaultSettings, setDefaultSettings] = useState<Record<string, boolean>>({});
   const [customCommands, setCustomCommands] = useState<

@@ -38,11 +38,26 @@ export default function DashboardPage() {
   const [joined, setJoined] = useState(false);
   const [joining, setJoining] = useState(false);
   const [changesConfirmed, setChangesConfirmed] = useState(false);
-  const [mainSectionOpen, setMainSectionOpen] = useState(true);
-  const [vanitySectionOpen, setVanitySectionOpen] = useState(true);
-  const [otherSectionOpen, setOtherSectionOpen] = useState(true);
-  const [commandsOpen, setCommandsOpen] = useState(false);
-  const [moderationOpen, setModerationOpen] = useState(false);
+  const [mainSectionOpen, setMainSectionOpen] = usePersistentSectionState(
+    "axyra.sidebar.mainSectionOpen",
+    true,
+  );
+  const [vanitySectionOpen, setVanitySectionOpen] = usePersistentSectionState(
+    "axyra.sidebar.vanitySectionOpen",
+    true,
+  );
+  const [otherSectionOpen, setOtherSectionOpen] = usePersistentSectionState(
+    "axyra.sidebar.otherSectionOpen",
+    true,
+  );
+  const [commandsOpen, setCommandsOpen] = usePersistentSectionState(
+    "axyra.sidebar.commandsOpen",
+    true,
+  );
+  const [moderationOpen, setModerationOpen] = usePersistentSectionState(
+    "axyra.sidebar.moderationOpen",
+    true,
+  );
   const [activity, setActivity] = useState<
     { source: string; category: string; description: string; timestamp: string }[]
   >([]);

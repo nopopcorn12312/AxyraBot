@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import { usePersistentSectionState } from "../../hooks/usePersistentSectionState";
 import { useState } from "react";
 
 import AxyraLogo from "../../images/AxyraBotPFP.png";
@@ -13,11 +14,26 @@ export default function SpamFiltersPage() {
   const pathname = usePathname();
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [mainSectionOpen, setMainSectionOpen] = useState(true);
-  const [vanitySectionOpen, setVanitySectionOpen] = useState(true);
-  const [otherSectionOpen, setOtherSectionOpen] = useState(true);
-  const [commandsOpen, setCommandsOpen] = useState(false);
-  const [moderationOpen, setModerationOpen] = useState(true);
+  const [mainSectionOpen, setMainSectionOpen] = usePersistentSectionState(
+    "axyra.sidebar.mainSectionOpen",
+    true,
+  );
+  const [vanitySectionOpen, setVanitySectionOpen] = usePersistentSectionState(
+    "axyra.sidebar.vanitySectionOpen",
+    true,
+  );
+  const [otherSectionOpen, setOtherSectionOpen] = usePersistentSectionState(
+    "axyra.sidebar.otherSectionOpen",
+    true,
+  );
+  const [commandsOpen, setCommandsOpen] = usePersistentSectionState(
+    "axyra.sidebar.commandsOpen",
+    true,
+  );
+  const [moderationOpen, setModerationOpen] = usePersistentSectionState(
+    "axyra.sidebar.moderationOpen",
+    true,
+  );
 
   return (
     <main className="min-h-screen flex flex-col bg-[radial-gradient(circle_at_top,_#1e293b,_#020617)]">

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import AxyraBotPFP from "../images/AxyraBotPFP.png";
+import { usePersistentSectionState } from "../hooks/usePersistentSectionState";
 
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://your-backend.onrender.com";
 const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL;
@@ -54,11 +55,26 @@ export default function ModulesPage() {
   const [login, setLogin] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [mainSectionOpen, setMainSectionOpen] = useState(true);
-  const [vanitySectionOpen, setVanitySectionOpen] = useState(true);
-  const [otherSectionOpen, setOtherSectionOpen] = useState(true);
-  const [commandsOpen, setCommandsOpen] = useState(true);
-  const [moderationOpen, setModerationOpen] = useState(false);
+  const [mainSectionOpen, setMainSectionOpen] = usePersistentSectionState(
+    "axyra.sidebar.mainSectionOpen",
+    true,
+  );
+  const [vanitySectionOpen, setVanitySectionOpen] = usePersistentSectionState(
+    "axyra.sidebar.vanitySectionOpen",
+    true,
+  );
+  const [otherSectionOpen, setOtherSectionOpen] = usePersistentSectionState(
+    "axyra.sidebar.otherSectionOpen",
+    true,
+  );
+  const [commandsOpen, setCommandsOpen] = usePersistentSectionState(
+    "axyra.sidebar.commandsOpen",
+    true,
+  );
+  const [moderationOpen, setModerationOpen] = usePersistentSectionState(
+    "axyra.sidebar.moderationOpen",
+    true,
+  );
   const [modules, setModules] = useState<ModuleRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -444,6 +460,46 @@ export default function ModulesPage() {
                     </div>
                   )}
 
+                </>
+              )}
+            </div>
+
+            {/* Moderation section */}
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => setModerationOpen((open) => !open)}
+                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-200"
+              >
+                <span>Moderation</span>
+                {sidebarOpen && (
+                  <span className="text-[10px]">{moderationOpen ? "▾" : "▸"}</span>
+                )}
+              </button>
+              {moderationOpen && (
+                <>
+                  <Link
+                    href="/moderation/blocked-terms"
+                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                      pathname === "/moderation/blocked-terms"
+                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
+                        : "text-slate-200 hover:bg-slate-800/80"
+                    }`}
+                  >
+                    <span className="text-lg">🚫</span>
+                    {sidebarOpen && <span>Blocked Terms</span>}
+                  </Link>
+                  <Link
+                    href="/moderation/spam-filters"
+                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                      pathname === "/moderation/spam-filters"
+                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
+                        : "text-slate-200 hover:bg-slate-800/80"
+                    }`}
+                  >
+                    <span className="text-lg">🧹</span>
+                    {sidebarOpen && <span>Spam Filters</span>}
+                  </Link>
                 </>
               )}
             </div>
