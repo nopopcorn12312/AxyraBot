@@ -18,6 +18,7 @@ export default function TermsPage() {
   const [vanitySectionOpen, setVanitySectionOpen] = useState(true);
   const [otherSectionOpen, setOtherSectionOpen] = useState(true);
   const [commandsOpen, setCommandsOpen] = useState(false);
+  const [moderationOpen, setModerationOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const pathname = usePathname();
 
@@ -200,17 +201,43 @@ export default function TermsPage() {
                     </div>
                   )}
 
-                  <Link
-                    href="/moderation"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
-                      pathname === "/moderation"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
-                    }`}
+                  <button
+                    type="button"
+                    onClick={() => setModerationOpen((open) => !open)}
+                    className="flex items-center justify-between gap-3 rounded-xl px-3 py-2 text-left font-medium text-slate-200 hover:bg-slate-800/80 transition"
                   >
-                    <span className="text-lg">🛡️</span>
-                    {sidebarOpen && <span>Moderation</span>}
-                  </Link>
+                    <div className="flex items-center gap-3">
+                      <span className="text-lg">🛡️</span>
+                      {sidebarOpen && <span>Moderation</span>}
+                    </div>
+                    {sidebarOpen && (
+                      <span className="text-xs text-slate-400">{moderationOpen ? "▾" : "▸"}</span>
+                    )}
+                  </button>
+                  {moderationOpen && (
+                    <div className="mt-1 ml-6 flex flex-col gap-1 text-xs text-slate-200">
+                      <Link
+                        href="/moderation/blocked-terms"
+                        className={`rounded-lg px-3 py-1.5 transition ${
+                          pathname === "/moderation/blocked-terms"
+                            ? "bg-slate-800/80 text-slate-50"
+                            : "hover:bg-slate-800/60"
+                        }`}
+                      >
+                        Blocked terms
+                      </Link>
+                      <Link
+                        href="/moderation/spam-filters"
+                        className={`rounded-lg px-3 py-1.5 transition ${
+                          pathname === "/moderation/spam-filters"
+                            ? "bg-slate-800/80 text-slate-50"
+                            : "hover:bg-slate-800/60"
+                        }`}
+                      >
+                        Spam filters
+                      </Link>
+                    </div>
+                  )}
                 </>
               )}
             </div>

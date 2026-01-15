@@ -1,132 +1,64 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
-import AxyraBotPFP from "../images/AxyraBotPFP.png";
+import { useState } from "react";
 
-const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://your-backend.onrender.com";
-const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL;
+import AxyraLogo from "@/public/images/AxyraBotLogo.png";
 
-export default function ModerationPage() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
+const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL || "";
+
+export default function BlockedTermsPage() {
+  const pathname = usePathname();
+
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mainSectionOpen, setMainSectionOpen] = useState(true);
   const [vanitySectionOpen, setVanitySectionOpen] = useState(true);
   const [otherSectionOpen, setOtherSectionOpen] = useState(true);
   const [commandsOpen, setCommandsOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement | null>(null);
-  const pathname = usePathname();
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const storedLogin = window.localStorage.getItem("axyra.login");
-    const storedAvatar = window.localStorage.getItem("axyra.avatar");
-    if (storedLogin) {
-      setIsLoggedIn(true);
-    }
-    if (storedAvatar) {
-      setAvatarUrl(storedAvatar);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    function handleClickOutside(event: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setMenuOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [menuOpen]);
-
-  const handleLogout = () => {
-    if (typeof window !== "undefined") {
-      window.localStorage.removeItem("axyra.login");
-      window.localStorage.removeItem("axyra.avatar");
-    }
-    setIsLoggedIn(false);
-    setAvatarUrl(null);
-    setMenuOpen(false);
-  };
-
-  const redirectTarget = frontendUrl || "http://localhost:3000";
-  const connectUrl = `${backendUrl}/auth/start?redirect=${encodeURIComponent(redirectTarget)}`;
-  const primaryHref = isLoggedIn ? "/dashboard" : connectUrl;
-  const primaryLabel = isLoggedIn ? "Dashboard" : "Login with Twitch";
+  const [moderationOpen, setModerationOpen] = useState(true);
 
   return (
-    <main className="min-h-screen flex flex-col bg-[radial-gradient(circle_at_top,_#1e293b,_#020617)]">
-      <header className="w-full flex items-center justify-between px-6 py-4">
-        <div className="flex items-center gap-4 flex-1">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100">
+      <header className="flex items-center justify-between border-b border-slate-800 bg-slate-950/60 px-6 py-3">
+        <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => setSidebarOpen((open) => !open)}
-            className="mr-2 rounded-lg bg-slate-900/70 px-3 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800 border border-slate-700"
+            className="rounded-lg border border-slate-800 bg-slate-900 px-2 py-1 text-xs text-slate-300 hover:bg-slate-800"
           >
-            ☰
+            {sidebarOpen ? "Hide Menu" : "Show Menu"}
           </button>
-          <Link href="/" className="flex items-center gap-4">
-            <Image
-              src={AxyraBotPFP}
-              alt="AxyraBot logo"
-              width={32}
-              height={32}
-              className="rounded-full"
-            />
-            <div className="text-2xl font-semibold tracking-tight">
-              <span className="text-accent">Axyra</span>
-              <span className="text-white">Bot</span>
+
+          <Link href="/dashboard" className="flex items-center gap-2">
+            <div className="relative h-8 w-8">
+              <Image src={AxyraLogo} alt="AxyraBot Logo" className="h-full w-full" />
+            </div>
+            <div className="flex flex-col leading-tight">
+              <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                AxyraBot
+              </span>
+              <span className="text-sm font-semibold text-slate-100">Blocked Terms</span>
             </div>
           </Link>
         </div>
-        <div className="flex items-center gap-4">
-          <a href={primaryHref} className="hidden">
-            {primaryLabel}
-          </a>
-          {isLoggedIn && (
-            <>
-              <Link
-                href="/import"
-                className="inline-flex items-center gap-1 rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1.5 text-xs font-medium text-slate-100 hover:bg-slate-800 hover:border-slate-500 transition"
-              >
-                <span className="text-xs">⬆</span>
-                <span>Import</span>
-              </Link>
-              <div className="relative" ref={menuRef}>
-                <button
-                  type="button"
-                  onClick={() => setMenuOpen((open) => !open)}
-                  className="flex items-center gap-2 rounded-full bg-slate-900/80 px-1.5 py-1 hover:bg-slate-800 transition"
-                >
-                  {avatarUrl && (
-                    <Image
-                      src={avatarUrl}
-                      alt="Twitch profile picture"
-                      width={32}
-                      height={32}
-                      className="rounded-full"
-                    />
-                  )}
-                </button>
-                {menuOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-36 rounded-lg border border-slate-700 bg-slate-900/95 py-2 shadow-lg">
-                    <button
-                      type="button"
-                      onClick={handleLogout}
-                      className="w-full px-4 py-2 text-sm text-left text-slate-200 hover:bg-slate-800"
-                    >
-                      Log out
-                    </button>
-                  </div>
-                )}
-              </div>
-            </>
-          )}
+
+        <div className="flex items-center gap-3">
+          <Link
+            href={`${frontendUrl}/import`}
+            className="rounded-lg border border-indigo-500/40 bg-indigo-600/80 px-3 py-1.5 text-xs font-medium text-white shadow-sm shadow-indigo-500/40 hover:bg-indigo-500"
+          >
+            Import Commands
+          </Link>
+
+          <div className="flex items-center gap-3 rounded-full border border-slate-800 bg-slate-900/80 px-3 py-1.5 text-xs">
+            <div className="h-6 w-6 rounded-full bg-gradient-to-br from-indigo-500 to-sky-400" />
+            <div className="flex flex-col leading-tight">
+              <span className="font-medium text-slate-100">Streamer</span>
+              <span className="text-[10px] text-slate-400">axonelive</span>
+            </div>
+          </div>
         </div>
       </header>
 
@@ -289,28 +221,6 @@ export default function ModerationPage() {
               {otherSectionOpen && (
                 <>
                   <Link
-                    href="/privacy"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
-                      pathname === "/privacy"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
-                    }`}
-                  >
-                    <span className="text-lg">🔒</span>
-                    {sidebarOpen && <span>Privacy</span>}
-                  </Link>
-                  <Link
-                    href="/terms"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
-                      pathname === "/terms"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
-                    }`}
-                  >
-                    <span className="text-lg">📜</span>
-                    {sidebarOpen && <span>Terms</span>}
-                  </Link>
-                  <Link
                     href="/api-docs"
                     className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
                       pathname === "/api-docs"
@@ -321,22 +231,55 @@ export default function ModerationPage() {
                     <span className="text-lg">📘</span>
                     {sidebarOpen && <span>API Docs</span>}
                   </Link>
+                  <Link
+                    href="/terms"
+                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                      pathname === "/terms"
+                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
+                        : "text-slate-200 hover:bg-slate-800/80"
+                    }`}
+                  >
+                    <span className="text-lg">📄</span>
+                    {sidebarOpen && <span>Terms</span>}
+                  </Link>
+                  <Link
+                    href="/privacy"
+                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                      pathname === "/privacy"
+                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
+                        : "text-slate-200 hover:bg-slate-800/80"
+                    }`}
+                  >
+                    <span className="text-lg">🔒</span>
+                    {sidebarOpen && <span>Privacy</span>}
+                  </Link>
                 </>
               )}
             </div>
           </nav>
         </div>
 
-        <div className="flex-1 flex flex-col gap-6 text-slate-50">
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-6 min-h-[260px] flex flex-col justify-center items-start">
-            <h1 className="text-2xl font-semibold mb-2">Moderation</h1>
-            <p className="text-sm text-slate-400 max-w-xl">
-              This page will host your moderation tools and settings. Well fill this out with controls for bans,
-              timeouts, filters, and more in a future step.
-            </p>
+        <main className="flex-1 overflow-hidden">
+          <div className="h-full rounded-2xl border border-slate-800 bg-slate-900/80 p-6 shadow-lg shadow-slate-950/40">
+            <div className="mb-6 flex items-center justify-between gap-4">
+              <div>
+                <h1 className="text-xl font-semibold text-slate-50">Blocked Terms</h1>
+                <p className="mt-1 text-sm text-slate-400">
+                  Manage words and phrases that will be blocked in your chat. This is a placeholder
+                  page; moderation tools will be added here later.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-xl border border-dashed border-slate-700 bg-slate-900/60 p-6 text-sm text-slate-400">
+              <p>
+                Blocked term management UI will appear here. For now, use this page as an entry
+                point for the Moderation section.
+              </p>
+            </div>
           </div>
-        </div>
+        </main>
       </div>
-    </main>
+    </div>
   );
 }
