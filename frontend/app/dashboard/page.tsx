@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import AxyraBotPFP from "../images/AxyraBotPFP.png";
+import { usePersistentSectionState } from "../hooks/usePersistentSectionState";
 
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://your-backend.onrender.com";
 const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL;
@@ -264,7 +265,7 @@ export default function DashboardPage() {
         <div className="flex items-center gap-4 flex-1">
           <button
             type="button"
-            onClick={() => setSidebarOpen((open) => !open)}
+            onClick={() => setSidebarOpen((open: boolean) => !open)}
             className="mr-2 rounded-lg bg-slate-900/70 px-3 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800 border border-slate-700"
           >
             ☰
@@ -299,7 +300,7 @@ export default function DashboardPage() {
               <div className="relative" ref={menuRef}>
                 <button
                   type="button"
-                  onClick={() => setMenuOpen((open) => !open)}
+                  onClick={() => setMenuOpen((open: boolean) => !open)}
                   className="flex items-center gap-2 rounded-full bg-slate-900/80 px-1.5 py-1 hover:bg-slate-800 transition"
                 >
                   {avatarUrl && (
@@ -338,7 +339,7 @@ export default function DashboardPage() {
             <div className="flex flex-col gap-2">
               <button
                 type="button"
-                onClick={() => setMainSectionOpen((open) => !open)}
+                onClick={() => setMainSectionOpen((open: boolean) => !open)}
                 className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-200"
               >
                 <span>Main</span>
@@ -360,7 +361,7 @@ export default function DashboardPage() {
 
                   <button
                     type="button"
-                    onClick={() => setCommandsOpen((open) => !open)}
+                    onClick={() => setCommandsOpen((open: boolean) => !open)}
                     className="flex items-center justify-between gap-3 rounded-xl px-3 py-2 text-left font-medium text-slate-200 hover:bg-slate-800/80 transition"
                   >
                     <div className="flex items-center gap-3">
@@ -404,7 +405,7 @@ export default function DashboardPage() {
             <div className="flex flex-col gap-2">
               <button
                 type="button"
-                onClick={() => setModerationOpen((open) => !open)}
+                onClick={() => setModerationOpen((open: boolean) => !open)}
                 className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-200"
               >
                 <span>Moderation</span>
@@ -444,7 +445,7 @@ export default function DashboardPage() {
             <div className="flex flex-col gap-2">
               <button
                 type="button"
-                onClick={() => setVanitySectionOpen((open) => !open)}
+                onClick={() => setVanitySectionOpen((open: boolean) => !open)}
                 className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-200"
               >
                 <span>Vanity</span>
@@ -482,7 +483,7 @@ export default function DashboardPage() {
             <div className="flex flex-col gap-2">
               <button
                 type="button"
-                onClick={() => setOtherSectionOpen((open) => !open)}
+                onClick={() => setOtherSectionOpen((open: boolean) => !open)}
                 className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-200"
               >
                 <span>Other</span>
