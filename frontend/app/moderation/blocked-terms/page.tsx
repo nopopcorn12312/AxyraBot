@@ -163,6 +163,46 @@ export default function BlockedTermsPage() {
               )}
             </div>
 
+            {/* Moderation section */}
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => setModerationOpen((open) => !open)}
+                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-200"
+              >
+                <span>Moderation</span>
+                {sidebarOpen && (
+                  <span className="text-[10px]">{moderationOpen ? "▾" : "▸"}</span>
+                )}
+              </button>
+              {moderationOpen && (
+                <>
+                  <Link
+                    href="/moderation/blocked-terms"
+                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                      pathname === "/moderation/blocked-terms"
+                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
+                        : "text-slate-200 hover:bg-slate-800/80"
+                    }`}
+                  >
+                    <span className="text-lg">🚫</span>
+                    {sidebarOpen && <span>Blocked Terms</span>}
+                  </Link>
+                  <Link
+                    href="/moderation/spam-filters"
+                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                      pathname === "/moderation/spam-filters"
+                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
+                        : "text-slate-200 hover:bg-slate-800/80"
+                    }`}
+                  >
+                    <span className="text-lg">🧹</span>
+                    {sidebarOpen && <span>Spam Filters</span>}
+                  </Link>
+                </>
+              )}
+            </div>
+
             {/* Vanity section */}
             <div className="flex flex-col gap-2">
               <button
