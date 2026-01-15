@@ -9,7 +9,7 @@ import AxyraBotPFP from "../images/AxyraBotPFP.png";
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://your-backend.onrender.com";
 const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL;
 
-export default function TermsPage() {
+export default function ModerationPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -85,10 +85,7 @@ export default function TermsPage() {
           </Link>
         </div>
         <div className="flex items-center gap-4">
-          <a
-            href={primaryHref}
-            className="hidden"
-          >
+          <a href={primaryHref} className="hidden">
             {primaryLabel}
           </a>
           {isLoggedIn && (
@@ -304,142 +301,13 @@ export default function TermsPage() {
           </nav>
         </div>
 
-        <div className="flex-1 flex flex-col gap-6 text-slate-50 overflow-y-auto">
-          <div className="w-full rounded-2xl border border-slate-800 bg-slate-900/80 p-6 space-y-5">
-            <header className="space-y-1">
-              <h1 className="text-2xl font-semibold">Terms of Service for AxyraBot</h1>
-              <p className="text-xs text-slate-400">Last updated: January 1, 2026</p>
-            </header>
-
-            <p className="text-sm text-slate-300">
-              These Terms of Service ("Terms") govern the use of AxyraBot, a Twitch chat bot designed to provide
-              moderation, automation, and engagement features. By adding or using AxyraBot in a Twitch channel, you
-              agree to these Terms.
+        <div className="flex-1 flex flex-col gap-6 text-slate-50">
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-6 min-h-[260px] flex flex-col justify-center items-start">
+            <h1 className="text-2xl font-semibold mb-2">Moderation</h1>
+            <p className="text-sm text-slate-400 max-w-xl">
+              This page will host your moderation tools and settings. Well fill this out with controls for bans,
+              timeouts, filters, and more in a future step.
             </p>
-
-            <section className="space-y-2">
-              <h2 className="text-lg font-semibold text-slate-100">1. Acceptance of Terms</h2>
-              <p className="text-sm text-slate-300">
-                By authorizing, installing, or using AxyraBot, you confirm that you have read, understood, and agree to
-                be bound by these Terms, as well as Twitch&apos;s Terms of Service, Community Guidelines, and Developer
-                Agreement.
-              </p>
-              <p className="text-sm text-slate-300">
-                If you do not agree to these Terms, you must not use AxyraBot.
-              </p>
-            </section>
-
-            <section className="space-y-2">
-              <h2 className="text-lg font-semibold text-slate-100">2. Description of Service</h2>
-              <p className="text-sm text-slate-300">
-                AxyraBot provides automated moderation, chat utilities, engagement tools, and other features within
-                Twitch channels. Features may change, be added, or be removed at any time without notice.
-              </p>
-            </section>
-
-            <section className="space-y-2">
-              <h2 className="text-lg font-semibold text-slate-100">3. Eligibility and Authority</h2>
-              <p className="text-sm text-slate-300">
-                You must have the authority to manage or moderate a Twitch channel to configure or enable AxyraBot
-                within that channel. Channel owners and moderators are responsible for how AxyraBot is configured and
-                used.
-              </p>
-            </section>
-
-            <section className="space-y-2">
-              <h2 className="text-lg font-semibold text-slate-100">4. Proper Use</h2>
-              <p className="text-sm text-slate-300">You agree not to use AxyraBot to:</p>
-              <ul className="list-disc list-inside text-sm text-slate-300 space-y-1 ml-2">
-                <li>Violate Twitch&apos;s Terms of Service or Community Guidelines</li>
-                <li>Harass, abuse, or harm others</li>
-                <li>Engage in spam, scams, or misleading activity</li>
-                <li>Circumvent moderation, safety, or platform restrictions</li>
-                <li>Collect or misuse personal data</li>
-              </ul>
-              <p className="text-sm text-slate-300">
-                Misuse of AxyraBot may result in feature restrictions or service termination.
-              </p>
-            </section>
-
-            <section className="space-y-2">
-              <h2 className="text-lg font-semibold text-slate-100">5. Data and Privacy</h2>
-              <p className="text-sm text-slate-300">
-                Use of AxyraBot is subject to the AxyraBot Privacy Policy. AxyraBot only processes Twitch-provided data
-                as necessary to operate its features and complies with Twitch API requirements.
-              </p>
-            </section>
-
-            <section className="space-y-2">
-              <h2 className="text-lg font-semibold text-slate-100">6. Availability and Reliability</h2>
-              <p className="text-sm text-slate-300">
-                AxyraBot is provided on an &quot;as is&quot; and &quot;as available&quot; basis. There is no guarantee of uptime,
-                availability, or error-free operation. Features may be interrupted due to maintenance, updates, or
-                technical issues.
-              </p>
-            </section>
-
-            <section className="space-y-2">
-              <h2 className="text-lg font-semibold text-slate-100">7. Limitation of Liability</h2>
-              <p className="text-sm text-slate-300">To the maximum extent permitted by law:</p>
-              <ul className="list-disc list-inside text-sm text-slate-300 space-y-1 ml-2">
-                <li>
-                  AxyraBot and its owner shall not be liable for any direct, indirect, incidental, or consequential
-                  damages
-                </li>
-                <li>
-                  This includes, but is not limited to, loss of data, moderation errors, channel penalties, or service
-                  interruptions
-                </li>
-              </ul>
-              <p className="text-sm text-slate-300">You use AxyraBot at your own risk.</p>
-            </section>
-
-            <section className="space-y-2">
-              <h2 className="text-lg font-semibold text-slate-100">8. Indemnification</h2>
-              <p className="text-sm text-slate-300">
-                You agree to indemnify and hold harmless the owner of AxyraBot from any claims, damages, liabilities,
-                or expenses arising from your use or misuse of the service.
-              </p>
-            </section>
-
-            <section className="space-y-2">
-              <h2 className="text-lg font-semibold text-slate-100">9. Suspension or Termination</h2>
-              <p className="text-sm text-slate-300">
-                Access to AxyraBot may be suspended or terminated at any time, with or without notice, if:
-              </p>
-              <ul className="list-disc list-inside text-sm text-slate-300 space-y-1 ml-2">
-                <li>These Terms are violated</li>
-                <li>Twitch policies are violated</li>
-                <li>Continued operation poses technical, legal, or security risks</li>
-              </ul>
-            </section>
-
-            <section className="space-y-2">
-              <h2 className="text-lg font-semibold text-slate-100">10. Changes to the Service or Terms</h2>
-              <p className="text-sm text-slate-300">
-                These Terms may be updated at any time to reflect changes in functionality, Twitch requirements, or
-                legal obligations. Continued use of AxyraBot after updates constitutes acceptance of the revised Terms.
-              </p>
-            </section>
-
-            <section className="space-y-2">
-              <h2 className="text-lg font-semibold text-slate-100">11. Governing Law</h2>
-              <p className="text-sm text-slate-300">
-                These Terms shall be governed by and interpreted in accordance with applicable laws, without regard to
-                conflict of law principles.
-              </p>
-            </section>
-
-            <section className="space-y-2">
-              <h2 className="text-lg font-semibold text-slate-100">12. Contact</h2>
-              <p className="text-sm text-slate-300">
-                For questions regarding these Terms or AxyraBot, please contact the bot owner via the official support,
-                repository, or contact method provided with AxyraBot.
-              </p>
-              <p className="text-sm text-slate-300">
-                By using AxyraBot, you acknowledge that you have read and agreed to these Terms of Service.
-              </p>
-            </section>
           </div>
         </div>
       </div>
