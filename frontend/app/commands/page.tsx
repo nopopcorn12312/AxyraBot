@@ -10,15 +10,91 @@ import { usePersistentSectionState } from "../hooks/usePersistentSectionState";
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://your-backend.onrender.com";
 const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL;
 
-const defaultCommands = [
-  { name: "!hello", description: "Greets chat with the bot's name.", enabled: true },
-  { name: "!vanish", description: "Times out the user briefly with a playful message.", enabled: true },
-  { name: "!title <new title>", description: "Changes the stream title (broadcaster or mods only).", enabled: true },
-  { name: "!game <category>", description: "Changes the Twitch category/game (broadcaster or mods only).", enabled: true },
-  { name: "!accountage [username]", description: "Shows when a user's Twitch account was created.", enabled: true },
-  { name: "!followage [username]", description: "Shows how long a user has followed the channel.", enabled: true },
-  { name: "!uptime", description: "Shows how long the channel has been live this session.", enabled: true },
-  { name: "!commands", description: "Links viewers to your channel's custom commands page.", enabled: true },
+const defaultCommands: { name: string; label?: string; description: string; enabled: boolean }[] = [
+  {
+    name: "!hello",
+    description: "Greets chat with the bot's name.",
+    enabled: true,
+  },
+  {
+    name: "!vanish",
+    description: "Times out the user briefly with a playful message.",
+    enabled: true,
+  },
+  {
+    name: "!title",
+    label: "!title <new title>",
+    description: "Changes the stream title (broadcaster or mods only).",
+    enabled: true,
+  },
+  {
+    name: "!game",
+    label: "!game <category>",
+    description: "Changes the Twitch category/game (broadcaster or mods only).",
+    enabled: true,
+  },
+  {
+    name: "!accountage",
+    label: "!accountage [username]",
+    description: "Shows when a user's Twitch account was created.",
+    enabled: true,
+  },
+  {
+    name: "!followage",
+    label: "!followage [username]",
+    description: "Shows how long a user has followed the channel.",
+    enabled: true,
+  },
+  {
+    name: "!uptime",
+    description: "Shows how long the channel has been live this session.",
+    enabled: true,
+  },
+  {
+    name: "!commands",
+    description: "Links viewers to your channel's custom commands page.",
+    enabled: true,
+  },
+  {
+    name: "!ai",
+    label: "!ai <prompt>",
+    description: "Ask the AI a question or send a short prompt.",
+    enabled: true,
+  },
+  {
+    name: "!birthday",
+    description: "Shows birthdays that fall on today from your saved list.",
+    enabled: true,
+  },
+  {
+    name: "!nextbday",
+    description: "Shows the next upcoming birthday from your saved list.",
+    enabled: true,
+  },
+  {
+    name: "!addbday",
+    label: "!addbday NAME MM DD",
+    description: "Add or update a named birthday (mods only).",
+    enabled: true,
+  },
+  {
+    name: "!addmybday",
+    label: "!addmybday MM DD",
+    description: "Viewers can add their own birthday.",
+    enabled: true,
+  },
+  {
+    name: "!delbday",
+    label: "!delbday NAME",
+    description: "Delete a saved birthday by name (mods only).",
+    enabled: true,
+  },
+  {
+    name: "!editbday",
+    label: "!editbday USER MM DD",
+    description: "Change a user's saved birthday (mods only).",
+    enabled: true,
+  },
 ];
 
 type CustomCommandRole = "all" | "broadcaster" | "moderator" | "vip";
@@ -537,7 +613,7 @@ export default function CommandsPage() {
                     <>
                       {defaultCommands.map((row) => (
                         <tr key={row.name} className="border-t border-slate-800 hover:bg-slate-900/60">
-                          <td className="px-4 py-2 font-mono text-slate-100">{row.name}</td>
+                          <td className="px-4 py-2 font-mono text-slate-100">{row.label ?? row.name}</td>
                           <td className="px-4 py-2 text-slate-300">{row.description}</td>
                           <td className="px-4 py-2 text-center">
                             {channelLogin && loggedInLogin === channelLogin ? (

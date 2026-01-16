@@ -210,9 +210,16 @@ func SetDefaultCommandEnabled(broadcasterLogin, commandName string, enabled bool
 }
 
 // GetModuleEnabled returns whether a given module is enabled for a
-// broadcaster. If no row exists, it is treated as enabled.
+// broadcaster. If no row exists, it is treated as enabled by default,
+// except for certain modules that are explicitly default-off.
 func GetModuleEnabled(broadcasterLogin, moduleName string) (bool, error) {
 	if db == nil {
+		// In the absence of a database, treat modules as enabled so core
+		// functionality works. The birthdays module is the exception and
+		// defaults to disabled until explicitly turned on.
+		if strings.EqualFold(moduleName, "birthdays") {
+			return false, nil
+		}
 		return true, nil
 	}
 	broadcasterLogin = strings.ToLower(broadcasterLogin)
@@ -221,6 +228,12 @@ func GetModuleEnabled(broadcasterLogin, moduleName string) (bool, error) {
 	row := db.QueryRow(`SELECT enabled FROM module_settings WHERE broadcaster_login=$1 AND module_name=$2`, broadcasterLogin, moduleName)
 	if err := row.Scan(&enabled); err != nil {
 		if err == sql.ErrNoRows {
+			// Default-off behavior for birthdays: new channels start with the
+			// birthdays module disabled until they explicitly enable it from
+			// the dashboard.
+			if moduleName == "birthdays" {
+				return false, nil
+			}
 			return true, nil
 		}
 		return true, err
