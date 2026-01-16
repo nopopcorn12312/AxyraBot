@@ -255,17 +255,54 @@ func startEventSubWS() {
 				if metadata, ok := m["metadata"].(map[string]interface{}); ok {
 					if mt, ok := metadata["message_type"].(string); ok {
 						switch mt {
-						case "session_welcome":
-							if payload, ok := m["payload"].(map[string]interface{}); ok {
-								if session, ok := payload["session"].(map[string]interface{}); ok {
-									if id, ok := session["id"].(string); ok {
-										eventSubMu.Lock()
-										eventSubSessionID = id
-										eventSubMu.Unlock()
-										log.Println("EventSub session id set:", id)
+							case "session_welcome":
+								if payload, ok := m["payload"].(map[string]interface{}); ok {
+									if session, ok := payload["session"].(map[string]interface{}); ok {
+										if id, ok := session["id"].(string); ok {
+											// Capture previous session id so we can detect reconnects.
+											eventSubMu.Lock()
+											prevID := eventSubSessionID
+											eventSubSessionID = id
+											eventSubMu.Unlock()
+											log.Println("EventSub session id set:", id)
+
+											// If we previously had a different session id, this means the
+											// WebSocket reconnected. Re-register EventSub subscriptions for
+											// all joined channels so the bot continues receiving chat and
+											// follow events without requiring a manual part/join.
+											if prevID != "" && prevID != id {
+												go func() {
+													clientID := os.Getenv("TWITCH_CLIENT_ID")
+													clientSecret := os.Getenv("TWITCH_CLIENT_SECRET")
+													if clientID == "" || clientSecret == "" {
+														return
+													}
+
+													// Ensure we have an app access token for EventSub registration.
+													helixChatMu.Lock()
+													token := appAccessToken
+													helixChatMu.Unlock()
+													if token == "" {
+														var err error
+														token, err = getAppAccessToken(clientID, clientSecret)
+														if err != nil {
+															log.Println("failed to get app token for EventSub after session reconnect:", err)
+															return
+														}
+														helixChatMu.Lock()
+														appAccessToken = token
+														helixChatMu.Unlock()
+													}
+
+													// Use the configured TWITCH_CHANNEL as a fallback when no
+													// database-driven channels exist.
+													fallbackChannel := os.Getenv("TWITCH_CHANNEL")
+													registerEventSubSubscriptions(token, clientID, fallbackChannel, "")
+												}()
+											}
+										}
 									}
 								}
-							}
 						case "notification":
 							if payload, ok := m["payload"].(map[string]interface{}); ok {
 								if sub, ok := payload["subscription"].(map[string]interface{}); ok {
