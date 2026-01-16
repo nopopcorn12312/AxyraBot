@@ -312,6 +312,7 @@ func startEventSubWS() {
 										if event, ok := payload["event"].(map[string]interface{}); ok {
 											channelLogin, _ := event["broadcaster_user_login"].(string)
 											chatterLogin, _ := event["chatter_user_login"].(string)
+												messageID, _ := event["message_id"].(string)
 											msgText := ""
 											if msgObj, ok := event["message"].(map[string]interface{}); ok {
 												if t, ok := msgObj["text"].(string); ok {
@@ -319,7 +320,7 @@ func startEventSubWS() {
 												}
 											}
 											if channelLogin != "" && msgText != "" {
-												go handleChatMessageEvent(channelLogin, chatterLogin, msgText)
+													go handleChatMessageEvent(channelLogin, chatterLogin, messageID, msgText)
 											}
 										}
 									case "channel.follow":
@@ -522,9 +523,11 @@ func isChatCommand(message, command string) bool {
 
 // handleChatMessageEvent processes a chat message received via EventSub
 // channel.chat.message and runs simple command handlers.
-func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
+// messageID is the EventSub message_id for the chat message that triggered
+// this handler and is used when sending true reply messages via Helix.
+func handleChatMessageEvent(channelLogin, chatterLogin, messageID, message string) {
 	channelLogin = strings.ToLower(channelLogin)
-	log.Printf("[CHAT] channel=%s user=%s msg=%q", channelLogin, chatterLogin, message)
+	log.Printf("[CHAT] channel=%s user=%s msgID=%s msg=%q", channelLogin, chatterLogin, messageID, message)
 
 	// update approximate watch time based on chat activity, but only while live
 	if db != nil && isChannelLive(channelLogin) {
@@ -1200,8 +1203,8 @@ func handleChatMessageEvent(channelLogin, chatterLogin, message string) {
 		}
 		base := getFrontendBaseURL()
 		link := fmt.Sprintf("%s/commands?view=custom&channel=%s", base, url.QueryEscape(channelLogin))
-		text := fmt.Sprintf("%s All of %s's custom commands can be found here %s", chatterLogin, channelLogin, link)
-		if err := sendHelixChatMessage(channelLogin, text); err != nil {
+		text := fmt.Sprintf("All of %s's custom commands can be found here %s", channelLogin, link)
+		if err := sendHelixChatMessage(channelLogin, text, messageID); err != nil {
 			log.Println("failed to send !commands response:", err)
 		}
 		return
@@ -2460,7 +2463,10 @@ func sendChat(c *websocket.Conn, channel, msg string) {
 // token from TWITCH_BOT_OAUTH (without the "oauth:" prefix). This token must
 // include the new chat scopes (e.g. user:write:chat and the required bot
 // scopes) for the request to succeed.
-func sendHelixChatMessage(channelLogin, message string) error {
+//
+// If replyParentMessageID is provided and non-empty, the message is sent as
+// a true reply to that chat message via the reply_parent_message_id field.
+func sendHelixChatMessage(channelLogin, message string, replyParentMessageID ...string) error {
 	channelLogin = strings.ToLower(channelLogin)
 	clientID := os.Getenv("TWITCH_CLIENT_ID")
 	if clientID == "" {
@@ -2548,10 +2554,18 @@ func sendHelixChatMessage(channelLogin, message string) error {
 	helixBroadcasterIDs[channelLogin] = broadcasterID
 	helixChatMu.Unlock()
 
+	replyID := ""
+	if len(replyParentMessageID) > 0 {
+		replyID = replyParentMessageID[0]
+	}
+
 	body := map[string]interface{}{
 		"broadcaster_id": broadcasterID,
 		"sender_id":      botID,
 		"message":        message,
+	}
+	if replyID != "" {
+		body["reply_parent_message_id"] = replyID
 	}
 	b, _ := json.Marshal(body)
 	req, err := http.NewRequest("POST", "https://api.twitch.tv/helix/chat/messages", bytes.NewReader(b))
