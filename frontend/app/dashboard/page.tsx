@@ -343,7 +343,7 @@ export default function DashboardPage() {
                 className="flex items-center justify-between px-2 mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500 hover:text-slate-300"
               >
                 <span>Main</span>
-                {sidebarOpen && <span className="text-[10px]">{mainSectionOpen ? "∧" : "∨"}</span>}
+                {sidebarOpen && <span className="text-sm">{mainSectionOpen ? "∧" : "∨"}</span>}
               </button>
               {mainSectionOpen && (
                 <>
@@ -367,7 +367,7 @@ export default function DashboardPage() {
                     <span className="text-lg">❓</span>
                     {sidebarOpen && <span className="flex-1 text-left">Commands</span>}
                     {sidebarOpen && (
-                      <span className="text-[10px] text-slate-500">{commandsOpen ? "∧" : "∨"}</span>
+                      <span className="text-sm text-slate-500">{commandsOpen ? "∧" : "∨"}</span>
                     )}
                   </button>
                   {commandsOpen && (
@@ -407,7 +407,7 @@ export default function DashboardPage() {
               >
                 <span>Moderation</span>
                 {sidebarOpen && (
-                  <span className="text-[10px]">{moderationOpen ? "∧" : "∨"}</span>
+                  <span className="text-sm">{moderationOpen ? "∧" : "∨"}</span>
                 )}
               </button>
               {moderationOpen && (
@@ -446,7 +446,7 @@ export default function DashboardPage() {
                 className="flex items-center justify-between px-2 mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500 hover:text-slate-300"
               >
                 <span>Vanity</span>
-                {sidebarOpen && <span className="text-[10px]">{vanitySectionOpen ? "∧" : "∨"}</span>}
+                {sidebarOpen && <span className="text-sm">{vanitySectionOpen ? "∧" : "∨"}</span>}
               </button>
               {vanitySectionOpen && (
                 <>
@@ -484,7 +484,7 @@ export default function DashboardPage() {
                 className="flex items-center justify-between px-2 mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500 hover:text-slate-300"
               >
                 <span>Other</span>
-                {sidebarOpen && <span className="text-[10px]">{otherSectionOpen ? "∧" : "∨"}</span>}
+                {sidebarOpen && <span className="text-sm">{otherSectionOpen ? "∧" : "∨"}</span>}
               </button>
               {otherSectionOpen && (
                 <>
