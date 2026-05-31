@@ -2,8 +2,10 @@
 const nextConfig = {
   reactStrictMode: true,
   images: {
-    // Allow loading Twitch profile pictures from the CDN domain.
-    domains: ["static-cdn.jtvnw.net"],
+    remotePatterns: [
+      { protocol: "https", hostname: "static-cdn.jtvnw.net" },
+      { protocol: "https", hostname: "cdn.discordapp.com" },
+    ],
   },
 };
 
