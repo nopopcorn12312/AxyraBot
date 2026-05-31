@@ -725,6 +725,112 @@ func EnsureSchema() error {
 	 updated_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
 	 PRIMARY KEY (broadcaster_login, notification_type)
 	);
+	CREATE TABLE IF NOT EXISTS discord_guild_modules (
+	 guild_id TEXT NOT NULL,
+	 module   TEXT NOT NULL,
+	 enabled  BOOLEAN NOT NULL DEFAULT TRUE,
+	 PRIMARY KEY (guild_id, module)
+	);
+	CREATE TABLE IF NOT EXISTS discord_mod_cases (
+	 id          BIGSERIAL,
+	 guild_id    TEXT NOT NULL,
+	 case_number INT NOT NULL,
+	 action      TEXT NOT NULL,
+	 target_id   TEXT NOT NULL,
+	 target_name TEXT NOT NULL DEFAULT '',
+	 mod_id      TEXT NOT NULL,
+	 mod_name    TEXT NOT NULL DEFAULT '',
+	 reason      TEXT NOT NULL DEFAULT 'No reason provided',
+	 created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+	 UNIQUE (guild_id, case_number)
+	);
+	CREATE INDEX IF NOT EXISTS idx_discord_mod_cases_guild_target ON discord_mod_cases(guild_id, target_id);
+	CREATE TABLE IF NOT EXISTS discord_member_notes (
+	 id         BIGSERIAL PRIMARY KEY,
+	 guild_id   TEXT NOT NULL,
+	 target_id  TEXT NOT NULL,
+	 mod_id     TEXT NOT NULL,
+	 mod_name   TEXT NOT NULL DEFAULT '',
+	 note       TEXT NOT NULL,
+	 created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+	);
+	CREATE INDEX IF NOT EXISTS idx_discord_member_notes_guild_target ON discord_member_notes(guild_id, target_id);
+	CREATE TABLE IF NOT EXISTS discord_mod_roles (
+	 guild_id  TEXT NOT NULL,
+	 role_id   TEXT NOT NULL,
+	 role_name TEXT NOT NULL DEFAULT '',
+	 PRIMARY KEY (guild_id, role_id)
+	);
+	CREATE TABLE IF NOT EXISTS discord_joinable_ranks (
+	 guild_id  TEXT NOT NULL,
+	 role_id   TEXT NOT NULL,
+	 role_name TEXT NOT NULL DEFAULT '',
+	 PRIMARY KEY (guild_id, role_id)
+	);
+	CREATE TABLE IF NOT EXISTS discord_role_persist (
+	 guild_id TEXT NOT NULL,
+	 user_id  TEXT NOT NULL,
+	 role_id  TEXT NOT NULL,
+	 PRIMARY KEY (guild_id, user_id, role_id)
+	);
+	CREATE TABLE IF NOT EXISTS discord_temp_roles (
+	 id         BIGSERIAL PRIMARY KEY,
+	 guild_id   TEXT NOT NULL,
+	 user_id    TEXT NOT NULL,
+	 role_id    TEXT NOT NULL,
+	 expires_at TIMESTAMPTZ NOT NULL
+	);
+	CREATE TABLE IF NOT EXISTS discord_reminders (
+	 id         BIGSERIAL PRIMARY KEY,
+	 user_id    TEXT NOT NULL,
+	 channel_id TEXT NOT NULL,
+	 reminder   TEXT NOT NULL,
+	 remind_at  TIMESTAMPTZ NOT NULL
+	);
+	CREATE TABLE IF NOT EXISTS discord_afk (
+	 guild_id TEXT NOT NULL,
+	 user_id  TEXT NOT NULL,
+	 status   TEXT NOT NULL DEFAULT 'AFK',
+	 set_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+	 PRIMARY KEY (guild_id, user_id)
+	);
+	CREATE TABLE IF NOT EXISTS discord_highlights (
+	 guild_id TEXT NOT NULL,
+	 user_id  TEXT NOT NULL,
+	 phrase   TEXT NOT NULL,
+	 PRIMARY KEY (guild_id, user_id, phrase)
+	);
+	CREATE TABLE IF NOT EXISTS discord_tags (
+	 guild_id   TEXT NOT NULL,
+	 name       TEXT NOT NULL,
+	 content    TEXT NOT NULL,
+	 author_id  TEXT NOT NULL DEFAULT '',
+	 created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+	 updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+	 PRIMARY KEY (guild_id, name)
+	);
+	CREATE TABLE IF NOT EXISTS discord_giveaways (
+	 id           BIGSERIAL PRIMARY KEY,
+	 guild_id     TEXT NOT NULL,
+	 channel_id   TEXT NOT NULL,
+	 message_id   TEXT NOT NULL DEFAULT '',
+	 prize        TEXT NOT NULL,
+	 winner_count INT NOT NULL DEFAULT 1,
+	 host_id      TEXT NOT NULL DEFAULT '',
+	 ends_at      TIMESTAMPTZ NOT NULL,
+	 ended        BOOLEAN NOT NULL DEFAULT FALSE,
+	 created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+	);
+	CREATE TABLE IF NOT EXISTS discord_ignored_channels (
+	 guild_id   TEXT NOT NULL,
+	 channel_id TEXT NOT NULL,
+	 PRIMARY KEY (guild_id, channel_id)
+	);
+	CREATE TABLE IF NOT EXISTS discord_lockdown_channels (
+	 guild_id   TEXT NOT NULL,
+	 channel_id TEXT NOT NULL,
+	 PRIMARY KEY (guild_id, channel_id)
+	);
 	`)
 	if err != nil {
 		return err
@@ -1327,6 +1433,893 @@ func SaveDiscordNotificationTemplate(broadcasterLogin, notificationType, templat
 			template   = EXCLUDED.template,
 			updated_at = NOW()
 	`, broadcasterLogin, notificationType, template)
+	return err
+}
+
+// ─── Discord Guild Modules ────────────────────────────────────────────────────
+
+// GetDiscordGuildModuleEnabled returns whether a module is enabled for a guild.
+// Defaults to true if no row exists.
+func GetDiscordGuildModuleEnabled(guildID, module string) (bool, error) {
+	if db == nil {
+		return true, nil
+	}
+	var enabled bool
+	err := db.QueryRow(`SELECT enabled FROM discord_guild_modules WHERE guild_id=$1 AND module=$2`, guildID, module).Scan(&enabled)
+	if err == sql.ErrNoRows {
+		return true, nil
+	}
+	return enabled, err
+}
+
+// SetDiscordGuildModuleEnabled upserts the enabled flag for a guild module.
+func SetDiscordGuildModuleEnabled(guildID, module string, enabled bool) error {
+	if db == nil {
+		return fmt.Errorf("db not initialized")
+	}
+	_, err := db.Exec(`
+		INSERT INTO discord_guild_modules (guild_id, module, enabled)
+		VALUES ($1, $2, $3)
+		ON CONFLICT (guild_id, module) DO UPDATE SET enabled = EXCLUDED.enabled
+	`, guildID, module, enabled)
+	return err
+}
+
+// GetDiscordGuildModules returns all module states for a guild.
+func GetDiscordGuildModules(guildID string) (map[string]bool, error) {
+	out := map[string]bool{}
+	if db == nil {
+		return out, nil
+	}
+	rows, err := db.Query(`SELECT module, enabled FROM discord_guild_modules WHERE guild_id=$1`, guildID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var module string
+		var enabled bool
+		if err := rows.Scan(&module, &enabled); err != nil {
+			return nil, err
+		}
+		out[module] = enabled
+	}
+	return out, nil
+}
+
+// ─── Discord Mod Cases ────────────────────────────────────────────────────────
+
+// DiscordModCase represents a single moderation log entry.
+type DiscordModCase struct {
+	ID         int64
+	GuildID    string
+	CaseNumber int
+	Action     string
+	TargetID   string
+	TargetName string
+	ModID      string
+	ModName    string
+	Reason     string
+	CreatedAt  time.Time
+}
+
+// CreateDiscordModCase inserts a new mod case with an auto-incremented per-guild
+// case number and returns that number.
+func CreateDiscordModCase(guildID, action, targetID, targetName, modID, modName, reason string) (int, error) {
+	if db == nil {
+		return 0, fmt.Errorf("db not initialized")
+	}
+	var caseNum int
+	err := db.QueryRow(`
+		WITH next AS (
+			SELECT COALESCE(MAX(case_number), 0) + 1 AS n FROM discord_mod_cases WHERE guild_id = $1
+		)
+		INSERT INTO discord_mod_cases (guild_id, case_number, action, target_id, target_name, mod_id, mod_name, reason)
+		SELECT $1, n, $2, $3, $4, $5, $6, $7 FROM next
+		RETURNING case_number
+	`, guildID, action, targetID, targetName, modID, modName, reason).Scan(&caseNum)
+	return caseNum, err
+}
+
+// GetDiscordModCase returns a single mod case by guild and case number.
+func GetDiscordModCase(guildID string, caseNum int) (*DiscordModCase, error) {
+	if db == nil {
+		return nil, fmt.Errorf("db not initialized")
+	}
+	var c DiscordModCase
+	err := db.QueryRow(`
+		SELECT id, guild_id, case_number, action, target_id, target_name, mod_id, mod_name, reason, created_at
+		FROM discord_mod_cases WHERE guild_id=$1 AND case_number=$2
+	`, guildID, caseNum).Scan(&c.ID, &c.GuildID, &c.CaseNumber, &c.Action, &c.TargetID, &c.TargetName, &c.ModID, &c.ModName, &c.Reason, &c.CreatedAt)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	return &c, err
+}
+
+// UpdateDiscordModCaseReason updates the reason on an existing mod case.
+func UpdateDiscordModCaseReason(guildID string, caseNum int, reason string) error {
+	if db == nil {
+		return fmt.Errorf("db not initialized")
+	}
+	res, err := db.Exec(`UPDATE discord_mod_cases SET reason=$3 WHERE guild_id=$1 AND case_number=$2`, guildID, caseNum, reason)
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return fmt.Errorf("case #%d not found", caseNum)
+	}
+	return nil
+}
+
+// GetDiscordModCasesByUser returns all mod cases for a target user in a guild,
+// ordered by case number descending.
+func GetDiscordModCasesByUser(guildID, targetID string) ([]*DiscordModCase, error) {
+	if db == nil {
+		return nil, fmt.Errorf("db not initialized")
+	}
+	rows, err := db.Query(`
+		SELECT id, guild_id, case_number, action, target_id, target_name, mod_id, mod_name, reason, created_at
+		FROM discord_mod_cases WHERE guild_id=$1 AND target_id=$2
+		ORDER BY case_number DESC
+	`, guildID, targetID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []*DiscordModCase
+	for rows.Next() {
+		c := &DiscordModCase{}
+		if err := rows.Scan(&c.ID, &c.GuildID, &c.CaseNumber, &c.Action, &c.TargetID, &c.TargetName, &c.ModID, &c.ModName, &c.Reason, &c.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, c)
+	}
+	return out, nil
+}
+
+// GetDiscordModStats returns a map of action->count for a moderator in a guild.
+func GetDiscordModStats(guildID, modID string) (map[string]int, error) {
+	out := map[string]int{}
+	if db == nil {
+		return out, nil
+	}
+	rows, err := db.Query(`
+		SELECT action, COUNT(*) FROM discord_mod_cases WHERE guild_id=$1 AND mod_id=$2 GROUP BY action
+	`, guildID, modID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var action string
+		var count int
+		if err := rows.Scan(&action, &count); err != nil {
+			return nil, err
+		}
+		out[action] = count
+	}
+	return out, nil
+}
+
+// ─── Discord Member Notes ─────────────────────────────────────────────────────
+
+// DiscordMemberNote is a private staff note about a guild member.
+type DiscordMemberNote struct {
+	ID        int64
+	GuildID   string
+	TargetID  string
+	ModID     string
+	ModName   string
+	Note      string
+	CreatedAt time.Time
+}
+
+// AddDiscordMemberNote inserts a note and returns its auto-generated ID.
+func AddDiscordMemberNote(guildID, targetID, modID, modName, note string) (int64, error) {
+	if db == nil {
+		return 0, fmt.Errorf("db not initialized")
+	}
+	var id int64
+	err := db.QueryRow(`
+		INSERT INTO discord_member_notes (guild_id, target_id, mod_id, mod_name, note)
+		VALUES ($1, $2, $3, $4, $5) RETURNING id
+	`, guildID, targetID, modID, modName, note).Scan(&id)
+	return id, err
+}
+
+// GetDiscordMemberNotes returns all notes for a user in a guild, oldest first.
+func GetDiscordMemberNotes(guildID, targetID string) ([]*DiscordMemberNote, error) {
+	if db == nil {
+		return nil, fmt.Errorf("db not initialized")
+	}
+	rows, err := db.Query(`
+		SELECT id, guild_id, target_id, mod_id, mod_name, note, created_at
+		FROM discord_member_notes WHERE guild_id=$1 AND target_id=$2
+		ORDER BY created_at ASC
+	`, guildID, targetID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []*DiscordMemberNote
+	for rows.Next() {
+		n := &DiscordMemberNote{}
+		if err := rows.Scan(&n.ID, &n.GuildID, &n.TargetID, &n.ModID, &n.ModName, &n.Note, &n.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, n)
+	}
+	return out, nil
+}
+
+// DeleteDiscordMemberNote removes a note by its ID (scoped to guild for safety).
+func DeleteDiscordMemberNote(guildID string, noteID int64) error {
+	if db == nil {
+		return fmt.Errorf("db not initialized")
+	}
+	_, err := db.Exec(`DELETE FROM discord_member_notes WHERE guild_id=$1 AND id=$2`, guildID, noteID)
+	return err
+}
+
+// ClearDiscordMemberNotes deletes all notes for a user and returns the count.
+func ClearDiscordMemberNotes(guildID, targetID string) (int64, error) {
+	if db == nil {
+		return 0, fmt.Errorf("db not initialized")
+	}
+	res, err := db.Exec(`DELETE FROM discord_member_notes WHERE guild_id=$1 AND target_id=$2`, guildID, targetID)
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
+}
+
+// ─── Discord Mod Roles ────────────────────────────────────────────────────────
+
+// DiscordModRole is a role designated as a moderator role in a guild.
+type DiscordModRole struct {
+	GuildID  string
+	RoleID   string
+	RoleName string
+}
+
+// AddDiscordModRole upserts a mod role for a guild.
+func AddDiscordModRole(guildID, roleID, roleName string) error {
+	if db == nil {
+		return fmt.Errorf("db not initialized")
+	}
+	_, err := db.Exec(`
+		INSERT INTO discord_mod_roles (guild_id, role_id, role_name)
+		VALUES ($1, $2, $3)
+		ON CONFLICT (guild_id, role_id) DO UPDATE SET role_name = EXCLUDED.role_name
+	`, guildID, roleID, roleName)
+	return err
+}
+
+// RemoveDiscordModRole removes a mod role designation.
+func RemoveDiscordModRole(guildID, roleID string) error {
+	if db == nil {
+		return fmt.Errorf("db not initialized")
+	}
+	_, err := db.Exec(`DELETE FROM discord_mod_roles WHERE guild_id=$1 AND role_id=$2`, guildID, roleID)
+	return err
+}
+
+// GetDiscordModRoles returns all mod roles for a guild.
+func GetDiscordModRoles(guildID string) ([]DiscordModRole, error) {
+	if db == nil {
+		return nil, fmt.Errorf("db not initialized")
+	}
+	rows, err := db.Query(`SELECT guild_id, role_id, role_name FROM discord_mod_roles WHERE guild_id=$1 ORDER BY role_name`, guildID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []DiscordModRole
+	for rows.Next() {
+		var r DiscordModRole
+		if err := rows.Scan(&r.GuildID, &r.RoleID, &r.RoleName); err != nil {
+			return nil, err
+		}
+		out = append(out, r)
+	}
+	return out, nil
+}
+
+// ─── Discord Joinable Ranks ───────────────────────────────────────────────────
+
+// DiscordJoinableRank is a self-assignable role in a guild.
+type DiscordJoinableRank struct {
+	GuildID  string
+	RoleID   string
+	RoleName string
+}
+
+// AddDiscordJoinableRank upserts a joinable rank for a guild.
+func AddDiscordJoinableRank(guildID, roleID, roleName string) error {
+	if db == nil {
+		return fmt.Errorf("db not initialized")
+	}
+	_, err := db.Exec(`
+		INSERT INTO discord_joinable_ranks (guild_id, role_id, role_name)
+		VALUES ($1, $2, $3)
+		ON CONFLICT (guild_id, role_id) DO UPDATE SET role_name = EXCLUDED.role_name
+	`, guildID, roleID, roleName)
+	return err
+}
+
+// RemoveDiscordJoinableRankByID removes a joinable rank by role ID.
+func RemoveDiscordJoinableRankByID(guildID, roleID string) error {
+	if db == nil {
+		return fmt.Errorf("db not initialized")
+	}
+	_, err := db.Exec(`DELETE FROM discord_joinable_ranks WHERE guild_id=$1 AND role_id=$2`, guildID, roleID)
+	return err
+}
+
+// GetDiscordJoinableRanks returns all joinable ranks for a guild.
+func GetDiscordJoinableRanks(guildID string) ([]DiscordJoinableRank, error) {
+	if db == nil {
+		return nil, fmt.Errorf("db not initialized")
+	}
+	rows, err := db.Query(`SELECT guild_id, role_id, role_name FROM discord_joinable_ranks WHERE guild_id=$1 ORDER BY role_name`, guildID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []DiscordJoinableRank
+	for rows.Next() {
+		var r DiscordJoinableRank
+		if err := rows.Scan(&r.GuildID, &r.RoleID, &r.RoleName); err != nil {
+			return nil, err
+		}
+		out = append(out, r)
+	}
+	return out, nil
+}
+
+// GetDiscordJoinableRankByName looks up a joinable rank by its role name (case-insensitive).
+func GetDiscordJoinableRankByName(guildID, name string) (*DiscordJoinableRank, error) {
+	if db == nil {
+		return nil, fmt.Errorf("db not initialized")
+	}
+	var r DiscordJoinableRank
+	err := db.QueryRow(`
+		SELECT guild_id, role_id, role_name FROM discord_joinable_ranks
+		WHERE guild_id=$1 AND LOWER(role_name)=LOWER($2)
+	`, guildID, name).Scan(&r.GuildID, &r.RoleID, &r.RoleName)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	return &r, err
+}
+
+// ─── Discord Role Persist ─────────────────────────────────────────────────────
+
+// ToggleDiscordRolePersist adds role persistence if it doesn't exist, removes if it does.
+// Returns true if added, false if removed.
+func ToggleDiscordRolePersist(guildID, userID, roleID string) (bool, error) {
+	if db == nil {
+		return false, fmt.Errorf("db not initialized")
+	}
+	var exists bool
+	err := db.QueryRow(`SELECT EXISTS(SELECT 1 FROM discord_role_persist WHERE guild_id=$1 AND user_id=$2 AND role_id=$3)`,
+		guildID, userID, roleID).Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+	if exists {
+		_, err = db.Exec(`DELETE FROM discord_role_persist WHERE guild_id=$1 AND user_id=$2 AND role_id=$3`, guildID, userID, roleID)
+		return false, err
+	}
+	_, err = db.Exec(`INSERT INTO discord_role_persist (guild_id, user_id, role_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`, guildID, userID, roleID)
+	return true, err
+}
+
+// GetDiscordRolePersist returns all role IDs that should persist for a user in a guild.
+func GetDiscordRolePersist(guildID, userID string) ([]string, error) {
+	if db == nil {
+		return nil, nil
+	}
+	rows, err := db.Query(`SELECT role_id FROM discord_role_persist WHERE guild_id=$1 AND user_id=$2`, guildID, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var roleID string
+		if err := rows.Scan(&roleID); err != nil {
+			return nil, err
+		}
+		out = append(out, roleID)
+	}
+	return out, nil
+}
+
+// ─── Discord Temp Roles ───────────────────────────────────────────────────────
+
+// DiscordTempRole is a role assigned temporarily to a user.
+type DiscordTempRole struct {
+	ID        int64
+	GuildID   string
+	UserID    string
+	RoleID    string
+	ExpiresAt time.Time
+}
+
+// CreateDiscordTempRole inserts a new temp role record.
+func CreateDiscordTempRole(guildID, userID, roleID string, expiresAt time.Time) error {
+	if db == nil {
+		return fmt.Errorf("db not initialized")
+	}
+	_, err := db.Exec(`INSERT INTO discord_temp_roles (guild_id, user_id, role_id, expires_at) VALUES ($1, $2, $3, $4)`,
+		guildID, userID, roleID, expiresAt)
+	return err
+}
+
+// GetExpiredDiscordTempRoles returns all temp roles that have expired.
+func GetExpiredDiscordTempRoles() ([]*DiscordTempRole, error) {
+	if db == nil {
+		return nil, nil
+	}
+	rows, err := db.Query(`SELECT id, guild_id, user_id, role_id, expires_at FROM discord_temp_roles WHERE expires_at <= NOW()`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []*DiscordTempRole
+	for rows.Next() {
+		t := &DiscordTempRole{}
+		if err := rows.Scan(&t.ID, &t.GuildID, &t.UserID, &t.RoleID, &t.ExpiresAt); err != nil {
+			return nil, err
+		}
+		out = append(out, t)
+	}
+	return out, nil
+}
+
+// DeleteDiscordTempRole removes a temp role record by ID.
+func DeleteDiscordTempRole(id int64) error {
+	if db == nil {
+		return nil
+	}
+	_, err := db.Exec(`DELETE FROM discord_temp_roles WHERE id=$1`, id)
+	return err
+}
+
+// ─── Discord Reminders ────────────────────────────────────────────────────────
+
+// DiscordReminder is a user-set reminder to be delivered via DM.
+type DiscordReminder struct {
+	ID        int64
+	UserID    string
+	ChannelID string
+	Reminder  string
+	RemindAt  time.Time
+}
+
+// CreateDiscordReminder inserts a new reminder.
+func CreateDiscordReminder(userID, channelID, reminder string, remindAt time.Time) error {
+	if db == nil {
+		return fmt.Errorf("db not initialized")
+	}
+	_, err := db.Exec(`INSERT INTO discord_reminders (user_id, channel_id, reminder, remind_at) VALUES ($1, $2, $3, $4)`,
+		userID, channelID, reminder, remindAt)
+	return err
+}
+
+// GetDueDiscordReminders returns all reminders that are due.
+func GetDueDiscordReminders() ([]*DiscordReminder, error) {
+	if db == nil {
+		return nil, nil
+	}
+	rows, err := db.Query(`SELECT id, user_id, channel_id, reminder, remind_at FROM discord_reminders WHERE remind_at <= NOW()`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []*DiscordReminder
+	for rows.Next() {
+		r := &DiscordReminder{}
+		if err := rows.Scan(&r.ID, &r.UserID, &r.ChannelID, &r.Reminder, &r.RemindAt); err != nil {
+			return nil, err
+		}
+		out = append(out, r)
+	}
+	return out, nil
+}
+
+// DeleteDiscordReminder removes a reminder by ID.
+func DeleteDiscordReminder(id int64) error {
+	if db == nil {
+		return nil
+	}
+	_, err := db.Exec(`DELETE FROM discord_reminders WHERE id=$1`, id)
+	return err
+}
+
+// ─── Discord AFK ──────────────────────────────────────────────────────────────
+
+// SetDiscordAFK upserts an AFK status for a user in a guild.
+func SetDiscordAFK(guildID, userID, status string) error {
+	if db == nil {
+		return fmt.Errorf("db not initialized")
+	}
+	_, err := db.Exec(`
+		INSERT INTO discord_afk (guild_id, user_id, status, set_at)
+		VALUES ($1, $2, $3, NOW())
+		ON CONFLICT (guild_id, user_id) DO UPDATE SET status = EXCLUDED.status, set_at = NOW()
+	`, guildID, userID, status)
+	return err
+}
+
+// GetDiscordAFK returns the AFK status for a user. Returns ("", false, nil) if not AFK.
+func GetDiscordAFK(guildID, userID string) (string, bool, error) {
+	if db == nil {
+		return "", false, nil
+	}
+	var status string
+	err := db.QueryRow(`SELECT status FROM discord_afk WHERE guild_id=$1 AND user_id=$2`, guildID, userID).Scan(&status)
+	if err == sql.ErrNoRows {
+		return "", false, nil
+	}
+	return status, err == nil, err
+}
+
+// ClearDiscordAFK removes the AFK status for a user.
+func ClearDiscordAFK(guildID, userID string) error {
+	if db == nil {
+		return nil
+	}
+	_, err := db.Exec(`DELETE FROM discord_afk WHERE guild_id=$1 AND user_id=$2`, guildID, userID)
+	return err
+}
+
+// ─── Discord Highlights ───────────────────────────────────────────────────────
+
+// AddDiscordHighlight adds a keyword highlight phrase for a user in a guild.
+func AddDiscordHighlight(guildID, userID, phrase string) error {
+	if db == nil {
+		return fmt.Errorf("db not initialized")
+	}
+	_, err := db.Exec(`INSERT INTO discord_highlights (guild_id, user_id, phrase) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
+		guildID, userID, strings.ToLower(phrase))
+	return err
+}
+
+// RemoveDiscordHighlight removes a specific highlight phrase.
+func RemoveDiscordHighlight(guildID, userID, phrase string) error {
+	if db == nil {
+		return nil
+	}
+	_, err := db.Exec(`DELETE FROM discord_highlights WHERE guild_id=$1 AND user_id=$2 AND phrase=$3`,
+		guildID, userID, strings.ToLower(phrase))
+	return err
+}
+
+// GetDiscordHighlightsForUser returns all highlight phrases for a user in a guild.
+func GetDiscordHighlightsForUser(guildID, userID string) ([]string, error) {
+	if db == nil {
+		return nil, nil
+	}
+	rows, err := db.Query(`SELECT phrase FROM discord_highlights WHERE guild_id=$1 AND user_id=$2 ORDER BY phrase`, guildID, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var p string
+		if err := rows.Scan(&p); err != nil {
+			return nil, err
+		}
+		out = append(out, p)
+	}
+	return out, nil
+}
+
+// GetDiscordHighlightsInGuild returns a map of userID -> []phrase for all highlights in a guild.
+func GetDiscordHighlightsInGuild(guildID string) (map[string][]string, error) {
+	out := map[string][]string{}
+	if db == nil {
+		return out, nil
+	}
+	rows, err := db.Query(`SELECT user_id, phrase FROM discord_highlights WHERE guild_id=$1`, guildID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var userID, phrase string
+		if err := rows.Scan(&userID, &phrase); err != nil {
+			return nil, err
+		}
+		out[userID] = append(out[userID], phrase)
+	}
+	return out, nil
+}
+
+// ─── Discord Tags ─────────────────────────────────────────────────────────────
+
+// DiscordTag is a saved text snippet that can be recalled by name.
+type DiscordTag struct {
+	GuildID   string
+	Name      string
+	Content   string
+	AuthorID  string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+// GetDiscordTag returns a single tag by name (case-insensitive) or nil.
+func GetDiscordTag(guildID, name string) (*DiscordTag, error) {
+	if db == nil {
+		return nil, fmt.Errorf("db not initialized")
+	}
+	t := &DiscordTag{}
+	err := db.QueryRow(`
+		SELECT guild_id, name, content, author_id, created_at, updated_at
+		FROM discord_tags WHERE guild_id=$1 AND LOWER(name)=LOWER($2)
+	`, guildID, name).Scan(&t.GuildID, &t.Name, &t.Content, &t.AuthorID, &t.CreatedAt, &t.UpdatedAt)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	return t, err
+}
+
+// CreateDiscordTag inserts a new tag. Returns an error if the name already exists.
+func CreateDiscordTag(guildID, name, content, authorID string) error {
+	if db == nil {
+		return fmt.Errorf("db not initialized")
+	}
+	_, err := db.Exec(`INSERT INTO discord_tags (guild_id, name, content, author_id) VALUES ($1, $2, $3, $4)`,
+		guildID, strings.ToLower(name), content, authorID)
+	return err
+}
+
+// UpdateDiscordTag updates the content of an existing tag.
+func UpdateDiscordTag(guildID, name, content string) error {
+	if db == nil {
+		return fmt.Errorf("db not initialized")
+	}
+	res, err := db.Exec(`UPDATE discord_tags SET content=$3, updated_at=NOW() WHERE guild_id=$1 AND LOWER(name)=LOWER($2)`,
+		guildID, name, content)
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return fmt.Errorf("tag %q not found", name)
+	}
+	return nil
+}
+
+// DeleteDiscordTag removes a tag by name.
+func DeleteDiscordTag(guildID, name string) error {
+	if db == nil {
+		return nil
+	}
+	_, err := db.Exec(`DELETE FROM discord_tags WHERE guild_id=$1 AND LOWER(name)=LOWER($2)`, guildID, name)
+	return err
+}
+
+// ListDiscordTags returns all tags for a guild, optionally filtered by search string.
+func ListDiscordTags(guildID, search string) ([]*DiscordTag, error) {
+	if db == nil {
+		return nil, fmt.Errorf("db not initialized")
+	}
+	var rows *sql.Rows
+	var err error
+	if search == "" {
+		rows, err = db.Query(`SELECT guild_id, name, content, author_id, created_at, updated_at FROM discord_tags WHERE guild_id=$1 ORDER BY name`, guildID)
+	} else {
+		rows, err = db.Query(`SELECT guild_id, name, content, author_id, created_at, updated_at FROM discord_tags WHERE guild_id=$1 AND LOWER(name) LIKE LOWER($2) ORDER BY name`, guildID, "%"+search+"%")
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []*DiscordTag
+	for rows.Next() {
+		t := &DiscordTag{}
+		if err := rows.Scan(&t.GuildID, &t.Name, &t.Content, &t.AuthorID, &t.CreatedAt, &t.UpdatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, t)
+	}
+	return out, nil
+}
+
+// ─── Discord Giveaways ────────────────────────────────────────────────────────
+
+// DiscordGiveaway represents an active or ended giveaway.
+type DiscordGiveaway struct {
+	ID          int64
+	GuildID     string
+	ChannelID   string
+	MessageID   string
+	Prize       string
+	WinnerCount int
+	HostID      string
+	EndsAt      time.Time
+	Ended       bool
+	CreatedAt   time.Time
+}
+
+// CreateDiscordGiveaway inserts a new giveaway and returns its ID.
+func CreateDiscordGiveaway(guildID, channelID, prize string, winnerCount int, hostID string, endsAt time.Time) (int64, error) {
+	if db == nil {
+		return 0, fmt.Errorf("db not initialized")
+	}
+	var id int64
+	err := db.QueryRow(`
+		INSERT INTO discord_giveaways (guild_id, channel_id, prize, winner_count, host_id, ends_at)
+		VALUES ($1, $2, $3, $4, $5, $6) RETURNING id
+	`, guildID, channelID, prize, winnerCount, hostID, endsAt).Scan(&id)
+	return id, err
+}
+
+// SetDiscordGiveawayMessageID sets the Discord message ID for a giveaway.
+func SetDiscordGiveawayMessageID(id int64, msgID string) error {
+	if db == nil {
+		return nil
+	}
+	_, err := db.Exec(`UPDATE discord_giveaways SET message_id=$2 WHERE id=$1`, id, msgID)
+	return err
+}
+
+// GetActiveDiscordGiveaways returns all unended giveaways that have passed their end time.
+func GetActiveDiscordGiveaways() ([]*DiscordGiveaway, error) {
+	if db == nil {
+		return nil, nil
+	}
+	rows, err := db.Query(`
+		SELECT id, guild_id, channel_id, message_id, prize, winner_count, host_id, ends_at, ended, created_at
+		FROM discord_giveaways WHERE ended=FALSE AND ends_at <= NOW() AND message_id != ''
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []*DiscordGiveaway
+	for rows.Next() {
+		g := &DiscordGiveaway{}
+		if err := rows.Scan(&g.ID, &g.GuildID, &g.ChannelID, &g.MessageID, &g.Prize, &g.WinnerCount, &g.HostID, &g.EndsAt, &g.Ended, &g.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, g)
+	}
+	return out, nil
+}
+
+// EndDiscordGiveaway marks a giveaway as ended.
+func EndDiscordGiveaway(id int64) error {
+	if db == nil {
+		return nil
+	}
+	_, err := db.Exec(`UPDATE discord_giveaways SET ended=TRUE WHERE id=$1`, id)
+	return err
+}
+
+// GetDiscordGiveawayByMessage looks up a giveaway by its Discord message ID.
+func GetDiscordGiveawayByMessage(messageID string) (*DiscordGiveaway, error) {
+	if db == nil {
+		return nil, fmt.Errorf("db not initialized")
+	}
+	g := &DiscordGiveaway{}
+	err := db.QueryRow(`
+		SELECT id, guild_id, channel_id, message_id, prize, winner_count, host_id, ends_at, ended, created_at
+		FROM discord_giveaways WHERE message_id=$1
+	`, messageID).Scan(&g.ID, &g.GuildID, &g.ChannelID, &g.MessageID, &g.Prize, &g.WinnerCount, &g.HostID, &g.EndsAt, &g.Ended, &g.CreatedAt)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	return g, err
+}
+
+// ─── Discord Ignored Channels ─────────────────────────────────────────────────
+
+// ToggleDiscordIgnoredChannel toggles whether a channel is ignored for bot commands.
+// Returns true if the channel is now ignored, false if it was unignored.
+func ToggleDiscordIgnoredChannel(guildID, channelID string) (bool, error) {
+	if db == nil {
+		return false, fmt.Errorf("db not initialized")
+	}
+	var exists bool
+	err := db.QueryRow(`SELECT EXISTS(SELECT 1 FROM discord_ignored_channels WHERE guild_id=$1 AND channel_id=$2)`,
+		guildID, channelID).Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+	if exists {
+		_, err = db.Exec(`DELETE FROM discord_ignored_channels WHERE guild_id=$1 AND channel_id=$2`, guildID, channelID)
+		return false, err
+	}
+	_, err = db.Exec(`INSERT INTO discord_ignored_channels (guild_id, channel_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, guildID, channelID)
+	return true, err
+}
+
+// IsDiscordChannelIgnored returns true if the channel is on the ignore list.
+func IsDiscordChannelIgnored(guildID, channelID string) (bool, error) {
+	if db == nil {
+		return false, nil
+	}
+	var exists bool
+	err := db.QueryRow(`SELECT EXISTS(SELECT 1 FROM discord_ignored_channels WHERE guild_id=$1 AND channel_id=$2)`,
+		guildID, channelID).Scan(&exists)
+	return exists, err
+}
+
+// GetDiscordIgnoredChannels returns all ignored channel IDs for a guild.
+func GetDiscordIgnoredChannels(guildID string) ([]string, error) {
+	if db == nil {
+		return nil, nil
+	}
+	rows, err := db.Query(`SELECT channel_id FROM discord_ignored_channels WHERE guild_id=$1`, guildID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		out = append(out, id)
+	}
+	return out, nil
+}
+
+// ─── Discord Lockdown Channels ────────────────────────────────────────────────
+
+// AddDiscordLockdownChannel records a channel as having been locked during lockdown.
+func AddDiscordLockdownChannel(guildID, channelID string) error {
+	if db == nil {
+		return nil
+	}
+	_, err := db.Exec(`INSERT INTO discord_lockdown_channels (guild_id, channel_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, guildID, channelID)
+	return err
+}
+
+// GetDiscordLockdownChannels returns all channels currently locked by /lockdown.
+func GetDiscordLockdownChannels(guildID string) ([]string, error) {
+	if db == nil {
+		return nil, nil
+	}
+	rows, err := db.Query(`SELECT channel_id FROM discord_lockdown_channels WHERE guild_id=$1`, guildID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		out = append(out, id)
+	}
+	return out, nil
+}
+
+// ClearDiscordLockdownChannels removes all lockdown records for a guild.
+func ClearDiscordLockdownChannels(guildID string) error {
+	if db == nil {
+		return nil
+	}
+	_, err := db.Exec(`DELETE FROM discord_lockdown_channels WHERE guild_id=$1`, guildID)
+	return err
+}
+
+// DeleteDiscordWarningByID removes a single warning by its database ID (scoped to guild).
+func DeleteDiscordWarningByID(guildID string, id int64) error {
+	if db == nil {
+		return fmt.Errorf("db not initialized")
+	}
+	_, err := db.Exec(`DELETE FROM discord_warnings WHERE guild_id=$1 AND id=$2`, guildID, id)
 	return err
 }
 

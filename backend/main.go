@@ -225,6 +225,11 @@ func main() {
 	// Start automatic midnight birthday announcer
 	go StartBirthdayScheduler()
 
+	// Start Discord background schedulers
+	go StartDiscordTempRoleScheduler()
+	go StartDiscordReminderScheduler()
+	go StartDiscordGiveawayScheduler()
+
 	// Block forever
 	select {}
 }

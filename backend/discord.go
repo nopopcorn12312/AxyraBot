@@ -39,6 +39,8 @@ func InitDiscord() {
 	})
 	discordSession.AddHandler(discordInteractionHandler)
 	discordSession.AddHandler(discordMessageHandler)
+	discordSession.AddHandler(discordExtendedMessageHandler)
+	discordSession.AddHandler(discordGuildMemberAddHandler)
 
 	if err = discordSession.Open(); err != nil {
 		log.Println("[Discord] failed to open connection:", err)
@@ -58,6 +60,10 @@ func registerSlashCommands(s *discordgo.Session, appID string) {
 		permTimeout int64 = discordgo.PermissionModerateMembers
 		permManMsg  int64 = discordgo.PermissionManageMessages
 		permManChan int64 = discordgo.PermissionManageChannels
+		permManRoles int64 = discordgo.PermissionManageRoles
+		permManNick  int64 = discordgo.PermissionManageNicknames
+		permManEmoji int64 = discordgo.PermissionManageEmojis
+		permAdmin    int64 = discordgo.PermissionAdministrator
 	)
 
 	commands := []*discordgo.ApplicationCommand{
@@ -162,6 +168,499 @@ func registerSlashCommands(s *discordgo.Session, appID string) {
 				{Type: discordgo.ApplicationCommandOptionChannel, Name: "channel", Description: "Channel to configure (defaults to current)", Required: false},
 			},
 		},
+		// ── Moderation (new) ────────────────────────────────────────────────────
+		{
+			Name:                     "softban",
+			Description:              "Ban a member to delete their messages, then immediately unban",
+			DefaultMemberPermissions: &permBan,
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionUser, Name: "user", Description: "The user to softban", Required: true},
+				{Type: discordgo.ApplicationCommandOptionString, Name: "reason", Description: "Reason", Required: false},
+			},
+		},
+		{
+			Name:                     "deafen",
+			Description:              "Server-deafen a member in voice",
+			DefaultMemberPermissions: &permTimeout,
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionUser, Name: "user", Description: "The user to deafen", Required: true},
+				{Type: discordgo.ApplicationCommandOptionString, Name: "reason", Description: "Reason", Required: false},
+			},
+		},
+		{
+			Name:                     "undeafen",
+			Description:              "Remove server deafen from a member",
+			DefaultMemberPermissions: &permTimeout,
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionUser, Name: "user", Description: "The user to undeafen", Required: true},
+			},
+		},
+		{
+			Name:                     "lockdown",
+			Description:              "Lock or unlock all server channels",
+			DefaultMemberPermissions: &permManChan,
+			Options: []*discordgo.ApplicationCommandOption{
+				{
+					Type: discordgo.ApplicationCommandOptionSubCommand, Name: "start", Description: "Lock all text channels",
+					Options: []*discordgo.ApplicationCommandOption{
+						{Type: discordgo.ApplicationCommandOptionString, Name: "reason", Description: "Reason for lockdown", Required: false},
+					},
+				},
+				{
+					Type: discordgo.ApplicationCommandOptionSubCommand, Name: "end", Description: "Unlock all locked channels",
+					Options: []*discordgo.ApplicationCommandOption{
+						{Type: discordgo.ApplicationCommandOptionString, Name: "reason", Description: "Reason for ending lockdown", Required: false},
+					},
+				},
+			},
+		},
+		{
+			Name:                     "temprole",
+			Description:              "Assign a role to a member for a limited time",
+			DefaultMemberPermissions: &permTimeout,
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionUser, Name: "user", Description: "The member", Required: true},
+				{Type: discordgo.ApplicationCommandOptionRole, Name: "role", Description: "The role to assign", Required: true},
+				{Type: discordgo.ApplicationCommandOptionString, Name: "duration", Description: "Duration e.g. 10m, 2h, 7d", Required: true},
+				{Type: discordgo.ApplicationCommandOptionString, Name: "reason", Description: "Reason", Required: false},
+			},
+		},
+		{
+			Name:                     "rolepersist",
+			Description:              "Toggle a role that re-applies when the user rejoins the server",
+			DefaultMemberPermissions: &permTimeout,
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionUser, Name: "user", Description: "The member", Required: true},
+				{Type: discordgo.ApplicationCommandOptionRole, Name: "role", Description: "The role to persist", Required: true},
+			},
+		},
+		{
+			Name:                     "modlogs",
+			Description:              "View the moderation history for a member",
+			DefaultMemberPermissions: &permTimeout,
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionUser, Name: "user", Description: "The member to look up", Required: true},
+			},
+		},
+		{
+			Name:                     "modstats",
+			Description:              "View moderation action statistics for a moderator",
+			DefaultMemberPermissions: &permTimeout,
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionUser, Name: "user", Description: "The moderator (defaults to yourself)", Required: false},
+			},
+		},
+		{
+			Name:                     "case",
+			Description:              "Look up a specific moderation case by number",
+			DefaultMemberPermissions: &permTimeout,
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionInteger, Name: "number", Description: "Case number", Required: true},
+			},
+		},
+		{
+			Name:                     "reason",
+			Description:              "Update the reason for a moderation case",
+			DefaultMemberPermissions: &permTimeout,
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionInteger, Name: "number", Description: "Case number", Required: true},
+				{Type: discordgo.ApplicationCommandOptionString, Name: "reason", Description: "New reason", Required: true},
+			},
+		},
+		{
+			Name:                     "note",
+			Description:              "Add a private staff note about a member",
+			DefaultMemberPermissions: &permTimeout,
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionUser, Name: "user", Description: "The member", Required: true},
+				{Type: discordgo.ApplicationCommandOptionString, Name: "note", Description: "The note", Required: true},
+			},
+		},
+		{
+			Name:                     "notes",
+			Description:              "View all staff notes for a member",
+			DefaultMemberPermissions: &permTimeout,
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionUser, Name: "user", Description: "The member", Required: true},
+			},
+		},
+		{
+			Name:                     "delnote",
+			Description:              "Delete a specific staff note by ID",
+			DefaultMemberPermissions: &permTimeout,
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionInteger, Name: "id", Description: "Note ID (from /notes)", Required: true},
+			},
+		},
+		{
+			Name:                     "clearnotes",
+			Description:              "Clear all staff notes for a member",
+			DefaultMemberPermissions: &permTimeout,
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionUser, Name: "user", Description: "The member", Required: true},
+			},
+		},
+		{
+			Name:                     "delwarn",
+			Description:              "Delete a specific warning for a member (1 = newest)",
+			DefaultMemberPermissions: &permTimeout,
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionUser, Name: "user", Description: "The member", Required: true},
+				{Type: discordgo.ApplicationCommandOptionInteger, Name: "number", Description: "Warning number from /warnings (1 = newest)", Required: true},
+			},
+		},
+		{
+			Name:                     "members",
+			Description:              "List all members who have a specific role",
+			DefaultMemberPermissions: &permTimeout,
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionRole, Name: "role", Description: "The role to list members of", Required: true},
+			},
+		},
+		// ── Manager ─────────────────────────────────────────────────────────────
+		{
+			Name:                     "announce",
+			Description:              "Send a message as the bot to a channel",
+			DefaultMemberPermissions: &permManMsg,
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionChannel, Name: "channel", Description: "Target channel", Required: true},
+				{Type: discordgo.ApplicationCommandOptionString, Name: "message", Description: "Message to send", Required: true},
+			},
+		},
+		{
+			Name:                     "role",
+			Description:              "Add or remove a role from a member (toggles)",
+			DefaultMemberPermissions: &permManRoles,
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionUser, Name: "user", Description: "The member", Required: true},
+				{Type: discordgo.ApplicationCommandOptionRole, Name: "role", Description: "The role to toggle", Required: true},
+			},
+		},
+		{
+			Name:                     "addrole",
+			Description:              "Create a new server role",
+			DefaultMemberPermissions: &permManRoles,
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionString, Name: "name", Description: "Role name", Required: true},
+				{Type: discordgo.ApplicationCommandOptionString, Name: "color", Description: "Hex color e.g. FF5733", Required: false},
+				{Type: discordgo.ApplicationCommandOptionBoolean, Name: "hoist", Description: "Show separately in member list", Required: false},
+			},
+		},
+		{
+			Name:                     "delrole",
+			Description:              "Delete a server role",
+			DefaultMemberPermissions: &permManRoles,
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionRole, Name: "role", Description: "The role to delete", Required: true},
+			},
+		},
+		{
+			Name:                     "rolecolor",
+			Description:              "Change the color of a role",
+			DefaultMemberPermissions: &permManRoles,
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionRole, Name: "role", Description: "The role", Required: true},
+				{Type: discordgo.ApplicationCommandOptionString, Name: "color", Description: "New hex color e.g. FF5733", Required: true},
+			},
+		},
+		{
+			Name:                     "rolename",
+			Description:              "Rename a server role",
+			DefaultMemberPermissions: &permManRoles,
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionRole, Name: "role", Description: "The role", Required: true},
+				{Type: discordgo.ApplicationCommandOptionString, Name: "name", Description: "New name", Required: true},
+			},
+		},
+		{
+			Name:                     "setnick",
+			Description:              "Change a member's nickname (leave blank to reset)",
+			DefaultMemberPermissions: &permManNick,
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionUser, Name: "user", Description: "The member", Required: true},
+				{Type: discordgo.ApplicationCommandOptionString, Name: "nickname", Description: "New nickname (leave empty to reset)", Required: false},
+			},
+		},
+		{
+			Name:                     "addmod",
+			Description:              "Designate a role as a moderator role",
+			DefaultMemberPermissions: &permAdmin,
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionRole, Name: "role", Description: "The role to designate as mod", Required: true},
+			},
+		},
+		{
+			Name:                     "delmod",
+			Description:              "Remove a role's moderator designation",
+			DefaultMemberPermissions: &permAdmin,
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionRole, Name: "role", Description: "The mod role to remove", Required: true},
+			},
+		},
+		{Name: "listmods", Description: "List all designated moderator roles", DefaultMemberPermissions: &permAdmin},
+		{
+			Name:                     "giveaway",
+			Description:              "Create and manage giveaways",
+			DefaultMemberPermissions: &permManMsg,
+			Options: []*discordgo.ApplicationCommandOption{
+				{
+					Type: discordgo.ApplicationCommandOptionSubCommand, Name: "start", Description: "Start a new giveaway",
+					Options: []*discordgo.ApplicationCommandOption{
+						{Type: discordgo.ApplicationCommandOptionString, Name: "prize", Description: "What you're giving away", Required: true},
+						{Type: discordgo.ApplicationCommandOptionString, Name: "duration", Description: "How long e.g. 10m, 2h, 1d", Required: true},
+						{Type: discordgo.ApplicationCommandOptionInteger, Name: "winners", Description: "Number of winners (default 1)", Required: false},
+					},
+				},
+				{
+					Type: discordgo.ApplicationCommandOptionSubCommand, Name: "end", Description: "End a giveaway immediately",
+					Options: []*discordgo.ApplicationCommandOption{
+						{Type: discordgo.ApplicationCommandOptionString, Name: "message_id", Description: "Message ID of the giveaway", Required: true},
+					},
+				},
+				{
+					Type: discordgo.ApplicationCommandOptionSubCommand, Name: "reroll", Description: "Reroll winners for a giveaway",
+					Options: []*discordgo.ApplicationCommandOption{
+						{Type: discordgo.ApplicationCommandOptionString, Name: "message_id", Description: "Message ID of the giveaway", Required: true},
+					},
+				},
+			},
+		},
+		{
+			Name:                     "addemote",
+			Description:              "Add a custom emoji to the server from a URL",
+			DefaultMemberPermissions: &permManEmoji,
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionString, Name: "name", Description: "Emoji name", Required: true},
+				{Type: discordgo.ApplicationCommandOptionString, Name: "url", Description: "Image URL (PNG/GIF, max 256KB)", Required: true},
+			},
+		},
+		{
+			Name:                     "ignorechannel",
+			Description:              "Toggle whether a channel is ignored for bot commands",
+			DefaultMemberPermissions: &permManChan,
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionChannel, Name: "channel", Description: "The channel to toggle", Required: true},
+			},
+		},
+		{
+			Name:                     "module",
+			Description:              "Enable, disable, or list bot modules for this server",
+			DefaultMemberPermissions: &permAdmin,
+			Options: []*discordgo.ApplicationCommandOption{
+				{
+					Type: discordgo.ApplicationCommandOptionSubCommand, Name: "enable", Description: "Enable a module",
+					Options: []*discordgo.ApplicationCommandOption{
+						{Type: discordgo.ApplicationCommandOptionString, Name: "module", Description: "Module name (moderation/manager/roles/info/fun/tags/giveaway)", Required: true},
+					},
+				},
+				{
+					Type: discordgo.ApplicationCommandOptionSubCommand, Name: "disable", Description: "Disable a module",
+					Options: []*discordgo.ApplicationCommandOption{
+						{Type: discordgo.ApplicationCommandOptionString, Name: "module", Description: "Module name", Required: true},
+					},
+				},
+				{Type: discordgo.ApplicationCommandOptionSubCommand, Name: "list", Description: "List all modules and their status"},
+			},
+		},
+		// ── Roles (self-assignable) ──────────────────────────────────────────────
+		{
+			Name:        "rank",
+			Description: "Join or leave a self-assignable rank",
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionString, Name: "name", Description: "Rank name", Required: true},
+			},
+		},
+		{Name: "ranks", Description: "List all joinable ranks"},
+		{
+			Name:                     "addrank",
+			Description:              "Make a role joinable by anyone with /rank",
+			DefaultMemberPermissions: &permManRoles,
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionRole, Name: "role", Description: "The role to make joinable", Required: true},
+			},
+		},
+		{
+			Name:                     "delrank",
+			Description:              "Remove a role from the joinable ranks list",
+			DefaultMemberPermissions: &permManRoles,
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionRole, Name: "role", Description: "The rank role to remove", Required: true},
+			},
+		},
+		{
+			Name:        "roleinfo",
+			Description: "Get information about a role",
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionRole, Name: "role", Description: "The role", Required: true},
+			},
+		},
+		// ── Info ────────────────────────────────────────────────────────────────
+		{Name: "serverinfo", Description: "Get information about this server"},
+		{
+			Name:        "whois",
+			Description: "Get information about a member",
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionUser, Name: "user", Description: "The user to look up (defaults to yourself)", Required: false},
+			},
+		},
+		{
+			Name:        "avatar",
+			Description: "Show a user's avatar",
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionUser, Name: "user", Description: "The user (defaults to yourself)", Required: false},
+			},
+		},
+		{Name: "membercount", Description: "Show the server member count"},
+		{Name: "ping", Description: "Check the bot's response time"},
+		{
+			Name:        "emotes",
+			Description: "List custom server emojis",
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionString, Name: "search", Description: "Filter by name", Required: false},
+			},
+		},
+		{
+			Name:        "inviteinfo",
+			Description: "Get information about a Discord invite",
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionString, Name: "code", Description: "Invite code or URL", Required: true},
+			},
+		},
+		{
+			Name:        "afk",
+			Description: "Set your AFK status (cleared when you next send a message)",
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionString, Name: "status", Description: "AFK status message", Required: false},
+			},
+		},
+		{
+			Name:        "highlights",
+			Description: "Get notified when a keyword is mentioned in the server",
+			Options: []*discordgo.ApplicationCommandOption{
+				{
+					Type: discordgo.ApplicationCommandOptionSubCommand, Name: "add", Description: "Add a highlight phrase",
+					Options: []*discordgo.ApplicationCommandOption{
+						{Type: discordgo.ApplicationCommandOptionString, Name: "phrase", Description: "The phrase to highlight", Required: true},
+					},
+				},
+				{
+					Type: discordgo.ApplicationCommandOptionSubCommand, Name: "remove", Description: "Remove a highlight phrase",
+					Options: []*discordgo.ApplicationCommandOption{
+						{Type: discordgo.ApplicationCommandOptionString, Name: "phrase", Description: "The phrase to remove", Required: true},
+					},
+				},
+				{Type: discordgo.ApplicationCommandOptionSubCommand, Name: "list", Description: "List your highlight phrases"},
+			},
+		},
+		{
+			Name:        "remindme",
+			Description: "Set a reminder (delivered via DM)",
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionString, Name: "time", Description: "When to remind e.g. 10m, 2h, 1d", Required: true},
+				{Type: discordgo.ApplicationCommandOptionString, Name: "reminder", Description: "What to remind you about", Required: true},
+			},
+		},
+		// ── Fun ─────────────────────────────────────────────────────────────────
+		{
+			Name:        "poll",
+			Description: "Start a poll (2–4 options)",
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionString, Name: "question", Description: "Poll question", Required: true},
+				{Type: discordgo.ApplicationCommandOptionString, Name: "option1", Description: "First option", Required: true},
+				{Type: discordgo.ApplicationCommandOptionString, Name: "option2", Description: "Second option", Required: true},
+				{Type: discordgo.ApplicationCommandOptionString, Name: "option3", Description: "Third option (optional)", Required: false},
+				{Type: discordgo.ApplicationCommandOptionString, Name: "option4", Description: "Fourth option (optional)", Required: false},
+			},
+		},
+		{Name: "flip", Description: "Flip a coin"},
+		{
+			Name:        "roll",
+			Description: "Roll dice e.g. 2d6, d20",
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionString, Name: "dice", Description: "Dice notation e.g. 2d6 (default 1d6)", Required: false},
+			},
+		},
+		{
+			Name:        "rps",
+			Description: "Play rock, paper, scissors against the bot",
+			Options: []*discordgo.ApplicationCommandOption{
+				{
+					Type: discordgo.ApplicationCommandOptionString, Name: "choice", Description: "Your choice", Required: true,
+					Choices: []*discordgo.ApplicationCommandOptionChoice{
+						{Name: "Rock 🪨", Value: "rock"},
+						{Name: "Paper 📄", Value: "paper"},
+						{Name: "Scissors ✂️", Value: "scissors"},
+					},
+				},
+			},
+		},
+		{Name: "dadjoke", Description: "Get a random dad joke"},
+		{Name: "cat", Description: "Get a random cat picture"},
+		{Name: "dog", Description: "Get a random dog picture"},
+		{Name: "pug", Description: "Get a random pug picture"},
+		{
+			Name:        "color",
+			Description: "Preview a hex color",
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionString, Name: "hex", Description: "Hex color e.g. FF5733 or #FF5733", Required: true},
+			},
+		},
+		{Name: "randomcolor", Description: "Generate a random hex color"},
+		{
+			Name:        "pokemon",
+			Description: "Look up a Pokémon",
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionString, Name: "name", Description: "Pokémon name or Pokédex number", Required: true},
+			},
+		},
+		{
+			Name:        "github",
+			Description: "Look up a GitHub repository",
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionString, Name: "repo", Description: "Repository in owner/repo format", Required: true},
+			},
+		},
+		{Name: "space", Description: "Get the current position of the International Space Station"},
+		// ── Tags ────────────────────────────────────────────────────────────────
+		{
+			Name:        "tag",
+			Description: "Get, create, edit, or delete a saved text snippet",
+			Options: []*discordgo.ApplicationCommandOption{
+				{
+					Type: discordgo.ApplicationCommandOptionSubCommand, Name: "get", Description: "Get a tag",
+					Options: []*discordgo.ApplicationCommandOption{
+						{Type: discordgo.ApplicationCommandOptionString, Name: "name", Description: "Tag name", Required: true},
+					},
+				},
+				{
+					Type: discordgo.ApplicationCommandOptionSubCommand, Name: "create", Description: "Create a new tag",
+					Options: []*discordgo.ApplicationCommandOption{
+						{Type: discordgo.ApplicationCommandOptionString, Name: "name", Description: "Tag name", Required: true},
+						{Type: discordgo.ApplicationCommandOptionString, Name: "content", Description: "Tag content", Required: true},
+					},
+				},
+				{
+					Type: discordgo.ApplicationCommandOptionSubCommand, Name: "edit", Description: "Edit an existing tag",
+					Options: []*discordgo.ApplicationCommandOption{
+						{Type: discordgo.ApplicationCommandOptionString, Name: "name", Description: "Tag name", Required: true},
+						{Type: discordgo.ApplicationCommandOptionString, Name: "content", Description: "New content", Required: true},
+					},
+				},
+				{
+					Type: discordgo.ApplicationCommandOptionSubCommand, Name: "delete", Description: "Delete a tag",
+					Options: []*discordgo.ApplicationCommandOption{
+						{Type: discordgo.ApplicationCommandOptionString, Name: "name", Description: "Tag name", Required: true},
+					},
+				},
+			},
+		},
+		{
+			Name:        "tags",
+			Description: "List all tags in this server",
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionString, Name: "search", Description: "Filter tags by name", Required: false},
+			},
+		},
 	}
 
 	for _, cmd := range commands {
@@ -202,6 +701,132 @@ func discordInteractionHandler(s *discordgo.Session, i *discordgo.InteractionCre
 		handleUnlockSlash(s, i)
 	case "slowmode":
 		handleSlowmodeSlash(s, i)
+	// Moderation (new)
+	case "softban":
+		handleSoftbanSlash(s, i)
+	case "deafen":
+		handleDeafenSlash(s, i)
+	case "undeafen":
+		handleUndeafenSlash(s, i)
+	case "lockdown":
+		handleLockdownSlash(s, i)
+	case "temprole":
+		handleTempRoleSlash(s, i)
+	case "rolepersist":
+		handleRolePersistSlash(s, i)
+	case "modlogs":
+		handleModLogsSlash(s, i)
+	case "modstats":
+		handleModStatsSlash(s, i)
+	case "case":
+		handleCaseSlash(s, i)
+	case "reason":
+		handleReasonSlash(s, i)
+	case "note":
+		handleNoteSlash(s, i)
+	case "notes":
+		handleNotesSlash(s, i)
+	case "delnote":
+		handleDelNoteSlash(s, i)
+	case "clearnotes":
+		handleClearNotesSlash(s, i)
+	case "delwarn":
+		handleDelWarnSlash(s, i)
+	case "members":
+		handleMembersSlash(s, i)
+	// Manager
+	case "announce":
+		handleAnnounceSlash(s, i)
+	case "role":
+		handleRoleSlash(s, i)
+	case "addrole":
+		handleAddRoleSlash(s, i)
+	case "delrole":
+		handleDelRoleSlash(s, i)
+	case "rolecolor":
+		handleRoleColorSlash(s, i)
+	case "rolename":
+		handleRoleNameSlash(s, i)
+	case "setnick":
+		handleSetNickSlash(s, i)
+	case "addmod":
+		handleAddModSlash(s, i)
+	case "delmod":
+		handleDelModSlash(s, i)
+	case "listmods":
+		handleListModsSlash(s, i)
+	case "giveaway":
+		handleGiveawaySlash(s, i)
+	case "addemote":
+		handleAddEmoteSlash(s, i)
+	case "ignorechannel":
+		handleIgnoreChannelSlash(s, i)
+	case "module":
+		handleModuleSlash(s, i)
+	// Roles
+	case "rank":
+		handleRankSlash(s, i)
+	case "ranks":
+		handleRanksSlash(s, i)
+	case "addrank":
+		handleAddRankSlash(s, i)
+	case "delrank":
+		handleDelRankSlash(s, i)
+	case "roleinfo":
+		handleRoleInfoSlash(s, i)
+	// Info
+	case "serverinfo":
+		handleServerInfoSlash(s, i)
+	case "whois":
+		handleWhoisSlash(s, i)
+	case "avatar":
+		handleAvatarSlash(s, i)
+	case "membercount":
+		handleMemberCountSlash(s, i)
+	case "ping":
+		handlePingSlash(s, i)
+	case "emotes":
+		handleEmotesSlash(s, i)
+	case "inviteinfo":
+		handleInviteInfoSlash(s, i)
+	case "afk":
+		handleAFKSlash(s, i)
+	case "highlights":
+		handleHighlightsSlash(s, i)
+	case "remindme":
+		handleRemindMeSlash(s, i)
+	// Fun
+	case "poll":
+		handlePollSlash(s, i)
+	case "flip":
+		handleFlipSlash(s, i)
+	case "roll":
+		handleRollSlash(s, i)
+	case "rps":
+		handleRPSSlash(s, i)
+	case "dadjoke":
+		handleDadJokeSlash(s, i)
+	case "cat":
+		handleCatSlash(s, i)
+	case "dog":
+		handleDogSlash(s, i)
+	case "pug":
+		handlePugSlash(s, i)
+	case "color":
+		handleColorSlash(s, i)
+	case "randomcolor":
+		handleRandomColorSlash(s, i)
+	case "pokemon":
+		handlePokemonSlash(s, i)
+	case "github":
+		handleGitHubSlash(s, i)
+	case "space":
+		handleSpaceSlash(s, i)
+	// Tags
+	case "tag":
+		handleTagSlash(s, i)
+	case "tags":
+		handleTagsSlash(s, i)
 	}
 }
 
