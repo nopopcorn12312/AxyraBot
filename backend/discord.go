@@ -655,10 +655,19 @@ func PostDiscordModAlert(broadcasterLogin, moderator, target, action, reason str
 		return
 	}
 	emoji := "🔨"
-	if action == "timeout" {
+	verb := action + "ed"
+	switch action {
+	case "ban":
+		emoji = "🔨"
+		verb = "banned"
+	case "timeout":
 		emoji = "⏱️"
+		verb = "timed out"
+	case "delete":
+		emoji = "🗑️"
+		verb = "had their message deleted"
 	}
-	msg := fmt.Sprintf("%s **[%s]** `%s` was %sed by `%s`", emoji, broadcasterLogin, target, action, moderator)
+	msg := fmt.Sprintf("%s **[%s]** `%s` was %s by `%s`", emoji, broadcasterLogin, target, verb, moderator)
 	if reason != "" {
 		msg += "\nReason: " + reason
 	}

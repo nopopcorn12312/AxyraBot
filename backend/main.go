@@ -452,6 +452,8 @@ func handleChatMessageEvent(channelLogin, chatterLogin, chatterID, messageID, me
 							if terr := timeoutUser(channelLogin, chatterLogin, 1, fmt.Sprintf("Blocked term: %s", bt.Term)); terr != nil {
 								log.Println("blocked term delete fallback timeout error:", terr)
 							}
+						} else {
+							go PostDiscordModAlert(channelLogin, channelLogin, chatterLogin, "delete", fmt.Sprintf("Blocked term: %s", bt.Term))
 						}
 					case "timeout":
 						secs := bt.TimeoutSeconds
@@ -1534,6 +1536,7 @@ func timeoutUser(channelLogin, targetLogin string, seconds int, reason string) e
 		b, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("helix bans status %s: %s", resp.Status, string(b))
 	}
+	go PostDiscordModAlert(channelLogin, channelLogin, targetLogin, "timeout", reason)
 	return nil
 }
 
@@ -1666,6 +1669,7 @@ func banUser(channelLogin, targetLogin, reason string) error {
 		b, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("helix ban status %s: %s", resp.Status, string(b))
 	}
+	go PostDiscordModAlert(channelLogin, channelLogin, targetLogin, "ban", reason)
 	return nil
 }
 
