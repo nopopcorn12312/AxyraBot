@@ -837,6 +837,12 @@ func handleAuthStart(clientID string) http.HandlerFunc {
 			"user:read:broadcast",
 			"user:read:email",
 			"user:read:follows",
+
+			// Bot / chat identity scopes (needed when the bot account uses this flow)
+			"user:read:chat",
+			"user:write:chat",
+			"user:bot",
+			"channel:bot",
 		}, " ")
 		u := url.URL{
 			Scheme: "https",
