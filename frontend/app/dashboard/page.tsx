@@ -260,7 +260,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <main className="min-h-screen flex flex-col bg-[radial-gradient(circle_at_top,_#1e293b,_#020617)]">
+    <main className="h-screen flex flex-col overflow-hidden bg-[radial-gradient(circle_at_top,_#1e293b,_#020617)]">
       <header className="w-full flex items-center justify-between px-6 py-4">
         <div className="flex items-center gap-4 flex-1">
           <button
@@ -330,7 +330,7 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <div className="flex flex-1 w-full gap-6 px-4 pb-6 items-stretch">
+      <div className="flex flex-1 w-full gap-6 px-4 pb-6 items-stretch min-h-0">
         <div
           className={`${sidebarOpen ? "w-60" : "w-16"} flex flex-col rounded-2xl border border-slate-800 bg-slate-900/80 p-3 transition-all duration-200`}
         >
