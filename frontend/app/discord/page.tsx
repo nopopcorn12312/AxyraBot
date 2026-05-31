@@ -15,6 +15,139 @@ const discordClientId = process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID ?? "";
 type Guild = { id: string; name: string; icon: string };
 type Channel = { id: string; name: string };
 
+type ModuleCommand = { name: string; description: string };
+type ModuleConfig = { key: string; icon: string; label: string; description: string; commands: ModuleCommand[] };
+
+const discordModuleConfig: ModuleConfig[] = [
+  {
+    key: "moderation",
+    icon: "🛡️",
+    label: "Moderation",
+    description: "Comprehensive moderation toolkit: bans, kicks, timeouts, warnings, purge, lockdown, and full case logging.",
+    commands: [
+      { name: "ban", description: "Permanently ban a member from the server." },
+      { name: "kick", description: "Kick a member from the server." },
+      { name: "timeout", description: "Temporarily mute a member." },
+      { name: "untimeout", description: "Remove a timeout from a member." },
+      { name: "warn", description: "Issue a warning to a member." },
+      { name: "warnings", description: "View all warnings for a member." },
+      { name: "clearwarnings", description: "Clear all warnings for a member." },
+      { name: "delwarn", description: "Delete a specific warning by case ID." },
+      { name: "purge", description: "Bulk delete messages from a channel." },
+      { name: "lock", description: "Lock a channel from sending messages." },
+      { name: "unlock", description: "Unlock a previously locked channel." },
+      { name: "slowmode", description: "Set slowmode delay on a channel." },
+      { name: "softban", description: "Ban then immediately unban to delete message history." },
+      { name: "deafen", description: "Server-deafen a member in voice channels." },
+      { name: "undeafen", description: "Remove server deafen from a member." },
+      { name: "lockdown", description: "Lock or unlock all channels in the server at once." },
+      { name: "temprole", description: "Assign a role to a member for a limited time." },
+      { name: "rolepersist", description: "Toggle a role that automatically re-applies when the member rejoins." },
+      { name: "modlogs", description: "View the full moderation history for a member." },
+      { name: "modstats", description: "View moderator action statistics." },
+      { name: "case", description: "Look up the details of a specific mod case." },
+      { name: "reason", description: "Update the reason on a previous mod case." },
+      { name: "note", description: "Add a private staff note about a member." },
+      { name: "notes", description: "View all staff notes for a member." },
+      { name: "delnote", description: "Delete a specific staff note." },
+      { name: "clearnotes", description: "Clear all staff notes for a member." },
+      { name: "members", description: "List all members who have a specific role." },
+    ],
+  },
+  {
+    key: "manager",
+    icon: "⚙️",
+    label: "Manager",
+    description: "Server management utilities: announcements, role management, nickname changes, emote upload, and bot configuration.",
+    commands: [
+      { name: "announce", description: "Send a message as the bot to a target channel." },
+      { name: "role", description: "Toggle a role on or off for a member." },
+      { name: "addrole", description: "Create a new server role." },
+      { name: "delrole", description: "Delete an existing server role." },
+      { name: "rolecolor", description: "Change a role's display color." },
+      { name: "rolename", description: "Rename a server role." },
+      { name: "setnick", description: "Change a member's nickname." },
+      { name: "addmod", description: "Designate a role as a moderator role for the bot." },
+      { name: "delmod", description: "Remove a role from the moderator role list." },
+      { name: "listmods", description: "List all roles designated as moderators." },
+      { name: "addemote", description: "Add a custom emoji from an image URL." },
+      { name: "ignorechannel", description: "Toggle bot command ignore for a specific channel." },
+      { name: "module", description: "Enable or disable bot modules via slash command." },
+    ],
+  },
+  {
+    key: "roles",
+    icon: "🎭",
+    label: "Roles",
+    description: "Self-assignable role system. Let members join and leave roles themselves with configurable joinable ranks.",
+    commands: [
+      { name: "rank", description: "Join or leave a self-assignable rank role." },
+      { name: "ranks", description: "List all joinable rank roles in the server." },
+      { name: "addrank", description: "Make a role self-assignable as a rank." },
+      { name: "delrank", description: "Remove a role from the self-assignable ranks list." },
+      { name: "roleinfo", description: "Get detailed information about a role." },
+    ],
+  },
+  {
+    key: "info",
+    icon: "ℹ️",
+    label: "Info",
+    description: "Utility and information commands: server info, member lookup, AFK system, highlights, and reminders.",
+    commands: [
+      { name: "serverinfo", description: "Display detailed information about the server." },
+      { name: "whois", description: "Show profile, roles, and join info for a member." },
+      { name: "avatar", description: "Show the full-size avatar of a user." },
+      { name: "membercount", description: "Display the current server member count." },
+      { name: "ping", description: "Check the bot's response time." },
+      { name: "emotes", description: "List all custom emojis in the server." },
+      { name: "inviteinfo", description: "Show usage stats for a server invite link." },
+      { name: "afk", description: "Set your AFK status and message." },
+      { name: "highlights", description: "Get notified when a keyword is mentioned while you're away." },
+      { name: "remindme", description: "Set a reminder for yourself at a future time." },
+    ],
+  },
+  {
+    key: "fun",
+    icon: "🎉",
+    label: "Fun",
+    description: "Entertainment commands: polls, dice rolls, animal pictures, trivia, color preview, and external lookups.",
+    commands: [
+      { name: "poll", description: "Start a reaction-based poll." },
+      { name: "flip", description: "Flip a coin — heads or tails." },
+      { name: "roll", description: "Roll dice (e.g. 2d6)." },
+      { name: "rps", description: "Play rock, paper, scissors against the bot." },
+      { name: "dadjoke", description: "Get a random dad joke." },
+      { name: "cat", description: "Get a random cat picture." },
+      { name: "dog", description: "Get a random dog picture." },
+      { name: "pug", description: "Get a random pug picture." },
+      { name: "color", description: "Preview a hex color as an embed." },
+      { name: "randomcolor", description: "Generate and display a random color." },
+      { name: "pokemon", description: "Look up a Pokémon's stats and info." },
+      { name: "github", description: "Look up a GitHub user or repository." },
+      { name: "space", description: "Get the current position of the ISS." },
+    ],
+  },
+  {
+    key: "tags",
+    icon: "🏷️",
+    label: "Tags",
+    description: "Store and retrieve reusable text snippets. Great for FAQs, rules, or any custom response shortcut.",
+    commands: [
+      { name: "tag", description: "Get, create, edit, or delete a named text snippet." },
+      { name: "tags", description: "List all tags saved in this server." },
+    ],
+  },
+  {
+    key: "giveaway",
+    icon: "🎁",
+    label: "Giveaway",
+    description: "Full giveaway system with scheduled resolution, re-roll support, and winner announcements.",
+    commands: [
+      { name: "giveaway", description: "Start a giveaway, end it early, or re-roll winners." },
+    ],
+  },
+];
+
 export default function DiscordSettingsPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isEditor, setIsEditor] = useState(false);
@@ -56,7 +189,11 @@ export default function DiscordSettingsPage() {
   const [roleSaveSuccess, setRoleSaveSuccess] = useState(false);
   const [roleSaveError, setRoleSaveError] = useState<string | null>(null);
 
-  // Notification template editing state
+  // Discord guild module state
+  const [guildModules, setGuildModules] = useState<Record<string, boolean>>({});
+  const [loadingModules, setLoadingModules] = useState(false);
+  const [savingModule, setSavingModule] = useState<string | null>(null);
+  const [expandedModule, setExpandedModule] = useState<string | null>(null);
   type NotifType = "live" | "mod" | "birthday";
   type Templates = Record<NotifType, string>;
   const defaultTemplates: Templates = {
@@ -208,6 +345,22 @@ export default function DiscordSettingsPage() {
       .catch(() => {});
   }, [channelLogin]);
 
+  // Load guild module settings when selected guild changes
+  useEffect(() => {
+    if (!selectedGuildId) {
+      setGuildModules({});
+      return;
+    }
+    setLoadingModules(true);
+    fetch(`${backendUrl}/discord/guild-modules?guild_id=${encodeURIComponent(selectedGuildId)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.modules) setGuildModules(data.modules);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingModules(false));
+  }, [selectedGuildId]);
+
   useEffect(() => {
     if (!menuOpen) return;
     function handleClickOutside(e: MouseEvent) {
@@ -289,8 +442,27 @@ export default function DiscordSettingsPage() {
     }
   };
 
-  const handleSaveTemplate = async () => {
-    if (!channelLogin || !editingNotif) return;
+  const handleModuleToggle = async (moduleName: string, next: boolean) => {
+    if (!selectedGuildId) return;
+    setGuildModules((prev) => ({ ...prev, [moduleName]: next }));
+    setSavingModule(moduleName);
+    try {
+      const res = await fetch(`${backendUrl}/discord/guild-modules`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ guild_id: selectedGuildId, module: moduleName, enabled: next }),
+      });
+      if (!res.ok) {
+        setGuildModules((prev) => ({ ...prev, [moduleName]: !next }));
+      }
+    } catch {
+      setGuildModules((prev) => ({ ...prev, [moduleName]: !next }));
+    } finally {
+      setSavingModule(null);
+    }
+  };
+
+  const handleSaveTemplate = async () => {    if (!channelLogin || !editingNotif) return;
     setSavingTemplate(true);
     setTemplateSaveError(null);
     setTemplateSaveSuccess(false);
@@ -755,14 +927,95 @@ export default function DiscordSettingsPage() {
                   </div>
                 ) : null}
 
-                {/* Slash commands info */}
-                <div className="border-t border-slate-800 pt-5 flex flex-col gap-3">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Available slash commands</p>
-                  <div className="flex items-start gap-3 rounded-lg border border-slate-700/60 bg-slate-950/40 p-3">
-                    <code className="shrink-0 font-mono text-sm text-accent">/commands</code>
-                    <span className="text-sm text-slate-400">Lists all custom Twitch commands for your channel. Works in any server the bot is in.</span>
+                {/* ── Bot Modules ── */}
+                {selectedGuildId && (
+                <div className="border-t border-slate-800 pt-5 flex flex-col gap-4">
+                  <div className="flex flex-col gap-1">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Bot Modules</p>
+                    <p className="text-xs text-slate-500">Enable or disable groups of slash commands for this server. Disabled modules hide all commands in that group from use.</p>
                   </div>
+
+                  {loadingModules ? (
+                    <div className="flex items-center gap-3 py-2">
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-600 border-t-accent" />
+                      <span className="text-sm text-slate-500">Loading modules…</span>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                      {discordModuleConfig.map((mod) => {
+                        const enabled = guildModules[mod.key] !== false;
+                        const isExpanded = expandedModule === mod.key;
+                        const isSaving = savingModule === mod.key;
+                        return (
+                          <div
+                            key={mod.key}
+                            className={`flex flex-col rounded-xl border transition ${
+                              enabled
+                                ? "border-slate-700/60 bg-slate-950/40"
+                                : "border-slate-800/60 bg-slate-900/30 opacity-60"
+                            }`}
+                          >
+                            {/* Module header */}
+                            <div className="flex items-start gap-3 p-4">
+                              <span className="text-xl mt-0.5 shrink-0">{mod.icon}</span>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-sm font-semibold text-slate-100">{mod.label}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => !isSaving && handleModuleToggle(mod.key, !enabled)}
+                                    disabled={isSaving}
+                                    className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${
+                                      enabled ? "bg-emerald-500" : "bg-slate-600"
+                                    } ${isSaving ? "opacity-50" : ""}`}
+                                  >
+                                    <span
+                                      className={`inline-block h-4 w-4 transform rounded-full bg-slate-950 shadow transition-transform ${
+                                        enabled ? "translate-x-4" : "translate-x-1"
+                                      }`}
+                                    />
+                                  </button>
+                                </div>
+                                <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{mod.description}</p>
+                              </div>
+                            </div>
+
+                            {/* Commands list toggle */}
+                            <button
+                              type="button"
+                              onClick={() => setExpandedModule(isExpanded ? null : mod.key)}
+                              className="flex items-center justify-between border-t border-slate-800/60 px-4 py-2 text-xs text-slate-500 hover:text-slate-300 hover:bg-slate-800/30 transition rounded-b-xl"
+                            >
+                              <span>{mod.commands.length} command{mod.commands.length !== 1 ? "s" : ""}</span>
+                              <svg
+                                viewBox="0 0 20 20"
+                                fill="currentColor"
+                                className={`h-3.5 w-3.5 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                              >
+                                <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                              </svg>
+                            </button>
+
+                            {/* Expanded commands list */}
+                            {isExpanded && (
+                              <div className="border-t border-slate-800/60 px-4 py-3 flex flex-col gap-1.5">
+                                {mod.commands.map((cmd) => (
+                                  <div key={cmd.name} className="flex items-start gap-2.5">
+                                    <code className="shrink-0 rounded bg-slate-800 px-1.5 py-0.5 text-xs font-mono text-accent">
+                                      /{cmd.name}
+                                    </code>
+                                    <span className="text-xs text-slate-500 leading-relaxed">{cmd.description}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
+                )}
 
               </div>
             </div>

@@ -48,6 +48,7 @@ func startHTTPServer(clientID, clientSecret string) {
 	mux.HandleFunc("/discord/roles", withCORS(handleDiscordRoles))
 	mux.HandleFunc("/discord/role-mappings", withCORS(handleDiscordRoleMappings))
 	mux.HandleFunc("/discord/notification-templates", withCORS(handleDiscordNotificationTemplates))
+	mux.HandleFunc("/discord/guild-modules", withCORS(handleDiscordGuildModules))
 
 	// Optional Nightbot OAuth integration for importing commands without
 	// copy/paste. These handlers are only registered when all required
@@ -1978,6 +1979,62 @@ func handleDiscordSettings(w http.ResponseWriter, r *http.Request) {
 			BdayChannelID:    strings.TrimSpace(body.BdayChannelID),
 		}); err != nil {
 			log.Println("save discord settings:", err)
+			http.Error(w, "db error", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "ok")
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
+}
+
+// handleDiscordGuildModules handles GET and POST for per-guild bot module
+// enable/disable settings.
+func handleDiscordGuildModules(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		guildID := strings.TrimSpace(r.URL.Query().Get("guild_id"))
+		if guildID == "" {
+			http.Error(w, "missing guild_id", http.StatusBadRequest)
+			return
+		}
+		modules, err := GetDiscordGuildModules(guildID)
+		if err != nil {
+			log.Println("get discord guild modules:", err)
+			http.Error(w, "db error", http.StatusInternalServerError)
+			return
+		}
+		// Ensure all 7 known modules are represented (default true if not in DB).
+		allModules := []string{"moderation", "manager", "roles", "info", "fun", "tags", "giveaway"}
+		out := make(map[string]bool, len(allModules))
+		for _, m := range allModules {
+			if v, ok := modules[m]; ok {
+				out[m] = v
+			} else {
+				out[m] = true
+			}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{"modules": out})
+	case http.MethodPost:
+		var body struct {
+			GuildID string `json:"guild_id"`
+			Module  string `json:"module"`
+			Enabled bool   `json:"enabled"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "bad json", http.StatusBadRequest)
+			return
+		}
+		guildID := strings.TrimSpace(body.GuildID)
+		module := strings.ToLower(strings.TrimSpace(body.Module))
+		if guildID == "" || module == "" {
+			http.Error(w, "missing guild_id or module", http.StatusBadRequest)
+			return
+		}
+		if err := SetDiscordGuildModuleEnabled(guildID, module, body.Enabled); err != nil {
+			log.Println("set discord guild module:", err)
 			http.Error(w, "db error", http.StatusInternalServerError)
 			return
 		}
