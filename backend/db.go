@@ -819,3 +819,91 @@ func DeleteBirthdayCommandMessage(broadcasterLogin, commandName string) error {
 	_, err := db.Exec(`DELETE FROM birthday_command_messages WHERE broadcaster_login=$1 AND command_name=$2`, broadcasterLogin, commandName)
 	return err
 }
+// ─── Blocked Terms ────────────────────────────────────────────────────────────
+
+// BlockedTerm represents a single stored blocked term for a broadcaster.
+type BlockedTerm struct {
+	ID               int64
+	BroadcasterLogin string
+	Term             string
+	Action           string // "timeout", "delete", "ban"
+	TimeoutSeconds   int
+	CreatedAt        time.Time
+}
+
+// EnsureBlockedTermsTable creates the blocked_terms table if it does not exist.
+func EnsureBlockedTermsTable() error {
+	if db == nil {
+		return nil
+	}
+	_, err := db.Exec(`
+	CREATE TABLE IF NOT EXISTS blocked_terms (
+		id                BIGSERIAL PRIMARY KEY,
+		broadcaster_login TEXT      NOT NULL,
+		term              TEXT      NOT NULL,
+		action            TEXT      NOT NULL DEFAULT 'delete',
+		timeout_seconds   INT       NOT NULL DEFAULT 60,
+		created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+		UNIQUE (broadcaster_login, term)
+	);`)
+	return err
+}
+
+// AddBlockedTerm inserts or replaces a blocked term for a broadcaster.
+func AddBlockedTerm(broadcasterLogin, term, action string, timeoutSeconds int) (int64, error) {
+	if db == nil {
+		return 0, fmt.Errorf("db not initialized")
+	}
+	broadcasterLogin = strings.ToLower(strings.TrimSpace(broadcasterLogin))
+	term = strings.ToLower(strings.TrimSpace(term))
+	action = strings.ToLower(strings.TrimSpace(action))
+	var id int64
+	row := db.QueryRow(`
+	INSERT INTO blocked_terms (broadcaster_login, term, action, timeout_seconds)
+	VALUES ($1, $2, $3, $4)
+	ON CONFLICT (broadcaster_login, term) DO UPDATE
+	SET action = EXCLUDED.action, timeout_seconds = EXCLUDED.timeout_seconds
+	RETURNING id;
+	`, broadcasterLogin, term, action, timeoutSeconds)
+	if err := row.Scan(&id); err != nil {
+		return 0, err
+	}
+	return id, nil
+}
+
+// ListBlockedTerms returns all blocked terms for a broadcaster ordered alphabetically.
+func ListBlockedTerms(broadcasterLogin string) ([]BlockedTerm, error) {
+	res := []BlockedTerm{}
+	if db == nil {
+		return res, nil
+	}
+	broadcasterLogin = strings.ToLower(strings.TrimSpace(broadcasterLogin))
+	rows, err := db.Query(`
+	SELECT id, broadcaster_login, term, action, timeout_seconds, created_at
+	FROM blocked_terms
+	WHERE broadcaster_login = $1
+	ORDER BY term;
+	`, broadcasterLogin)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var t BlockedTerm
+		if err := rows.Scan(&t.ID, &t.BroadcasterLogin, &t.Term, &t.Action, &t.TimeoutSeconds, &t.CreatedAt); err != nil {
+			return nil, err
+		}
+		res = append(res, t)
+	}
+	return res, nil
+}
+
+// DeleteBlockedTerm removes a blocked term by ID for a broadcaster.
+func DeleteBlockedTerm(broadcasterLogin string, id int64) error {
+	if db == nil {
+		return nil
+	}
+	broadcasterLogin = strings.ToLower(strings.TrimSpace(broadcasterLogin))
+	_, err := db.Exec(`DELETE FROM blocked_terms WHERE broadcaster_login=$1 AND id=$2`, broadcasterLogin, id)
+	return err
+}

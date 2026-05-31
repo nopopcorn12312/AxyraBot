@@ -9,6 +9,14 @@ import { usePersistentSectionState } from "../../hooks/usePersistentSectionState
 import AxyraLogo from "../../images/AxyraBotPFP.png";
 
 const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL || "";
+const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://your-backend.onrender.com";
+
+type BlockedTerm = {
+  id: number;
+  term: string;
+  action: "timeout" | "delete" | "ban";
+  timeout_seconds: number;
+};
 
 export default function BlockedTermsPage() {
   const pathname = usePathname();
@@ -40,7 +48,34 @@ export default function BlockedTermsPage() {
   const [newTerm, setNewTerm] = useState("");
   const [newAction, setNewAction] = useState<"timeout" | "delete" | "ban">("delete");
   const [timeoutSeconds, setTimeoutSeconds] = useState("60");
+  const [addError, setAddError] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
+
+  // Blocked terms list
+  const [blockedTerms, setBlockedTerms] = useState<BlockedTerm[]>([]);
+  const [channelLogin, setChannelLogin] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const login = window.localStorage.getItem("axyra.login");
+    if (login) setChannelLogin(login.toLowerCase());
+  }, []);
+
+  useEffect(() => {
+    if (!channelLogin) return;
+    const controller = new AbortController();
+    (async () => {
+      try {
+        const res = await fetch(`${backendUrl}/moderation/blocked-terms?login=${encodeURIComponent(channelLogin)}`, { signal: controller.signal });
+        if (!res.ok) return;
+        const data: { terms?: BlockedTerm[] } = await res.json();
+        setBlockedTerms(data.terms ?? []);
+      } catch { /* ignore */ }
+    })();
+    return () => controller.abort();
+  }, [channelLogin]);
 
   useEffect(() => {
     if (!showAddModal) return;
@@ -286,18 +321,17 @@ export default function BlockedTermsPage() {
         </div>
 
         <main className="flex-1 overflow-hidden">
-          <div className="h-full rounded-2xl border border-slate-800 bg-slate-900/80 p-6 shadow-lg shadow-slate-950/40">
-            <div className="mb-6 flex items-center justify-between gap-4">
+          <div className="h-full rounded-2xl border border-slate-800 bg-slate-900/80 p-6 shadow-lg shadow-slate-950/40 flex flex-col">
+            <div className="mb-4 flex items-center justify-between gap-4">
               <div>
                 <h1 className="text-xl font-semibold text-slate-50">Blocked Terms</h1>
                 <p className="mt-1 text-sm text-slate-400">
-                  Manage words and phrases that will be blocked in your chat. This is a placeholder
-                  page; moderation tools will be added here later.
+                  Words and phrases that trigger an automatic action in your chat.
                 </p>
               </div>
               <button
                 type="button"
-                onClick={() => { setNewTerm(""); setNewAction("delete"); setTimeoutSeconds("60"); setShowAddModal(true); }}
+                onClick={() => { setNewTerm(""); setNewAction("delete"); setTimeoutSeconds("60"); setAddError(null); setShowAddModal(true); }}
                 className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent/90 transition shadow-[0_0_14px_rgba(129,140,248,0.4)]"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4"><path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" /></svg>
@@ -305,11 +339,59 @@ export default function BlockedTermsPage() {
               </button>
             </div>
 
-            <div className="mt-4 rounded-xl border border-dashed border-slate-700 bg-slate-900/60 p-6 text-sm text-slate-400">
-              <p>
-                Blocked term management UI will appear here. For now, use this page as an entry
-                point for the Moderation section.
-              </p>
+            <div className="flex-1 overflow-auto rounded-xl border border-slate-800 bg-slate-950/60 min-h-0">
+              <table className="min-w-full w-full table-fixed h-full text-sm text-left">
+                <thead className="bg-slate-900/80 text-slate-300 sticky top-0 z-10">
+                  <tr>
+                    <th className="px-4 py-3 font-semibold">Term</th>
+                    <th className="px-4 py-3 font-semibold w-40">Action</th>
+                    <th className="px-4 py-3 font-semibold w-24 text-center">Delete</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {blockedTerms.map((row) => (
+                    <tr key={row.id} className="border-t border-slate-800 hover:bg-slate-900/60">
+                      <td className="px-4 py-2 font-mono text-slate-100 truncate">{row.term}</td>
+                      <td className="px-4 py-2 text-slate-300 capitalize">
+                        {row.action === "timeout" ? `Timeout (${row.timeout_seconds}s)` : row.action === "ban" ? "Ban" : "Delete message"}
+                      </td>
+                      <td className="px-4 py-2 text-center">
+                        <button
+                          type="button"
+                          disabled={deletingId === row.id}
+                          onClick={async () => {
+                            if (!channelLogin) return;
+                            setDeletingId(row.id);
+                            try {
+                              const res = await fetch(`${backendUrl}/moderation/blocked-terms/delete`, {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ login: channelLogin, id: row.id }),
+                              });
+                              if (res.ok) setBlockedTerms((prev) => prev.filter((t) => t.id !== row.id));
+                            } finally {
+                              setDeletingId(null);
+                            }
+                          }}
+                          className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-red-700 bg-red-700/80 text-white hover:bg-red-600/90 disabled:opacity-50"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+                            <path d="M6 2a1 1 0 0 0-1 1v1H3.5a.5.5 0 0 0 0 1h.54l.76 10.137A2 2 0 0 0 6.79 17h6.42a2 2 0 0 0 1.99-1.863L15.96 5H16.5a.5.5 0 0 0 0-1H15V3a1 1 0 0 0-1-1H6Zm1 2V3h6v1H7Z" />
+                          </svg>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {blockedTerms.length === 0 && (
+                    <tr>
+                      <td colSpan={3} className="px-4 py-6 text-center text-slate-400">
+                        No blocked terms yet. Click &ldquo;Add Blocked Term&rdquo; to get started.
+                      </td>
+                    </tr>
+                  )}
+                  <tr className="h-full border-t border-slate-800"><td colSpan={3} /></tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </main>
@@ -376,25 +458,61 @@ export default function BlockedTermsPage() {
                 </div>
               </div>
 
+              {addError && (
+                <div className="text-xs text-red-400">{addError}</div>
+              )}
               {/* Buttons */}
               <div className="flex justify-end gap-2 mt-1">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
                   className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800 transition"
+                  disabled={adding}
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    // TODO: submit to backend
-                    setShowAddModal(false);
+                  onClick={async () => {
+                    if (!channelLogin || !newTerm.trim()) return;
+                    setAdding(true);
+                    setAddError(null);
+                    try {
+                      const res = await fetch(`${backendUrl}/moderation/blocked-terms`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          login: channelLogin,
+                          term: newTerm.trim(),
+                          action: newAction,
+                          timeout_seconds: newAction === "timeout" ? parseInt(timeoutSeconds) || 60 : 60,
+                        }),
+                      });
+                      if (!res.ok) {
+                        setAddError("Failed to add term. Please try again.");
+                      } else {
+                        const data: { id: number } = await res.json();
+                        setBlockedTerms((prev) => {
+                          const next = [...prev.filter((t) => t.term.toLowerCase() !== newTerm.trim().toLowerCase()), {
+                            id: data.id,
+                            term: newTerm.trim().toLowerCase(),
+                            action: newAction,
+                            timeout_seconds: newAction === "timeout" ? parseInt(timeoutSeconds) || 60 : 60,
+                          }];
+                          return next.sort((a, b) => a.term.localeCompare(b.term));
+                        });
+                        setShowAddModal(false);
+                      }
+                    } catch {
+                      setAddError("Network error. Please try again.");
+                    } finally {
+                      setAdding(false);
+                    }
                   }}
-                  disabled={!newTerm.trim()}
+                  disabled={!newTerm.trim() || adding}
                   className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent/90 transition disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  Add Term
+                  {adding ? "Adding..." : "Add Term"}
                 </button>
               </div>
             </div>

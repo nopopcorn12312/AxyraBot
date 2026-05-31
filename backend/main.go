@@ -166,6 +166,9 @@ func main() {
 				log.Println("failed ensure schema:", err)
 			} else {
 				log.Println("database initialized successfully")
+				if err := EnsureBlockedTermsTable(); err != nil {
+					log.Println("failed to ensure blocked_terms table:", err)
+				}
 				// start postgres notifier for dynamic joins
 				if err := StartNotifier(dbURL); err != nil {
 					log.Println("failed to start notifier:", err)
