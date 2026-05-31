@@ -599,25 +599,27 @@ export default function CommandsPage() {
                 </div>
               </div>
               {view === "custom" && (
-                <div className="relative">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 pointer-events-none">
-                    <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9Z" clipRule="evenodd" />
-                  </svg>
-                  <input
-                    type="text"
-                    placeholder="Search commands..."
-                    value={commandSearch}
-                    onChange={(e) => setCommandSearch(e.target.value)}
-                    className="pl-10 pr-4 py-2 rounded-lg border border-slate-700 bg-slate-950/60 text-base text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-accent/60 w-64"
-                  />
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 pointer-events-none">
+                      <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9Z" clipRule="evenodd" />
+                    </svg>
+                    <input
+                      type="text"
+                      placeholder="Search commands..."
+                      value={commandSearch}
+                      onChange={(e) => setCommandSearch(e.target.value)}
+                      className="pl-10 pr-4 py-2 rounded-lg border border-slate-700 bg-slate-950/60 text-base text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-accent/60 w-64"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { setNewCmdName(""); setNewCmdResponse(""); setAddCmdError(null); setShowAddModal(true); }}
+                    className="px-4 py-2 rounded-lg bg-accent text-white text-sm font-medium hover:bg-accent/90 transition shadow-[0_0_14px_rgba(129,140,248,0.4)] whitespace-nowrap"
+                  >
+                    Add +
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => { setNewCmdName(""); setNewCmdResponse(""); setAddCmdError(null); setShowAddModal(true); }}
-                  className="px-4 py-2 rounded-lg bg-accent text-white text-sm font-medium hover:bg-accent/90 transition shadow-[0_0_14px_rgba(129,140,248,0.4)] whitespace-nowrap"
-                >
-                  Add +
-                </button>
               )}
             </div>
 
