@@ -3244,9 +3244,22 @@ func tokenRefresher(path, clientID, clientSecret string) {
 	for {
 		t, err := loadTokens(path)
 		if err != nil || t.RefreshToken == "" {
-			// no refresh token available; sleep and retry later
-			time.Sleep(30 * time.Second)
-			continue
+			// tokens.json missing or empty (common on cloud with ephemeral storage).
+			// Fall back to the DB so the in-process token stays fresh.
+			if db != nil {
+				botLogin := strings.ToLower(os.Getenv("TWITCH_BOT_USERNAME"))
+				if botLogin == "" {
+					botLogin = "axyrabot"
+				}
+				if access, refresh, dbErr := GetUserTokens(botLogin); dbErr == nil && refresh != "" {
+					t = &tokenFile{AccessToken: access, RefreshToken: refresh, Expiry: 0}
+					err = nil
+				}
+			}
+			if err != nil || t == nil || t.RefreshToken == "" {
+				time.Sleep(30 * time.Second)
+				continue
+			}
 		}
 
 		// if token expires in >60s, sleep until near expiry

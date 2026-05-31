@@ -557,7 +557,7 @@ export default function DashboardPage() {
                   </p>
                 )}
                 {!loadingActivity && !activityError && activity.length > 0 && (
-                  <ul className="mt-1 space-y-3 text-sm">
+                  <ul className="mt-1 text-sm divide-y divide-slate-800/60">
                     {activity.map((item, idx) => {
                       const source = item.source?.toLowerCase();
                       const isTwitch = source === "twitch";
@@ -565,10 +565,18 @@ export default function DashboardPage() {
                         ? "bg-violet-600/80 text-violet-50 border-violet-400/60"
                         : "bg-sky-600/80 text-sky-50 border-sky-400/60";
                       const badgeLabel = isTwitch ? "Twitch" : "AxyraBot";
+                      const isEven = idx % 2 === 0;
                       return (
-                        <li key={`${item.timestamp}-${idx}`} className="flex items-start gap-3">
+                        <li
+                          key={`${item.timestamp}-${idx}`}
+                          className={`flex items-start gap-3 px-2 py-2.5 rounded-lg ${
+                            isEven
+                              ? "bg-slate-900/40"
+                              : "bg-slate-950/60"
+                          }`}
+                        >
                           <span
-                            className={`mt-1 h-2 w-2 rounded-full ${
+                            className={`mt-1 h-2 w-2 shrink-0 rounded-full ${
                               isTwitch ? "bg-violet-400" : "bg-sky-400"
                             }`}
                           />
