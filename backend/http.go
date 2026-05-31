@@ -2,9 +2,12 @@ package main
 
 import (
 	"bytes"
+	"crypto/hmac"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -54,6 +57,7 @@ func startHTTPServer(clientID, clientSecret string) {
 
 	mux.HandleFunc("/audit/logs", withCORS(handleAuditLogs))
 	mux.HandleFunc("/categories/search", withCORS(handleCategorySearch(clientID)))
+	mux.HandleFunc("/eventsub/callback", handleEventSubWebhook)
 	addr := ":8080"
 	if p := os.Getenv("PORT"); p != "" {
 		addr = ":" + p
@@ -1783,4 +1787,97 @@ func handleBlockedTermsDelete(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, "ok")
+}
+
+// handleEventSubWebhook receives Twitch EventSub webhook notifications.
+// It is used exclusively for channel.chat.message so the bot is subscribed
+// with an App Access Token + webhook transport, which is the requirement for
+// the bot to appear in the "Chat Bots" section of Users in Chat.
+//
+// Required env var: TWITCH_EVENTSUB_SECRET  (set this to the secret you pass
+// when creating the subscription; min 10 chars, max 100 chars).
+func handleEventSubWebhook(w http.ResponseWriter, r *http.Request) {
+	// Read the full body so we can verify the HMAC signature.
+	body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20)) // 1 MB limit
+	if err != nil {
+		http.Error(w, "failed to read body", http.StatusBadRequest)
+		return
+	}
+
+	secret := os.Getenv("TWITCH_EVENTSUB_SECRET")
+	if secret == "" {
+		http.Error(w, "webhook secret not configured", http.StatusInternalServerError)
+		return
+	}
+
+	// Verify HMAC-SHA256 signature: HMAC(secret, msgID + msgTimestamp + body)
+	msgID := r.Header.Get("Twitch-Eventsub-Message-Id")
+	msgTS := r.Header.Get("Twitch-Eventsub-Message-Timestamp")
+	sigHeader := r.Header.Get("Twitch-Eventsub-Message-Signature") // "sha256=<hex>"
+
+	mac := hmac.New(sha256.New, []byte(secret))
+	mac.Write([]byte(msgID))
+	mac.Write([]byte(msgTS))
+	mac.Write(body)
+	expected := "sha256=" + fmt.Sprintf("%x", mac.Sum(nil))
+
+	if !hmac.Equal([]byte(expected), []byte(sigHeader)) {
+		http.Error(w, "invalid signature", http.StatusForbidden)
+		return
+	}
+
+	msgType := r.Header.Get("Twitch-Eventsub-Message-Type")
+
+	switch msgType {
+	case "webhook_callback_verification":
+		// Twitch sends this once to confirm the endpoint. Echo the challenge.
+		var payload struct {
+			Challenge string `json:"challenge"`
+		}
+		if err := json.Unmarshal(body, &payload); err != nil || payload.Challenge == "" {
+			http.Error(w, "invalid challenge payload", http.StatusBadRequest)
+			return
+		}
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, payload.Challenge)
+
+	case "notification":
+		// Process the event asynchronously so Twitch gets a fast 200 OK.
+		go func(b []byte) {
+			var envelope struct {
+				Subscription struct {
+					Type string `json:"type"`
+				} `json:"subscription"`
+				Event map[string]interface{} `json:"event"`
+			}
+			if err := json.Unmarshal(b, &envelope); err != nil {
+				log.Println("[webhook] failed to parse notification:", err)
+				return
+			}
+			if envelope.Subscription.Type != "channel.chat.message" {
+				return
+			}
+			event := envelope.Event
+			channelLogin, _ := event["broadcaster_user_login"].(string)
+			chatterLogin, _ := event["chatter_user_login"].(string)
+			chatterID, _ := event["chatter_user_id"].(string)
+			messageID, _ := event["message_id"].(string)
+			msgText := ""
+			if msgObj, ok := event["message"].(map[string]interface{}); ok {
+				msgText, _ = msgObj["text"].(string)
+			}
+			if channelLogin != "" && msgText != "" {
+				handleChatMessageEvent(channelLogin, chatterLogin, chatterID, messageID, msgText)
+			}
+		}(body)
+		w.WriteHeader(http.StatusNoContent)
+
+	case "revocation":
+		log.Println("[webhook] subscription revoked:", r.Header.Get("Twitch-Eventsub-Subscription-Type"))
+		w.WriteHeader(http.StatusNoContent)
+
+	default:
+		w.WriteHeader(http.StatusNoContent)
+	}
 }

@@ -3044,110 +3044,115 @@ func registerEventSubSubscriptions(appToken, clientID, channel, tokensPath strin
 	// tokensPath is currently unused but kept for compatibility with callers.
 	_ = tokensPath
 
-	// wait for session id to be set
+	// bot user access token for WebSocket-based subscriptions (channel.follow, stream.online)
+	botToken := ""
+	if bt := os.Getenv("TWITCH_BOT_OAUTH"); bt != "" {
+		botToken = strings.TrimPrefix(bt, "oauth:")
+	}
+
+	// resolve bot user id (needed as moderator_user_id for channel.follow)
+	botLogin := os.Getenv("TWITCH_BOT_USERNAME")
+	if botLogin == "" {
+		botLogin = "AxyraBot"
+	}
+	botID := ""
+	if appToken != "" {
+		if id, err := getUserID(strings.ToLower(botLogin), appToken, clientID); err != nil {
+			log.Println("failed to resolve bot id:", err)
+		} else {
+			botID = id
+		}
+	}
+
+	// Webhook secret for channel.chat.message subscriptions.
+	webhookSecret := os.Getenv("TWITCH_EVENTSUB_SECRET")
+	// Public callback URL that Twitch will POST notifications to.
+	callbackURL := os.Getenv("TWITCH_EVENTSUB_CALLBACK_URL") // e.g. https://yourdomain.com/eventsub/callback
+
+	// Determine list of channels to register EventSub for.
+	channels := []string{}
+	if db != nil {
+		if cs, err := GetJoinedChannels(); err == nil && len(cs) > 0 {
+			channels = cs
+		}
+	}
+	if len(channels) == 0 && channel != "" {
+		channels = []string{channel}
+	}
+	if len(channels) == 0 {
+		log.Println("no channels available for EventSub registration; skipping")
+		return
+	}
+
+	// ── Webhook subscriptions (channel.chat.message) ─────────────────────────
+	// Using webhook + app token is what qualifies the bot for the "Chat Bots"
+	// section in the Users in Chat viewer list.
+	if webhookSecret != "" && callbackURL != "" && appToken != "" && botID != "" {
+		for _, ch := range channels {
+			broadcasterID, err := getUserID(ch, appToken, clientID)
+			if err != nil {
+				log.Println("failed to resolve broadcaster id for webhook sub", ch, ":", err)
+				continue
+			}
+			cond := map[string]string{
+				"broadcaster_user_id": broadcasterID,
+				"user_id":             botID,
+			}
+			if err := createEventSubSubscription(appToken, clientID, "channel.chat.message", "1", cond, "", "webhook", callbackURL, webhookSecret); err != nil {
+				log.Println("failed creating webhook channel.chat.message for", ch, ":", err)
+			}
+			time.Sleep(300 * time.Millisecond)
+		}
+	} else {
+		log.Println("webhook channel.chat.message skipped; set TWITCH_EVENTSUB_SECRET, TWITCH_EVENTSUB_CALLBACK_URL, and ensure app token + bot ID are available")
+	}
+
+	// ── WebSocket subscriptions (channel.follow, stream.online) ──────────────
+	// These stay on the WebSocket transport. Twitch requires a user access token
+	// for WebSocket EventSub; app tokens only work with webhook transport.
+	if botToken == "" {
+		log.Println("skipping WebSocket EventSub subscriptions; TWITCH_BOT_OAUTH not set")
+		return
+	}
+
+	// Wait for the WebSocket session ID before registering WebSocket subs.
 	deadline := time.Now().Add(20 * time.Second)
 	for time.Now().Before(deadline) {
 		eventSubMu.Lock()
 		sid := eventSubSessionID
 		eventSubMu.Unlock()
 		if sid != "" {
-			// Determine list of channels to register EventSub for.
-			channels := []string{}
-			if db != nil {
-				if cs, err := GetJoinedChannels(); err == nil && len(cs) > 0 {
-					channels = cs
-				}
-			}
-			if len(channels) == 0 && channel != "" {
-				channels = []string{channel}
-			}
-			if len(channels) == 0 {
-				log.Println("no channels available for EventSub registration; skipping")
-				return
-			}
-
-			// Subscribe to chat messages and follows so we can both read chat
-			// and thank users when they follow the channel. Separately, we
-			// subscribe to stream.online events to announce when channels go live.
-			subs := []string{"channel.chat.message", "channel.follow"}
-
-			// bot user access token for chat-related EventSub (channel.chat.message)
-			botToken := ""
-			if bt := os.Getenv("TWITCH_BOT_OAUTH"); bt != "" {
-				botToken = strings.TrimPrefix(bt, "oauth:")
-			}
-
-			// resolve bot user id once for channel.chat.message subscriptions
-			botLogin := os.Getenv("TWITCH_BOT_USERNAME")
-			if botLogin == "" {
-				botLogin = "AxyraBot"
-			}
-			botID := ""
-			if appToken != "" {
-				if id, err := getUserID(strings.ToLower(botLogin), appToken, clientID); err != nil {
-					log.Println("failed to resolve bot id for channel.chat.message:", err)
-				} else {
-					botID = id
-				}
-			}
-
-			// For each channel, resolve its broadcaster id and create subscriptions.
 			for _, ch := range channels {
 				broadcasterID, err := getUserID(ch, appToken, clientID)
 				if err != nil {
-					log.Println("failed to resolve broadcaster id for", ch, ":", err)
+					log.Println("failed to resolve broadcaster id for WS sub", ch, ":", err)
 					continue
 				}
 
-				for _, st := range subs {
-					cond := map[string]string{"broadcaster_user_id": broadcasterID}
-					// channel.chat.message also requires the bot user id in the condition
-					// and uses version 1 of the subscription type. channel.follow uses
-					// version 2 and requires moderator_user_id in the condition.
-					version := "1"
-					if st == "channel.chat.message" {
-						if botID == "" || botToken == "" {
-							log.Println("skipping channel.chat.message subscription; botID or botToken not available")
-							continue
-						}
-						cond["user_id"] = botID
-					} else if st == "channel.follow" {
-						// channel.follow requires version 2 and moderator_user_id.
-						version = "2"
-						if botID == "" || botToken == "" {
-							log.Println("skipping channel.follow subscription; botID or botToken not available")
-							continue
-						}
-						cond["moderator_user_id"] = botID
+				// channel.follow (version 2, requires moderator_user_id)
+				if botID != "" {
+					followCond := map[string]string{
+						"broadcaster_user_id": broadcasterID,
+						"moderator_user_id":   botID,
 					}
-					// chat-related subs use the bot's user token; stream.online
-					// will use the app token below.
-					auth := botToken
-					if err := createEventSubSubscription(auth, clientID, st, version, cond, sid, "websocket", "", ""); err != nil {
-						log.Println("failed creating subscription", st, "for", ch, ":", err)
+					if err := createEventSubSubscription(botToken, clientID, "channel.follow", "2", followCond, sid, "websocket", "", ""); err != nil {
+						log.Println("failed creating channel.follow for", ch, ":", err)
 					}
-
-					// avoid hitting rate limits too quickly
-					time.Sleep(500 * time.Millisecond)
+					time.Sleep(300 * time.Millisecond)
 				}
 
-				// Additionally subscribe to stream.online using the bot's user access
-				// token. Twitch requires a user access token for all WebSocket EventSub
-				// subscriptions; app access tokens are only valid with webhook transport.
-				if botToken == "" {
-					log.Println("skipping stream.online subscription for", ch, "; botToken not available")
-				} else {
-					streamCond := map[string]string{"broadcaster_user_id": broadcasterID}
-					if err := createEventSubSubscription(botToken, clientID, "stream.online", "1", streamCond, sid, "websocket", "", ""); err != nil {
-						log.Println("failed creating stream.online subscription for", ch, ":", err)
-					}
+				// stream.online
+				streamCond := map[string]string{"broadcaster_user_id": broadcasterID}
+				if err := createEventSubSubscription(botToken, clientID, "stream.online", "1", streamCond, sid, "websocket", "", ""); err != nil {
+					log.Println("failed creating stream.online for", ch, ":", err)
 				}
+				time.Sleep(300 * time.Millisecond)
 			}
 			return
 		}
 		time.Sleep(500 * time.Millisecond)
 	}
-	log.Println("timed out waiting for EventSub session id; cannot register subscriptions")
+	log.Println("timed out waiting for EventSub session id; WebSocket subscriptions not registered")
 }
 
 // refreshUserToken calls the Twitch token endpoint to exchange a refresh
