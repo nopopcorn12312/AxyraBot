@@ -47,6 +47,7 @@ func startHTTPServer(clientID, clientSecret string) {
 	}
 
 	mux.HandleFunc("/audit/logs", withCORS(handleAuditLogs))
+	mux.HandleFunc("/categories/search", withCORS(handleCategorySearch(clientID)))
 	addr := ":8080"
 	if p := os.Getenv("PORT"); p != "" {
 		addr = ":" + p
@@ -1007,6 +1008,56 @@ func handleChannels(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	json.NewEncoder(w).Encode(map[string]interface{}{"channels": chans})
+}
+
+// handleCategorySearch proxies Twitch's /helix/search/categories endpoint so
+// the frontend can show an autocomplete dropdown without exposing tokens.
+func handleCategorySearch(clientID string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		query := strings.TrimSpace(r.URL.Query().Get("q"))
+		if query == "" {
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte(`{"data":[]}`))
+			return
+		}
+		login := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("login")))
+		if login == "" {
+			http.Error(w, "missing login", http.StatusBadRequest)
+			return
+		}
+		_, access, err := ensureValidUserToken(login)
+		if err != nil {
+			http.Error(w, "token error", http.StatusInternalServerError)
+			return
+		}
+		req, err := http.NewRequest("GET",
+			"https://api.twitch.tv/helix/search/categories?query="+url.QueryEscape(query)+"&first=8", nil)
+		if err != nil {
+			http.Error(w, "request build failed", http.StatusInternalServerError)
+			return
+		}
+		req.Header.Set("Client-ID", clientID)
+		req.Header.Set("Authorization", "Bearer "+access)
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			http.Error(w, "helix error", http.StatusInternalServerError)
+			return
+		}
+		defer resp.Body.Close()
+		var result struct {
+			Data []struct {
+				ID        string `json:"id"`
+				Name      string `json:"name"`
+				BoxArtURL string `json:"box_art_url"`
+			} `json:"data"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+			http.Error(w, "decode error", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(result)
+	}
 }
 
 // handleStreamInfo returns the current stream title and category for a

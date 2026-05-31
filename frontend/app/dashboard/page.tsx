@@ -33,6 +33,10 @@ export default function DashboardPage() {
   const [login, setLogin] = useState<string | null>(null);
   const [streamTitle, setStreamTitle] = useState("");
   const [streamCategory, setStreamCategory] = useState("");
+  const [categorySuggestions, setCategorySuggestions] = useState<{id: string; name: string; box_art_url: string}[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const categoryDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const categoryWrapperRef = useRef<HTMLDivElement | null>(null);
   const [loadingStream, setLoadingStream] = useState(false);
   const [savingStream, setSavingStream] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
@@ -67,6 +71,17 @@ export default function DashboardPage() {
   const menuRef = useRef<HTMLDivElement | null>(null);
   const hasLoadedActivityRef = useRef(false);
   const pathname = usePathname();
+
+  // Close category dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (categoryWrapperRef.current && !categoryWrapperRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -630,16 +645,58 @@ export default function DashboardPage() {
               <label className="block text-sm font-semibold text-slate-300 mb-2 mt-1">
                 Stream Category
               </label>
-              <input
-                type="text"
-                className="w-full rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent/70"
-                placeholder="Current stream category"
-                value={streamCategory}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setStreamCategory(e.target.value)
-                }
-                disabled={!login || loadingStream}
-              />
+              <div className="relative" ref={categoryWrapperRef}>
+                <input
+                  type="text"
+                  className="w-full rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent/70"
+                  placeholder="Search Twitch categories…"
+                  value={streamCategory}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                    const val = e.target.value;
+                    setStreamCategory(val);
+                    setShowSuggestions(true);
+                    if (categoryDebounceRef.current) clearTimeout(categoryDebounceRef.current);
+                    if (val.trim().length < 2) { setCategorySuggestions([]); return; }
+                    categoryDebounceRef.current = setTimeout(() => {
+                      if (!login) return;
+                      fetch(`${backendUrl}/categories/search?q=${encodeURIComponent(val)}&login=${encodeURIComponent(login)}`)
+                        .then(r => r.json())
+                        .then(d => setCategorySuggestions(d.data ?? []))
+                        .catch(() => setCategorySuggestions([]));
+                    }, 300);
+                  }}
+                  onFocus={() => { if (categorySuggestions.length > 0) setShowSuggestions(true); }}
+                  disabled={!login || loadingStream}
+                  autoComplete="off"
+                />
+                {showSuggestions && categorySuggestions.length > 0 && (
+                  <ul className="absolute z-50 mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 shadow-xl overflow-hidden">
+                    {categorySuggestions.map((cat) => (
+                      <li key={cat.id}>
+                        <button
+                          type="button"
+                          className="flex w-full items-center gap-3 px-3 py-2 text-sm text-slate-200 hover:bg-slate-800 transition"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            setStreamCategory(cat.name);
+                            setCategorySuggestions([]);
+                            setShowSuggestions(false);
+                          }}
+                        >
+                          {cat.box_art_url && (
+                            <img
+                              src={cat.box_art_url.replace("{width}", "30").replace("{height}", "40")}
+                              alt=""
+                              className="h-8 w-6 rounded object-cover shrink-0"
+                            />
+                          )}
+                          <span>{cat.name}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </div>
             <div className="mt-4 flex flex-col gap-2">
               <div className="flex gap-2">
