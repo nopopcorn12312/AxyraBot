@@ -562,7 +562,7 @@ func handleChatMessageEvent(channelLogin, chatterLogin, chatterID, messageID, me
 			lowerMsg := strings.ToLower(message)
 			for _, bt := range terms {
 				if strings.Contains(lowerMsg, strings.ToLower(bt.Term)) {
-					log.Printf("[BLOCKED TERM] channel=%s user=%s term=%q action=%s", channelLogin, chatterLogin, bt.Term, bt.Action)
+					log.Printf("[BLOCKED TERM] channel=%s user=%s term=%q action=%s messageID=%q", channelLogin, chatterLogin, bt.Term, bt.Action, messageID)
 					switch bt.Action {
 					case "delete":
 						if err := deleteHelixMessage(channelLogin, messageID); err != nil {
@@ -1662,10 +1662,31 @@ func deleteHelixMessage(channelLogin, messageID string) error {
 	if err != nil || access == "" {
 		return fmt.Errorf("no user token for channel %s: %w", channelLogin, err)
 	}
-	broadcasterID, err := getUserIDFromToken(access)
+	// resolve broadcaster ID by login name (more reliable than validate endpoint)
+	httpClient := &http.Client{Timeout: 10 * time.Second}
+	usersReq, err := http.NewRequest("GET", "https://api.twitch.tv/helix/users?login="+url.QueryEscape(channelLogin), nil)
 	if err != nil {
-		return fmt.Errorf("getUserIDFromToken failed: %w", err)
+		return err
 	}
+	usersReq.Header.Set("Client-ID", clientID)
+	usersReq.Header.Set("Authorization", "Bearer "+access)
+	usersResp, err := httpClient.Do(usersReq)
+	if err != nil {
+		return err
+	}
+	defer usersResp.Body.Close()
+	var usersRes struct {
+		Data []struct {
+			ID string `json:"id"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(usersResp.Body).Decode(&usersRes); err != nil {
+		return err
+	}
+	if len(usersRes.Data) == 0 {
+		return fmt.Errorf("broadcaster not found: %s", channelLogin)
+	}
+	broadcasterID := usersRes.Data[0].ID
 	endpoint := fmt.Sprintf(
 		"https://api.twitch.tv/helix/chat/messages?broadcaster_id=%s&moderator_id=%s&message_id=%s",
 		url.QueryEscape(broadcasterID), url.QueryEscape(broadcasterID), url.QueryEscape(messageID),
@@ -1682,8 +1703,9 @@ func deleteHelixMessage(channelLogin, messageID string) error {
 		return err
 	}
 	defer res.Body.Close()
+	b, _ := io.ReadAll(res.Body)
+	log.Printf("[DELETE MSG] broadcasterID=%s messageID=%s status=%s body=%s", broadcasterID, messageID, res.Status, string(b))
 	if res.StatusCode != http.StatusNoContent && res.StatusCode/100 != 2 {
-		b, _ := io.ReadAll(res.Body)
 		return fmt.Errorf("helix delete message status %s: %s", res.Status, string(b))
 	}
 	return nil
