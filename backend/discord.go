@@ -38,6 +38,7 @@ func InitDiscord() {
 		registerSlashCommands(s, r.User.ID)
 	})
 	discordSession.AddHandler(discordInteractionHandler)
+	discordSession.AddHandler(discordMessageHandler)
 
 	if err = discordSession.Open(); err != nil {
 		log.Println("[Discord] failed to open connection:", err)
@@ -201,6 +202,91 @@ func discordInteractionHandler(s *discordgo.Session, i *discordgo.InteractionCre
 		handleUnlockSlash(s, i)
 	case "slowmode":
 		handleSlowmodeSlash(s, i)
+	}
+}
+
+// discordMessageHandler listens for regular chat messages and fires custom
+// Twitch-style commands (e.g. "!hello") in any guild channel that has a
+// linked Twitch broadcaster via discord_settings.
+func discordMessageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
+	// Ignore messages from the bot itself.
+	if m.Author == nil || m.Author.Bot {
+		return
+	}
+	// Only handle guild (server) messages.
+	if m.GuildID == "" {
+		return
+	}
+	// Must start with "!" to be a potential command.
+	msg := strings.TrimSpace(m.Content)
+	if !strings.HasPrefix(msg, "!") {
+		return
+	}
+
+	// Look up which Twitch broadcaster is linked to this guild.
+	settings, err := GetDiscordSettingsByGuild(m.GuildID)
+	if err != nil || settings == nil || settings.BroadcasterLogin == "" {
+		return
+	}
+	broadcasterLogin := settings.BroadcasterLogin
+
+	fields := strings.Fields(msg)
+	if len(fields) == 0 {
+		return
+	}
+	trigger := strings.ToLower(fields[0])
+
+	resp, _, err := GetCustomCommandResponse(broadcasterLogin, trigger)
+	if err != nil || resp == "" {
+		return
+	}
+
+	// Increment usage counter (used by $(count)).
+	usageCount, err := IncrementCustomCommandCount(broadcasterLogin, trigger)
+	if err != nil {
+		log.Println("[Discord] failed to increment command count:", err)
+	}
+	if usageCount <= 0 {
+		usageCount = 1
+	}
+
+	// Build $(touser) from the argument after the trigger word.
+	toUser := ""
+	if len(fields) > 1 {
+		toUser = strings.TrimPrefix(strings.Join(fields[1:], " "), "@")
+	}
+
+	// Use the Discord display name as the "chatter" for $(user) substitution.
+	chatterName := m.Author.Username
+	if m.Member != nil && m.Member.Nick != "" {
+		chatterName = m.Member.Nick
+	}
+
+	// Render template variables.
+	// We handle $(user) ourselves here to produce a Discord @mention instead
+	// of a plain text username.
+	wantMention := strings.Contains(resp, "$(user)")
+	// Strip $(user) before calling the shared renderer so it won't add a
+	// plain-text "@name" prefix — we'll add the mention ourselves.
+	respWithoutUser := strings.ReplaceAll(resp, "$(user)", "")
+	text := renderCustomCommandResponse(broadcasterLogin, chatterName, toUser, respWithoutUser, usageCount)
+	text = strings.TrimSpace(text)
+
+	if wantMention {
+		mention := "<@" + m.Author.ID + ">"
+		if text == "" {
+			text = mention
+		} else {
+			text = mention + " " + text
+		}
+	}
+
+	if text == "" {
+		return
+	}
+
+	if _, err := s.ChannelMessageSendReply(m.ChannelID, text, m.Reference()); err != nil {
+		log.Println("[Discord] failed to send command response:", err)
 	}
 }
 
