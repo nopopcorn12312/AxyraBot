@@ -612,6 +612,7 @@ func PostOwnerAnnouncement(message string) {
 type BotGuild struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
+	Icon string `json:"icon"` // CDN URL, empty string if no icon
 }
 
 // GuildChannel represents a text channel in a Discord server.
@@ -627,7 +628,15 @@ func GetBotGuilds() []BotGuild {
 	}
 	out := make([]BotGuild, 0)
 	for _, g := range discordSession.State.Guilds {
-		out = append(out, BotGuild{ID: g.ID, Name: g.Name})
+		iconURL := ""
+		if g.Icon != "" {
+			ext := "png"
+			if strings.HasPrefix(g.Icon, "a_") {
+				ext = "gif"
+			}
+			iconURL = fmt.Sprintf("https://cdn.discordapp.com/icons/%s/%s.%s?size=64", g.ID, g.Icon, ext)
+		}
+		out = append(out, BotGuild{ID: g.ID, Name: g.Name, Icon: iconURL})
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
 	return out

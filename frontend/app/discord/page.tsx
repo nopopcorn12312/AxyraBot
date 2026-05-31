@@ -12,7 +12,7 @@ const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://your-backend.
 const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL;
 const discordClientId = process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID ?? "";
 
-type Guild = { id: string; name: string };
+type Guild = { id: string; name: string; icon: string };
 type Channel = { id: string; name: string };
 
 export default function DiscordSettingsPage() {
@@ -322,51 +322,75 @@ export default function DiscordSettingsPage() {
         </div>
 
         {/* Main content */}
-        <div className="flex-1 flex flex-col gap-6 text-slate-50 min-h-0 overflow-auto">
-          <div className="w-full flex flex-col rounded-2xl border border-slate-800 bg-slate-900/80 p-6 gap-6">
-            {/* Header */}
-            <div className="flex items-center gap-3">
-              <span className="text-3xl">🎮</span>
-              <h1 className="text-3xl font-semibold">Discord Integration</h1>
-            </div>
+        <div className="flex-1 flex flex-col gap-4 text-slate-50 min-h-0 overflow-auto">
 
-            {/* Step 1 — Invite */}
-            <div className="rounded-xl border border-slate-700 bg-slate-950/40 p-5 flex flex-col gap-3">
-              <div className="flex items-center gap-2">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-accent text-xs font-bold text-white">1</span>
-                <h2 className="text-base font-semibold text-slate-100">Invite the bot to your server</h2>
+          {/* ── No servers yet: only show invite step ── */}
+          {!loadingGuilds && guilds.length === 0 && (
+            <div className="w-full flex flex-col rounded-2xl border border-slate-800 bg-slate-900/80 p-8 items-center gap-6 text-center">
+              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[#5865F2]/20 border border-[#5865F2]/40">
+                <svg viewBox="0 0 24 24" fill="currentColor" className="h-10 w-10 text-[#5865F2]" aria-hidden="true">
+                  <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z" />
+                </svg>
               </div>
-              <p className="text-sm text-slate-400">
-                Click <span className="text-accent font-medium">Add to Discord</span> above and select your server.
-                The bot needs <strong className="text-slate-300">Send Messages</strong> permission in whatever channels you configure below.
-              </p>
-              {loadingGuilds ? (
-                <div className="text-xs text-slate-500">Checking servers…</div>
-              ) : guilds.length === 0 ? (
-                <div className="inline-flex items-center gap-2 rounded-lg border border-amber-600/40 bg-amber-950/30 px-3 py-2 text-xs text-amber-300">
-                  <span>⚠️</span> The bot isn&apos;t in any Discord server yet. Use the button above to invite it first.
-                </div>
-              ) : (
-                <div className="inline-flex items-center gap-2 rounded-lg border border-emerald-600/40 bg-emerald-950/30 px-3 py-2 text-xs text-emerald-300">
-                  <span>✓</span> Bot is active in <strong className="mx-1">{guilds.length}</strong> server{guilds.length !== 1 ? "s" : ""}.
-                </div>
-              )}
+              <div className="flex flex-col gap-2">
+                <h2 className="text-xl font-semibold text-slate-100">Connect your Discord server</h2>
+                <p className="text-sm text-slate-400 max-w-sm">
+                  Add AxyraBot to your Discord server to enable live notifications, mod alerts, birthday announcements, and slash commands.
+                </p>
+              </div>
+              <a
+                href={inviteUrl ?? `https://discord.com/api/oauth2/authorize?client_id=${discordClientId}&permissions=3097326905453782&scope=bot%20applications.commands`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-lg bg-[#5865F2] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#4752c4] transition shadow-lg"
+              >
+                <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4" aria-hidden="true">
+                  <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z" />
+                </svg>
+                Add to Discord
+              </a>
             </div>
+          )}
 
-            {/* Step 2 — Select server */}
-            <div className="rounded-xl border border-slate-700 bg-slate-950/40 p-5 flex flex-col gap-4">
-              <div className="flex items-center gap-2">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-accent text-xs font-bold text-white">2</span>
-                <h2 className="text-base font-semibold text-slate-100">Select your server</h2>
+          {/* ── Loading state ── */}
+          {loadingGuilds && (
+            <div className="w-full flex flex-col rounded-2xl border border-slate-800 bg-slate-900/80 p-8 items-center justify-center gap-3">
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-600 border-t-accent" />
+              <p className="text-sm text-slate-500">Checking Discord servers…</p>
+            </div>
+          )}
+
+          {/* ── Bot is in at least one server ── */}
+          {!loadingGuilds && guilds.length > 0 && (
+            <div className="w-full flex flex-col rounded-2xl border border-slate-800 bg-slate-900/80 overflow-hidden">
+
+              {/* Content header — server badge top-right */}
+              <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-slate-800">
+                <h1 className="text-2xl font-semibold text-slate-100">Discord Integration</h1>
+                {selectedGuildId && guilds.find((g) => g.id === selectedGuildId) ? (() => {
+                  const guild = guilds.find((g) => g.id === selectedGuildId)!;
+                  return (
+                    <div className="flex items-center gap-2.5 rounded-xl border border-slate-700 bg-slate-950/60 px-3 py-2">
+                      {guild.icon ? (
+                        <Image src={guild.icon} alt={guild.name} width={28} height={28} className="rounded-full" />
+                      ) : (
+                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#5865F2] text-xs font-bold text-white">
+                          {guild.name.slice(0, 1).toUpperCase()}
+                        </div>
+                      )}
+                      <span className="text-sm font-medium text-slate-200 max-w-[160px] truncate">{guild.name}</span>
+                    </div>
+                  );
+                })() : (
+                  <div className="text-xs text-slate-500 italic">No server selected</div>
+                )}
               </div>
-              <p className="text-sm text-slate-400">Choose which Discord server should receive notifications for your Twitch channel.</p>
-              {loadingGuilds ? (
-                <div className="text-sm text-slate-500">Loading servers…</div>
-              ) : guilds.length === 0 ? (
-                <div className="text-sm text-slate-500">No servers available — invite the bot first.</div>
-              ) : (
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-slate-300">Server</label>
+
+              <div className="flex flex-col gap-5 p-6">
+
+                {/* Server selector */}
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">Server</label>
                   <select
                     value={selectedGuildId}
                     onChange={(e) => {
@@ -382,104 +406,86 @@ export default function DiscordSettingsPage() {
                       <option key={g.id} value={g.id}>{g.name}</option>
                     ))}
                   </select>
-                  {selectedGuildId && !botInSelectedGuild && (
-                    <p className="text-xs text-amber-400 mt-1">⚠️ The bot may have been removed from this server.</p>
-                  )}
                 </div>
-              )}
-            </div>
 
-            {/* Step 3 — Choose channels */}
-            <div className={`rounded-xl border border-slate-700 bg-slate-950/40 p-5 flex flex-col gap-4 transition-opacity ${!selectedGuildId ? "opacity-50 pointer-events-none" : ""}`}>
-              <div className="flex items-center gap-2">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-accent text-xs font-bold text-white">3</span>
-                <h2 className="text-base font-semibold text-slate-100">Choose notification channels</h2>
-              </div>
-              <p className="text-sm text-slate-400">
-                Pick which channel each notification goes to. Set to <span className="text-slate-300 font-medium">Disabled</span> to turn it off.
-              </p>
-              {loadingChannels ? (
-                <div className="text-sm text-slate-500">Loading channels…</div>
-              ) : (
-                <div className="flex flex-col gap-5">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-slate-300 uppercase tracking-wide flex items-center gap-1.5">
-                      <span className="text-red-400">●</span> Live Notification
-                    </label>
-                    <p className="text-xs text-slate-500">Posted when you go live on Twitch.</p>
-                    <select
-                      value={liveChannelId}
-                      onChange={(e) => setLiveChannelId(e.target.value)}
-                      disabled={!selectedGuildId || loadingChannels}
-                      className={channelSelectClass}
-                    >
-                      <option value="">Disabled</option>
-                      {guildChannels.map((c) => (
-                        <option key={c.id} value={c.id}>#{c.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-slate-300 uppercase tracking-wide flex items-center gap-1.5">
-                      <span>🔨</span> Mod Alerts
-                    </label>
-                    <p className="text-xs text-slate-500">Posted when a viewer is banned or timed out in your channel.</p>
-                    <select
-                      value={modChannelId}
-                      onChange={(e) => setModChannelId(e.target.value)}
-                      disabled={!selectedGuildId || loadingChannels}
-                      className={channelSelectClass}
-                    >
-                      <option value="">Disabled</option>
-                      {guildChannels.map((c) => (
-                        <option key={c.id} value={c.id}>#{c.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-slate-300 uppercase tracking-wide flex items-center gap-1.5">
-                      <span>🎂</span> Birthday Announcements
-                    </label>
-                    <p className="text-xs text-slate-500">Posted when <code className="bg-slate-800 px-1 rounded">!birthday</code> is used and there are birthdays today.</p>
-                    <select
-                      value={bdayChannelId}
-                      onChange={(e) => setBdayChannelId(e.target.value)}
-                      disabled={!selectedGuildId || loadingChannels}
-                      className={channelSelectClass}
-                    >
-                      <option value="">Disabled</option>
-                      {guildChannels.map((c) => (
-                        <option key={c.id} value={c.id}>#{c.name}</option>
-                      ))}
-                    </select>
+                {/* Channel settings — only show once a server is picked */}
+                {selectedGuildId && (
+                  <>
+                    <div className="border-t border-slate-800" />
+
+                    {loadingChannels ? (
+                      <div className="flex items-center gap-3 py-2">
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-600 border-t-accent" />
+                        <span className="text-sm text-slate-500">Loading channels…</span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-5">
+                        <div className="flex flex-col gap-1.5">
+                          <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-300">
+                            <span className="h-2 w-2 rounded-full bg-red-400" /> Live Notification
+                          </label>
+                          <p className="text-xs text-slate-500">Posted in this channel when you go live on Twitch.</p>
+                          <select value={liveChannelId} onChange={(e) => setLiveChannelId(e.target.value)} className={channelSelectClass}>
+                            <option value="">Disabled</option>
+                            {guildChannels.map((c) => <option key={c.id} value={c.id}>#{c.name}</option>)}
+                          </select>
+                        </div>
+
+                        <div className="flex flex-col gap-1.5">
+                          <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-300">
+                            <span>🔨</span> Mod Alerts
+                          </label>
+                          <p className="text-xs text-slate-500">Ban and timeout events from your Twitch channel.</p>
+                          <select value={modChannelId} onChange={(e) => setModChannelId(e.target.value)} className={channelSelectClass}>
+                            <option value="">Disabled</option>
+                            {guildChannels.map((c) => <option key={c.id} value={c.id}>#{c.name}</option>)}
+                          </select>
+                        </div>
+
+                        <div className="flex flex-col gap-1.5">
+                          <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-300">
+                            <span>🎂</span> Birthday Announcements
+                          </label>
+                          <p className="text-xs text-slate-500">Posted when <code className="rounded bg-slate-800 px-1">!birthday</code> runs and there are birthdays today.</p>
+                          <select value={bdayChannelId} onChange={(e) => setBdayChannelId(e.target.value)} className={channelSelectClass}>
+                            <option value="">Disabled</option>
+                            {guildChannels.map((c) => <option key={c.id} value={c.id}>#{c.name}</option>)}
+                          </select>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="border-t border-slate-800" />
+
+                    {/* Save row */}
+                    <div className="flex items-center gap-4">
+                      <button
+                        type="button"
+                        onClick={handleSave}
+                        disabled={saving || !channelLogin || loadingSettings}
+                        className="rounded-lg bg-accent px-5 py-2 text-sm font-medium text-white hover:bg-accent/90 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        {saving ? "Saving…" : "Save Settings"}
+                      </button>
+                      {saveSuccess && <span className="text-sm text-emerald-400">✓ Saved!</span>}
+                      {saveError && <span className="text-sm text-red-400">{saveError}</span>}
+                    </div>
+                  </>
+                )}
+
+                {/* Slash commands info */}
+                <div className="border-t border-slate-800 pt-5 flex flex-col gap-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Available slash commands</p>
+                  <div className="flex items-start gap-3 rounded-lg border border-slate-700/60 bg-slate-950/40 p-3">
+                    <code className="shrink-0 font-mono text-sm text-accent">/commands</code>
+                    <span className="text-sm text-slate-400">Lists all custom Twitch commands for your channel. Works in any server the bot is in.</span>
                   </div>
                 </div>
-              )}
-            </div>
 
-            {/* Save */}
-            <div className="flex items-center gap-4">
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={saving || !channelLogin || loadingSettings || !selectedGuildId}
-                className="rounded-lg bg-accent px-5 py-2 text-sm font-medium text-white hover:bg-accent/90 transition disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                {saving ? "Saving…" : "Save Settings"}
-              </button>
-              {saveSuccess && <span className="text-sm text-emerald-400">✓ Settings saved!</span>}
-              {saveError && <span className="text-sm text-red-400">{saveError}</span>}
-            </div>
-
-            {/* Slash commands info */}
-            <div className="rounded-xl border border-slate-700 bg-slate-950/40 p-5 flex flex-col gap-3">
-              <h2 className="text-base font-semibold text-slate-100">Available slash commands</h2>
-              <div className="flex items-start gap-3 rounded-lg border border-slate-700/60 bg-slate-900/50 p-3">
-                <code className="text-accent font-mono text-sm shrink-0">/commands</code>
-                <span className="text-sm text-slate-400">Lists all custom Twitch bot commands for your channel. Works in any server the bot is in.</span>
               </div>
             </div>
-          </div>
+          )}
+
         </div>
       </div>
     </main>
