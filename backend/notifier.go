@@ -61,20 +61,6 @@ func handleChannelsChanged(payload string) {
 			return
 		}
 	}
-	// if IRC is enabled, start a bot for any channel not active (legacy mode)
-	if os.Getenv("TWITCH_IRC_ENABLED") == "1" {
-		for _, ch := range chans {
-			if !isActiveChannel(ch) {
-				log.Println("starting IRC bot for new channel:", ch)
-				botName := os.Getenv("TWITCH_BOT_USERNAME")
-				oauth := os.Getenv("TWITCH_BOT_OAUTH")
-				go startIrcBot(botName, oauth, ch)
-				markActiveChannel(ch)
-			}
-		}
-		return
-	}
-
 	// In the default path, we rely on EventSub channel.chat.message for chat reading.
 	// Rebuild the active channel set from the current joined channels so that
 	// channels that were parted are no longer considered active.

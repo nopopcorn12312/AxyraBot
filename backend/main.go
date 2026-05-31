@@ -216,35 +216,6 @@ func main() {
 		go registerEventSubSubscriptions(token, clientID, channel, tokensPath)
 	}
 
-	// Optionally start IRC WebSocket bots for legacy chat reading if explicitly enabled.
-	// By default, chat is read via EventSub channel.chat.message instead.
-	if os.Getenv("TWITCH_IRC_ENABLED") == "1" {
-		go func() {
-			chans := []string{}
-			// if DB present, join all channels marked joined
-			if db != nil {
-				if cs, err := GetJoinedChannels(); err == nil && len(cs) > 0 {
-					chans = cs
-				}
-			}
-			// if no DB channels yet but TWITCH_CHANNEL is set, fall back to it
-			if len(chans) == 0 && channel != "" {
-				chans = []string{channel}
-			}
-			if len(chans) == 0 {
-				log.Println("no channels configured to join yet; waiting for /auth/callback to add channels")
-				return
-			}
-			for _, ch := range chans {
-				go startIrcBot(botName, oauth, ch)
-				markActiveChannel(ch)
-				time.Sleep(250 * time.Millisecond)
-			}
-		}()
-	} else {
-		log.Println("TWITCH_IRC_ENABLED is not set; using EventSub channel.chat.message for chat reading")
-	}
-
 	// Start HTTP server for OAuth + join endpoints
 	go startHTTPServer(clientID, clientSecret)
 
@@ -406,102 +377,6 @@ func startEventSubWS() {
 		}
 
 		time.Sleep(5 * time.Second)
-	}
-}
-
-// startIrcBot connects to Twitch IRC over WebSocket and performs simple interactions.
-func startIrcBot(botName, oauth, channel string) {
-	url := "wss://irc-ws.chat.twitch.tv:443"
-	for {
-		log.Println("Connecting to Twitch IRC WebSocket...")
-		c, _, err := websocket.DefaultDialer.Dial(url, nil)
-		if err != nil {
-			log.Println("irc ws dial error:", err)
-			time.Sleep(10 * time.Second)
-			continue
-		}
-
-		// Send auth and join
-		if oauth != "" {
-			writeIRC(c, fmt.Sprintf("PASS %s", oauth))
-		}
-		writeIRC(c, fmt.Sprintf("NICK %s", botName))
-		writeIRC(c, "CAP REQ :twitch.tv/tags twitch.tv/commands twitch.tv/membership")
-		writeIRC(c, fmt.Sprintf("JOIN #%s", strings.ToLower(channel)))
-
-		// Read loop
-		sentHello := false
-		for {
-			_, msg, err := c.ReadMessage()
-			if err != nil {
-				log.Println("irc ws read error:", err)
-				c.Close()
-				break
-			}
-			text := string(msg)
-			// Twitch IRC sometimes sends multiple lines in one message
-			for _, line := range strings.Split(text, "\r\n") {
-				if line == "" {
-					continue
-				}
-				log.Printf("[IRC] %s\n", line)
-				if strings.HasPrefix(line, "PING") {
-					// respond to PING
-					resp := strings.Replace(line, "PING", "PONG", 1)
-					writeIRC(c, resp)
-					continue
-				}
-
-				// detect when our bot joined and send a greeting once
-				if !sentHello && strings.Contains(line, "JOIN #"+strings.ToLower(channel)) && strings.Contains(line, ":"+strings.ToLower(botName)+"!") {
-					sendChat(c, strings.ToLower(channel), "hello chat")
-					sentHello = true
-				}
-
-				// simple PRIVMSG parsing
-				// format can be: :username!username@username.tmi.twitch.tv PRIVMSG #channel :message
-				if strings.Contains(line, "PRIVMSG") {
-					// Prefer to extract the message part after the second " :" which appears after the PRIVMSG target.
-					// Example with tags: "@tags :user!user@user.tmi.twitch.tv PRIVMSG #chan :message"
-					message := ""
-					if i := strings.Index(line, " PRIVMSG "); i != -1 {
-						// find the separator " :" after the PRIVMSG portion
-						if j := strings.Index(line[i:], " :"); j != -1 {
-							message = line[i+j+2:]
-						}
-					}
-					// fallback: split on first " :"
-					if message == "" {
-						parts := strings.SplitN(line, " :", 2)
-						if len(parts) < 2 {
-							continue
-						}
-						message = parts[1]
-					}
-					// debug: log the parsed message content
-					log.Printf("[PARSED] message=%q", message)
-					if strings.HasPrefix(message, "!hello") {
-						sendChat(c, strings.ToLower(channel), fmt.Sprintf("Hello! I am %s", botName))
-					}
-					// respond to !test with SUCCESS
-					if strings.HasPrefix(message, "!test") {
-						sendChat(c, strings.ToLower(channel), "SUCCESS")
-					}
-				}
-			}
-		}
-
-		time.Sleep(5 * time.Second)
-	}
-}
-
-func writeIRC(c *websocket.Conn, line string) {
-	// ensure CRLF
-	if !strings.HasSuffix(line, "\r\n") {
-		line = line + "\r\n"
-	}
-	if err := c.WriteMessage(websocket.TextMessage, []byte(line)); err != nil {
-		log.Println("irc write error:", err)
 	}
 }
 
@@ -2640,18 +2515,6 @@ func unmarkActiveChannel(ch string) {
 	activeMu.Lock()
 	delete(activeChannels, ch)
 	activeMu.Unlock()
-}
-
-// sendChat sends a visible chat message using the Helix Send Chat Message API.
-// If the Helix call fails for any reason, it falls back to the legacy IRC
-// PRIVMSG so the bot continues to function.
-func sendChat(c *websocket.Conn, channel, msg string) {
-	if err := sendHelixChatMessage(channel, msg); err != nil {
-		log.Println("helix send chat failed, falling back to IRC:", err)
-		line := fmt.Sprintf("PRIVMSG #%s :%s", channel, msg)
-		log.Printf("[SENT-IRC] %s\n", line)
-		writeIRC(c, line)
-	}
 }
 
 // sendHelixChatMessage calls Twitch's Helix /helix/chat/messages endpoint to
