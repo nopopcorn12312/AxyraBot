@@ -2655,12 +2655,10 @@ func sendChat(c *websocket.Conn, channel, msg string) {
 }
 
 // sendHelixChatMessage calls Twitch's Helix /helix/chat/messages endpoint to
-// send a message into the specified channel. It prefers the bot's user access
-// token from TWITCH_BOT_OAUTH (without the "oauth:" prefix) so that Twitch
-// recognises the sender as a chatbot and lists it in the viewer list's
-// Chatbots section. TWITCH_BOT_OAUTH must include the user:write:chat and
-// user:bot scopes for this to work. Falls back to an app access token when
-// the env var is not set (requires prior user:bot / channel:bot delegations).
+// send a message into the specified channel. It uses an app access token so
+// the bot shows the chatbot badge in chat. The app token works as long as the
+// bot account has granted user:bot and the broadcaster has granted channel:bot
+// via the OAuth flow.
 //
 // If replyParentMessageID is provided and non-empty, the message is sent as
 // a true reply to that chat message via the reply_parent_message_id field.
@@ -2670,105 +2668,54 @@ func sendHelixChatMessage(channelLogin, message string, replyParentMessageID ...
 	if clientID == "" {
 		return fmt.Errorf("TWITCH_CLIENT_ID not set")
 	}
+	clientSecret := os.Getenv("TWITCH_CLIENT_SECRET")
+	if clientSecret == "" {
+		return fmt.Errorf("TWITCH_CLIENT_SECRET not set")
+	}
 
-	// Prefer the bot's own user access token. Using a user token that has the
-	// user:bot scope is what causes Twitch to place the bot in the Chatbots
-	// section of the viewer list. Fall back to an app access token if the env
-	// var is absent (legacy / fallback path).
-	botOAuth := os.Getenv("TWITCH_BOT_OAUTH")
-	botUserToken := strings.TrimPrefix(botOAuth, "oauth:")
+	botLogin := os.Getenv("TWITCH_BOT_USERNAME")
+	if botLogin == "" {
+		botLogin = "AxyraBot"
+	}
 
 	// Resolve and cache sender (bot) user id and broadcaster id for the channel.
 	helixChatMu.Lock()
 	botID := helixBotUserID
 	broadcasterID := helixBroadcasterIDs[channelLogin]
-	cachedAppToken := appAccessToken
+	accessToken := appAccessToken
 	helixChatMu.Unlock()
-
-	var accessToken string
-	var err error
-
-	if botUserToken != "" {
-		// Use the bot's own user token — this is the path that grants the
-		// Chatbots viewer-list badge. Resolve the bot ID from the token itself
-		// the first time (cached afterwards).
-		accessToken = botUserToken
-		if botID == "" {
-			botID, err = getUserIDFromToken(accessToken)
-			if err != nil {
-				return fmt.Errorf("resolve bot id from token failed: %w", err)
-			}
+	if accessToken == "" {
+		// lazily obtain an app access token for Helix chat
+		var err error
+		accessToken, err = getAppAccessToken(clientID, clientSecret)
+		if err != nil {
+			return fmt.Errorf("failed to get app access token: %w", err)
 		}
-	} else {
-		// App access token fallback (requires prior user:bot / channel:bot OAuth
-		// delegations from both the bot account and each broadcaster).
-		accessToken = cachedAppToken
-		if accessToken == "" {
-			clientSecret := os.Getenv("TWITCH_CLIENT_SECRET")
-			if clientSecret == "" {
-				return fmt.Errorf("TWITCH_BOT_OAUTH not set and TWITCH_CLIENT_SECRET not set")
-			}
-			accessToken, err = getAppAccessToken(clientID, clientSecret)
-			if err != nil {
-				return fmt.Errorf("failed to get app access token: %w", err)
-			}
-			helixChatMu.Lock()
-			appAccessToken = accessToken
-			helixChatMu.Unlock()
-		}
-
-		if botID == "" {
-			botLogin := os.Getenv("TWITCH_BOT_USERNAME")
-			if botLogin == "" {
-				botLogin = "AxyraBot"
-			}
-			req, err := http.NewRequest("GET", "https://api.twitch.tv/helix/users?login="+url.QueryEscape(botLogin), nil)
-			if err != nil {
-				return fmt.Errorf("resolve bot id: %w", err)
-			}
-			req.Header.Set("Client-ID", clientID)
-			req.Header.Set("Authorization", "Bearer "+accessToken)
-			client := &http.Client{Timeout: 10 * time.Second}
-			resp, err := client.Do(req)
-			if err != nil {
-				return fmt.Errorf("resolve bot id: %w", err)
-			}
-			defer resp.Body.Close()
-			if resp.StatusCode != http.StatusOK {
-				b, _ := io.ReadAll(resp.Body)
-				return fmt.Errorf("get users (bot) status %s: %s", resp.Status, string(b))
-			}
-			var res struct {
-				Data []struct {
-					ID string `json:"id"`
-				} `json:"data"`
-			}
-			if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
-				return fmt.Errorf("decode bot id: %w", err)
-			}
-			if len(res.Data) == 0 {
-				return fmt.Errorf("bot user not found")
-			}
-			botID = res.Data[0].ID
-		}
+		helixChatMu.Lock()
+		appAccessToken = accessToken
+		helixChatMu.Unlock()
 	}
 
-	if broadcasterID == "" {
-		req, err := http.NewRequest("GET", "https://api.twitch.tv/helix/users?login="+url.QueryEscape(channelLogin), nil)
+	// helper to resolve a login to user id with the given token
+	resolveID := func(login string) (string, error) {
+		if login == "" {
+			return "", fmt.Errorf("empty login for id resolution")
+		}
+		req, err := http.NewRequest("GET", "https://api.twitch.tv/helix/users?login="+url.QueryEscape(login), nil)
 		if err != nil {
-			return fmt.Errorf("resolve broadcaster id: %w", err)
+			return "", err
 		}
 		req.Header.Set("Client-ID", clientID)
 		req.Header.Set("Authorization", "Bearer "+accessToken)
 		client := &http.Client{Timeout: 10 * time.Second}
 		resp, err := client.Do(req)
 		if err != nil {
-			return fmt.Errorf("resolve broadcaster id: %w", err)
+			return "", err
 		}
 		defer resp.Body.Close()
 		if resp.StatusCode != http.StatusOK {
 			b, _ := io.ReadAll(resp.Body)
-			return fmt.Errorf("get users (broadcaster) status %s: %s", resp.Status, string(b))
+			return "", fmt.Errorf("get users status %s: %s", resp.Status, string(b))
 		}
 		var res struct {
 			Data []struct {
@@ -2776,12 +2723,26 @@ func sendHelixChatMessage(channelLogin, message string, replyParentMessageID ...
 			} `json:"data"`
 		}
 		if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
-			return fmt.Errorf("decode broadcaster id: %w", err)
+			return "", err
 		}
 		if len(res.Data) == 0 {
-			return fmt.Errorf("broadcaster not found: %s", channelLogin)
+			return "", fmt.Errorf("user not found: %s", login)
 		}
-		broadcasterID = res.Data[0].ID
+		return res.Data[0].ID, nil
+	}
+
+	var err error
+	if botID == "" {
+		botID, err = resolveID(botLogin)
+		if err != nil {
+			return fmt.Errorf("resolve bot id failed: %w", err)
+		}
+	}
+	if broadcasterID == "" {
+		broadcasterID, err = resolveID(channelLogin)
+		if err != nil {
+			return fmt.Errorf("resolve broadcaster id failed: %w", err)
+		}
 	}
 
 	helixChatMu.Lock()
