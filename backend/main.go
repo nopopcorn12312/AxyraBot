@@ -222,6 +222,9 @@ func main() {
 	// Start HTTP server for OAuth + join endpoints
 	go startHTTPServer(clientID, clientSecret)
 
+	// Start automatic midnight birthday announcer
+	go StartBirthdayScheduler()
+
 	// Block forever
 	select {}
 }
@@ -934,9 +937,6 @@ func handleChatMessageEvent(channelLogin, chatterLogin, chatterID, messageID, me
 				if err := sendHelixChatMessage(channelLogin, text); err != nil {
 					log.Println("failed to send !birthday response:", err)
 				}
-				if len(today) > 0 {
-					PostDiscordBirthdayAnnouncement(channelLogin, strings.Join(today, ", "))
-				}
 				return
 			}
 
@@ -1314,6 +1314,117 @@ func isBroadcasterOrModerator(channelLogin, chatterLogin string) (bool, error) {
 		return false, err
 	}
 	return len(modsRes.Data) > 0, nil
+}
+
+// StartBirthdayScheduler runs a per-broadcaster goroutine that fires at
+// midnight in each broadcaster's configured timezone. It announces today's
+// birthdays to Twitch chat and (if Discord is configured) to the Discord
+// birthday channel.
+func StartBirthdayScheduler() {
+	// Give the DB a moment to be ready on cold-start.
+	time.Sleep(5 * time.Second)
+
+	// Keep a set of channels we've already spawned a watcher for, so that
+	// when new channels join we can pick them up on the next daily rescan.
+	spawned := map[string]bool{}
+	spawnWatcher := func(login string) {
+		spawned[login] = true
+		go func(login string) {
+			for {
+				loc := getBroadcasterLocation(login)
+				now := time.Now().In(loc)
+				// Next midnight in this broadcaster's timezone.
+				nextMidnight := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, loc)
+				sleepDur := time.Until(nextMidnight)
+				log.Printf("birthday scheduler: %s sleeping %s until midnight (%s)", login, sleepDur.Round(time.Second), loc)
+				time.Sleep(sleepDur)
+
+				// Fire birthday check exactly at midnight.
+				fireBirthdayAnnouncement(login)
+			}
+		}(login)
+	}
+
+	// Initial seed: spawn watchers for every currently-joined channel.
+	if channels, err := GetJoinedChannels(); err == nil {
+		for _, ch := range channels {
+			spawnWatcher(ch)
+		}
+	}
+
+	// Re-check every hour for newly joined channels.
+	ticker := time.NewTicker(time.Hour)
+	defer ticker.Stop()
+	for range ticker.C {
+		channels, err := GetJoinedChannels()
+		if err != nil {
+			continue
+		}
+		for _, ch := range channels {
+			if !spawned[ch] {
+				spawnWatcher(ch)
+			}
+		}
+	}
+}
+
+// fireBirthdayAnnouncement looks up today's birthdays for login (in their
+// configured timezone) and sends announcements to Twitch chat and Discord.
+func fireBirthdayAnnouncement(channelLogin string) {
+	// Only fire if the birthdays module is enabled for this channel.
+	enabled, err := GetModuleEnabled(channelLogin, "birthdays")
+	if err != nil {
+		log.Printf("birthday scheduler: GetModuleEnabled(%s): %v", channelLogin, err)
+		return
+	}
+	if !enabled {
+		return
+	}
+
+	loc := getBroadcasterLocation(channelLogin)
+	now := time.Now().In(loc)
+	mm := int(now.Month())
+	dd := now.Day()
+
+	birthdays, err := ListBirthdays(channelLogin)
+	if err != nil {
+		log.Printf("birthday scheduler: ListBirthdays(%s): %v", channelLogin, err)
+		return
+	}
+
+	var today []string
+	for _, b := range birthdays {
+		if b.Month == mm && b.Day == dd {
+			name := strings.TrimSpace(b.DisplayName)
+			if name == "" {
+				name = b.UserLogin
+			}
+			today = append(today, name)
+		}
+	}
+	if len(today) == 0 {
+		return
+	}
+
+	namesStr := strings.Join(today, ", ")
+
+	// Twitch chat announcement.
+	var text string
+	if len(today) == 1 {
+		text = fmt.Sprintf("Today's birthday is %s!", namesStr)
+	} else {
+		text = fmt.Sprintf("Today's birthdays are %s!", namesStr)
+	}
+	text = renderBirthdayCommandMessage(channelLogin, "!birthday", text, map[string]string{
+		"names": namesStr,
+		"count": strconv.Itoa(len(today)),
+	})
+	if err := sendHelixChatMessage(channelLogin, text); err != nil {
+		log.Printf("birthday scheduler: send chat (%s): %v", channelLogin, err)
+	}
+
+	// Discord announcement.
+	PostDiscordBirthdayAnnouncement(channelLogin, namesStr)
 }
 
 // getBroadcasterLocation returns the time.Location to use for a given

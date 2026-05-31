@@ -56,6 +56,26 @@ export default function DiscordSettingsPage() {
   const [roleSaveSuccess, setRoleSaveSuccess] = useState(false);
   const [roleSaveError, setRoleSaveError] = useState<string | null>(null);
 
+  // Notification template editing state
+  type NotifType = "live" | "mod" | "birthday";
+  type Templates = Record<NotifType, string>;
+  const defaultTemplates: Templates = {
+    live:     "🔴 **$(channel) is now live!**\n🎮 $(game)\n📺 $(title)\nhttps://twitch.tv/$(channel)",
+    mod:      "$(emoji) **[$(channel)]** `$(target)` was $(verb) by `$(moderator)`\nReason: $(reason)",
+    birthday: "🎂 Happy Birthday to **$(names)** in **$(channel)**'s community! 🎉",
+  };
+  const templateVars: Record<NotifType, { name: string; desc: string }[]> = {
+    live:     [{ name: "$(channel)", desc: "Your Twitch username" }, { name: "$(title)", desc: "Stream title" }, { name: "$(game)", desc: "Game / category" }],
+    mod:      [{ name: "$(channel)", desc: "Your Twitch username" }, { name: "$(target)", desc: "The moderated user" }, { name: "$(moderator)", desc: "Who took the action" }, { name: "$(action)", desc: "Raw action: ban / timeout / delete" }, { name: "$(verb)", desc: "Past-tense verb (banned, timed out…)" }, { name: "$(emoji)", desc: "Action emoji" }, { name: "$(reason)", desc: "Reason text" }],
+    birthday: [{ name: "$(names)", desc: "Comma-separated birthday names" }, { name: "$(channel)", desc: "Your Twitch username" }],
+  };
+  const [templates, setTemplates] = useState<Templates>({ live: "", mod: "", birthday: "" });
+  const [editingNotif, setEditingNotif] = useState<NotifType | null>(null);
+  const [editDraft, setEditDraft] = useState("");
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [templateSaveSuccess, setTemplateSaveSuccess] = useState(false);
+  const [templateSaveError, setTemplateSaveError] = useState<string | null>(null);
+
   // Close server dropdown on outside click
   useEffect(() => {
     function handleOutside(e: MouseEvent) {
@@ -177,6 +197,17 @@ export default function DiscordSettingsPage() {
       .catch(() => {});
   }, [channelLogin, selectedGuildId]);
 
+  // Load saved notification templates when channelLogin is set
+  useEffect(() => {
+    if (!channelLogin) return;
+    fetch(`${backendUrl}/discord/notification-templates?login=${encodeURIComponent(channelLogin)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data) setTemplates({ live: data.live ?? "", mod: data.mod ?? "", birthday: data.birthday ?? "" });
+      })
+      .catch(() => {});
+  }, [channelLogin]);
+
   useEffect(() => {
     if (!menuOpen) return;
     function handleClickOutside(e: MouseEvent) {
@@ -255,6 +286,31 @@ export default function DiscordSettingsPage() {
       setRoleSaveError("Network error. Please try again.");
     } finally {
       setSavingRoles(false);
+    }
+  };
+
+  const handleSaveTemplate = async () => {
+    if (!channelLogin || !editingNotif) return;
+    setSavingTemplate(true);
+    setTemplateSaveError(null);
+    setTemplateSaveSuccess(false);
+    try {
+      const res = await fetch(`${backendUrl}/discord/notification-templates`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ login: channelLogin, templates: { [editingNotif]: editDraft } }),
+      });
+      if (!res.ok) {
+        setTemplateSaveError("Failed to save.");
+      } else {
+        setTemplates((prev) => ({ ...prev, [editingNotif]: editDraft }));
+        setTemplateSaveSuccess(true);
+        setTimeout(() => { setTemplateSaveSuccess(false); setEditingNotif(null); }, 1200);
+      }
+    } catch {
+      setTemplateSaveError("Network error.");
+    } finally {
+      setSavingTemplate(false);
     }
   };
 
@@ -566,9 +622,12 @@ export default function DiscordSettingsPage() {
                       ) : (
                         <div className="flex flex-col gap-5">
                           <div className="flex flex-col gap-1.5">
-                            <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-300">
-                              <span className="h-2 w-2 rounded-full bg-red-400" /> Live Notification
-                            </label>
+                            <div className="flex items-center justify-between">
+                              <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-300">
+                                <span className="h-2 w-2 rounded-full bg-red-400" /> Live Notification
+                              </label>
+                              <button type="button" onClick={() => { setEditingNotif("live"); setEditDraft(templates.live || defaultTemplates.live); setTemplateSaveSuccess(false); setTemplateSaveError(null); }} className="text-xs text-accent hover:underline">Edit message</button>
+                            </div>
                             <p className="text-xs text-slate-500">Posted in this channel when you go live on Twitch.</p>
                             <select value={liveChannelId} onChange={(e) => setLiveChannelId(e.target.value)} className={channelSelectClass}>
                               <option value="">Disabled</option>
@@ -577,9 +636,12 @@ export default function DiscordSettingsPage() {
                           </div>
 
                           <div className="flex flex-col gap-1.5">
-                            <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-300">
-                              <span>🔨</span> Mod Alerts
-                            </label>
+                            <div className="flex items-center justify-between">
+                              <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-300">
+                                <span>🔨</span> Mod Alerts
+                              </label>
+                              <button type="button" onClick={() => { setEditingNotif("mod"); setEditDraft(templates.mod || defaultTemplates.mod); setTemplateSaveSuccess(false); setTemplateSaveError(null); }} className="text-xs text-accent hover:underline">Edit message</button>
+                            </div>
                             <p className="text-xs text-slate-500">Ban and timeout events from your Twitch channel.</p>
                             <select value={modChannelId} onChange={(e) => setModChannelId(e.target.value)} className={channelSelectClass}>
                               <option value="">Disabled</option>
@@ -588,10 +650,13 @@ export default function DiscordSettingsPage() {
                           </div>
 
                           <div className="flex flex-col gap-1.5">
-                            <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-300">
-                              <span>🎂</span> Birthday Announcements
-                            </label>
-                            <p className="text-xs text-slate-500">Posted when <code className="rounded bg-slate-800 px-1">!birthday</code> runs and there are birthdays today.</p>
+                            <div className="flex items-center justify-between">
+                              <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-300">
+                                <span>🎂</span> Birthday Announcements
+                              </label>
+                              <button type="button" onClick={() => { setEditingNotif("birthday"); setEditDraft(templates.birthday || defaultTemplates.birthday); setTemplateSaveSuccess(false); setTemplateSaveError(null); }} className="text-xs text-accent hover:underline">Edit message</button>
+                            </div>
+                            <p className="text-xs text-slate-500">Posted at midnight in your configured timezone when there are birthdays today.</p>
                             <select value={bdayChannelId} onChange={(e) => setBdayChannelId(e.target.value)} className={channelSelectClass}>
                               <option value="">Disabled</option>
                               {guildChannels.map((c) => <option key={c.id} value={c.id}>#{c.name}</option>)}
@@ -705,5 +770,93 @@ export default function DiscordSettingsPage() {
         </div>
       </div>
     </main>
+
+    {/* ── Notification template edit modal ── */}
+    {editingNotif && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="w-full max-w-lg rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl flex flex-col gap-0 overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800">
+            <div className="flex flex-col gap-0.5">
+              <p className="text-sm font-semibold text-slate-100">
+                {editingNotif === "live" && "✏️ Edit Live Notification"}
+                {editingNotif === "mod" && "✏️ Edit Mod Alert"}
+                {editingNotif === "birthday" && "✏️ Edit Birthday Announcement"}
+              </p>
+              <p className="text-xs text-slate-500">Customize the Discord message. Leave blank to use the default.</p>
+            </div>
+            <button type="button" onClick={() => setEditingNotif(null)} className="rounded-lg p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition">
+              <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4"><path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" /></svg>
+            </button>
+          </div>
+
+          {/* Template textarea */}
+          <div className="flex flex-col gap-2 px-5 pt-4">
+            <textarea
+              value={editDraft}
+              onChange={(e) => setEditDraft(e.target.value)}
+              rows={4}
+              placeholder={defaultTemplates[editingNotif]}
+              className="w-full rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 font-mono placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-accent/60 resize-y"
+            />
+            <button
+              type="button"
+              onClick={() => setEditDraft(defaultTemplates[editingNotif])}
+              className="self-start text-xs text-slate-500 hover:text-slate-300 transition"
+            >
+              Reset to default
+            </button>
+          </div>
+
+          {/* Variables reference */}
+          <div className="px-5 pt-3 pb-1">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Available variables</p>
+            <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+              {templateVars[editingNotif].map(({ name, desc }) => (
+                <div key={name} className="flex items-baseline gap-2">
+                  <code
+                    className="shrink-0 rounded bg-slate-800 px-1.5 py-0.5 text-xs font-mono text-accent cursor-pointer hover:bg-slate-700 transition"
+                    title="Click to insert"
+                    onClick={() => setEditDraft((d) => d + name)}
+                  >
+                    {name}
+                  </code>
+                  <span className="text-xs text-slate-500 truncate">{desc}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Discord markdown tip */}
+          <div className="px-5 py-3">
+            <p className="text-xs text-slate-600">
+              Supports Discord markdown: <code className="text-slate-500">**bold**</code>, <code className="text-slate-500">*italic*</code>, <code className="text-slate-500">`code`</code>, newlines with{" "}
+              <code className="text-slate-500">\n</code> in the template text.
+            </p>
+          </div>
+
+          {/* Footer */}
+          <div className="flex items-center justify-between gap-3 px-5 py-4 border-t border-slate-800 bg-slate-950/40">
+            <div className="flex items-center gap-3">
+              {templateSaveSuccess && <span className="text-sm text-emerald-400">✓ Saved!</span>}
+              {templateSaveError && <span className="text-sm text-red-400">{templateSaveError}</span>}
+            </div>
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={() => setEditingNotif(null)} className="rounded-lg border border-slate-700 px-4 py-1.5 text-sm text-slate-300 hover:bg-slate-800 transition">
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveTemplate}
+                disabled={savingTemplate || !channelLogin}
+                className="rounded-lg bg-accent px-4 py-1.5 text-sm font-medium text-white hover:bg-accent/90 transition disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {savingTemplate ? "Saving…" : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
   );
 }

@@ -632,8 +632,12 @@ func PostDiscordLiveNotification(broadcasterLogin, title, game string) {
 	if game == "" {
 		game = "Just Chatting"
 	}
-	msg := fmt.Sprintf("🔴 **%s is now live!**\n🎮 %s\n📺 %s\nhttps://twitch.tv/%s",
-		broadcasterLogin, game, title, broadcasterLogin)
+	const defaultLiveTmpl = "🔴 **$(channel) is now live!**\n🎮 $(game)\n📺 $(title)\nhttps://twitch.tv/$(channel)"
+	msg := renderDiscordTemplate(broadcasterLogin, "live", defaultLiveTmpl, map[string]string{
+		"channel": broadcasterLogin,
+		"title":   title,
+		"game":    game,
+	})
 	for _, settings := range all {
 		if settings.LiveChannelID == "" {
 			continue
@@ -667,10 +671,19 @@ func PostDiscordModAlert(broadcasterLogin, moderator, target, action, reason str
 		emoji = "🗑️"
 		verb = "had their message deleted"
 	}
-	msg := fmt.Sprintf("%s **[%s]** `%s` was %s by `%s`", emoji, broadcasterLogin, target, verb, moderator)
+	defaultModTmpl := "$(emoji) **[$(channel)]** `$(target)` was $(verb) by `$(moderator)`"
 	if reason != "" {
-		msg += "\nReason: " + reason
+		defaultModTmpl += "\nReason: $(reason)"
 	}
+	msg := renderDiscordTemplate(broadcasterLogin, "mod", defaultModTmpl, map[string]string{
+		"channel":   broadcasterLogin,
+		"moderator": moderator,
+		"target":    target,
+		"action":    action,
+		"verb":      verb,
+		"emoji":     emoji,
+		"reason":    reason,
+	})
 	for _, settings := range all {
 		if settings.ModChannelID == "" {
 			continue
@@ -691,7 +704,11 @@ func PostDiscordBirthdayAnnouncement(broadcasterLogin, names string) {
 	if err != nil || len(all) == 0 {
 		return
 	}
-	msg := fmt.Sprintf("🎂 Happy Birthday to **%s** in **%s**'s community! 🎉", names, broadcasterLogin)
+	const defaultBdayTmpl = "🎂 Happy Birthday to **$(names)** in **$(channel)**'s community! 🎉"
+	msg := renderDiscordTemplate(broadcasterLogin, "birthday", defaultBdayTmpl, map[string]string{
+		"names":   names,
+		"channel": broadcasterLogin,
+	})
 	for _, settings := range all {
 		if settings.BdayChannelID == "" {
 			continue
@@ -700,6 +717,21 @@ func PostDiscordBirthdayAnnouncement(broadcasterLogin, names string) {
 			log.Println("[Discord] failed to post birthday announcement:", err)
 		}
 	}
+}
+
+// renderDiscordTemplate substitutes $(variable) placeholders in a Discord
+// notification template. If the broadcaster has a custom template stored in
+// the DB it is used; otherwise defaultTmpl is used. If no custom template is
+// stored (empty string), the default is returned with substitution applied.
+func renderDiscordTemplate(broadcasterLogin, notificationType, defaultTmpl string, vars map[string]string) string {
+	tmpl := defaultTmpl
+	if stored, err := GetDiscordNotificationTemplate(broadcasterLogin, notificationType); err == nil && strings.TrimSpace(stored) != "" {
+		tmpl = stored
+	}
+	for k, v := range vars {
+		tmpl = strings.ReplaceAll(tmpl, "$("+k+")", v)
+	}
+	return tmpl
 }
 
 // PostOwnerAnnouncement sends a message to the owner's global announcement

@@ -718,6 +718,13 @@ func EnsureSchema() error {
 	 updated_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
 	 PRIMARY KEY (broadcaster_login, guild_id, twitch_level)
 	);
+	CREATE TABLE IF NOT EXISTS discord_notification_templates (
+	 broadcaster_login TEXT NOT NULL,
+	 notification_type TEXT NOT NULL,
+	 template          TEXT NOT NULL DEFAULT '',
+	 updated_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+	 PRIMARY KEY (broadcaster_login, notification_type)
+	);
 	`)
 	if err != nil {
 		return err
@@ -1285,6 +1292,41 @@ func SaveDiscordRoleMapping(m DiscordRoleMapping) error {
 			discord_role_name = EXCLUDED.discord_role_name,
 			updated_at        = NOW()
 	`, m.BroadcasterLogin, m.GuildID, m.TwitchLevel, m.DiscordRoleID, m.DiscordRoleName)
+	return err
+}
+
+// GetDiscordNotificationTemplate returns the stored custom template for a
+// notification type ("live", "mod", "birthday"), or "" if none is set.
+func GetDiscordNotificationTemplate(broadcasterLogin, notificationType string) (string, error) {
+	if db == nil {
+		return "", nil
+	}
+	broadcasterLogin = strings.ToLower(strings.TrimSpace(broadcasterLogin))
+	var tmpl string
+	err := db.QueryRowContext(context.Background(),
+		`SELECT template FROM discord_notification_templates WHERE broadcaster_login=$1 AND notification_type=$2`,
+		broadcasterLogin, notificationType,
+	).Scan(&tmpl)
+	if err == sql.ErrNoRows {
+		return "", nil
+	}
+	return tmpl, err
+}
+
+// SaveDiscordNotificationTemplate upserts a custom template for a
+// notification type. Pass an empty string to reset to the default.
+func SaveDiscordNotificationTemplate(broadcasterLogin, notificationType, template string) error {
+	if db == nil {
+		return fmt.Errorf("db not initialized")
+	}
+	broadcasterLogin = strings.ToLower(strings.TrimSpace(broadcasterLogin))
+	_, err := db.ExecContext(context.Background(), `
+		INSERT INTO discord_notification_templates (broadcaster_login, notification_type, template, updated_at)
+		VALUES ($1, $2, $3, NOW())
+		ON CONFLICT (broadcaster_login, notification_type) DO UPDATE SET
+			template   = EXCLUDED.template,
+			updated_at = NOW()
+	`, broadcasterLogin, notificationType, template)
 	return err
 }
 
