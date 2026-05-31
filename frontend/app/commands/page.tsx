@@ -888,9 +888,9 @@ export default function CommandsPage() {
                     type="button"
                     onClick={() => setCustomPage((p) => Math.max(1, p - 1))}
                     disabled={safePage === 1}
-                    className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-700 bg-slate-900/80 text-slate-300 hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                    className="flex items-center justify-center text-slate-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition"
                   >
-                    ‹
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="h-7 w-7"><polyline points="15 18 9 12 15 6" /></svg>
                   </button>
                   <span className="text-sm text-slate-300">
                     Page <span className="font-semibold text-slate-100">{safePage}</span> of{" "}
@@ -900,9 +900,9 @@ export default function CommandsPage() {
                     type="button"
                     onClick={() => setCustomPage((p) => Math.min(totalPages, p + 1))}
                     disabled={safePage === totalPages}
-                    className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-700 bg-slate-900/80 text-slate-300 hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                    className="flex items-center justify-center text-slate-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition"
                   >
-                    ›
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="h-7 w-7"><polyline points="9 18 15 12 9 6" /></svg>
                   </button>
                 </div>
               );
