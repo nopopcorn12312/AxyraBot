@@ -621,9 +621,9 @@ export default function DiscordSettingsPage() {
                           <span className="text-sm text-slate-500">Loading channels…</span>
                         </div>
                       ) : (
-                        <div className="flex flex-col gap-5">
+                          <div className="flex flex-col gap-5">
                           <div className="flex flex-col gap-1.5">
-                            <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
                               <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-300">
                                 <span className="h-2 w-2 rounded-full bg-red-400" /> Live Notification
                               </label>
@@ -637,7 +637,7 @@ export default function DiscordSettingsPage() {
                           </div>
 
                           <div className="flex flex-col gap-1.5">
-                            <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
                               <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-300">
                                 <span>🔨</span> Mod Alerts
                               </label>
@@ -651,7 +651,7 @@ export default function DiscordSettingsPage() {
                           </div>
 
                           <div className="flex flex-col gap-1.5">
-                            <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
                               <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-300">
                                 <span>🎂</span> Birthday Announcements
                               </label>
