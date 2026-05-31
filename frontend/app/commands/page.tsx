@@ -603,7 +603,7 @@ export default function CommandsPage() {
               </div>
             </div>
 
-            <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/60">
+            <div className="overflow-auto rounded-xl border border-slate-800 bg-slate-950/60 h-[440px]">
               <table className="min-w-full text-sm text-left">
                 <thead className="bg-slate-900/80 text-slate-300">
                   <tr>
