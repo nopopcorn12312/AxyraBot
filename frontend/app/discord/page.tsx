@@ -549,10 +549,10 @@ export default function DiscordSettingsPage() {
 
                 {/* ── Two-column layout when a guild is selected ── */}
                 {selectedGuildId ? (
-                  <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-stretch">
 
                     {/* LEFT — Channel Notifications */}
-                    <div className="flex flex-col gap-5">
+                    <div className="flex flex-col gap-5 justify-between">
                       <div className="flex flex-col gap-1">
                         <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Channel Notifications</p>
                         <p className="text-xs text-slate-500">Choose which Discord channels receive each type of notification.</p>
@@ -616,7 +616,7 @@ export default function DiscordSettingsPage() {
                     </div>
 
                     {/* RIGHT — Role Mappings */}
-                    <div className="flex flex-col gap-4">
+                    <div className="flex flex-col gap-4 justify-between">
                       <div className="flex flex-col gap-1">
                         <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Role Mappings</p>
                         <p className="text-xs text-slate-500">
