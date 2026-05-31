@@ -690,12 +690,13 @@ func EnsureSchema() error {
 	 timezone TEXT
 	);
 	CREATE TABLE IF NOT EXISTS discord_settings (
-	 broadcaster_login TEXT PRIMARY KEY,
+	 broadcaster_login TEXT NOT NULL,
 	 guild_id           TEXT NOT NULL DEFAULT '',
 	 live_channel_id    TEXT NOT NULL DEFAULT '',
 	 mod_channel_id     TEXT NOT NULL DEFAULT '',
 	 bday_channel_id    TEXT NOT NULL DEFAULT '',
-	 updated_at         TIMESTAMPTZ NOT NULL DEFAULT now()
+	 updated_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+	 PRIMARY KEY (broadcaster_login, guild_id)
 	);
 	CREATE TABLE IF NOT EXISTS discord_warnings (
 	 id           SERIAL PRIMARY KEY,
@@ -710,6 +711,23 @@ func EnsureSchema() error {
 	CREATE INDEX IF NOT EXISTS idx_discord_warnings_guild_user ON discord_warnings(guild_id, user_id);
 	`)
 	if err != nil {
+		return err
+	}
+
+	// Migrate discord_settings from single-column PK to composite PK (broadcaster_login, guild_id).
+	// Safe to run repeatedly — the DO block is a no-op if already composite.
+	if _, err := db.Exec(`
+		DO $$
+		BEGIN
+			IF (SELECT COUNT(*) FROM information_schema.key_column_usage
+					WHERE constraint_name = 'discord_settings_pkey'
+					AND table_name = 'discord_settings'
+					AND table_schema = 'public') = 1 THEN
+				ALTER TABLE discord_settings DROP CONSTRAINT discord_settings_pkey;
+				ALTER TABLE discord_settings ADD PRIMARY KEY (broadcaster_login, guild_id);
+			END IF;
+		END $$;
+	`); err != nil {
 		return err
 	}
 
@@ -1052,17 +1070,18 @@ type DiscordSettings struct {
 	BdayChannelID    string
 }
 
-// GetDiscordSettings returns the Discord settings for a broadcaster, or nil
-// if no row exists yet.
-func GetDiscordSettings(broadcasterLogin string) (*DiscordSettings, error) {
+// GetDiscordSettings returns the Discord settings for a specific
+// (broadcaster, guild) pair, or nil if no row exists yet.
+func GetDiscordSettings(broadcasterLogin, guildID string) (*DiscordSettings, error) {
 	if db == nil {
 		return nil, fmt.Errorf("db not initialized")
 	}
 	broadcasterLogin = strings.ToLower(strings.TrimSpace(broadcasterLogin))
+	guildID = strings.TrimSpace(guildID)
 	row := db.QueryRowContext(context.Background(), `
 		SELECT broadcaster_login, guild_id, live_channel_id, mod_channel_id, bday_channel_id
-		FROM discord_settings WHERE broadcaster_login = $1
-	`, broadcasterLogin)
+		FROM discord_settings WHERE broadcaster_login = $1 AND guild_id = $2
+	`, broadcasterLogin, guildID)
 	var s DiscordSettings
 	if err := row.Scan(&s.BroadcasterLogin, &s.GuildID, &s.LiveChannelID, &s.ModChannelID, &s.BdayChannelID); err != nil {
 		if err == sql.ErrNoRows {
@@ -1071,6 +1090,32 @@ func GetDiscordSettings(broadcasterLogin string) (*DiscordSettings, error) {
 		return nil, err
 	}
 	return &s, nil
+}
+
+// GetAllDiscordSettingsForBroadcaster returns every guild row saved by a
+// broadcaster. Used by notification helpers to fan-out to all linked servers.
+func GetAllDiscordSettingsForBroadcaster(broadcasterLogin string) ([]DiscordSettings, error) {
+	if db == nil {
+		return nil, fmt.Errorf("db not initialized")
+	}
+	broadcasterLogin = strings.ToLower(strings.TrimSpace(broadcasterLogin))
+	rows, err := db.QueryContext(context.Background(), `
+		SELECT broadcaster_login, guild_id, live_channel_id, mod_channel_id, bday_channel_id
+		FROM discord_settings WHERE broadcaster_login = $1
+	`, broadcasterLogin)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []DiscordSettings
+	for rows.Next() {
+		var s DiscordSettings
+		if err := rows.Scan(&s.BroadcasterLogin, &s.GuildID, &s.LiveChannelID, &s.ModChannelID, &s.BdayChannelID); err != nil {
+			return nil, err
+		}
+		out = append(out, s)
+	}
+	return out, nil
 }
 
 // GetDiscordSettingsByGuild looks up Discord settings by guild ID, used to
@@ -1094,7 +1139,7 @@ func GetDiscordSettingsByGuild(guildID string) (*DiscordSettings, error) {
 	return &s, nil
 }
 
-// SaveDiscordSettings upserts Discord settings for a broadcaster.
+// SaveDiscordSettings upserts Discord settings for a (broadcaster, guild) pair.
 func SaveDiscordSettings(s DiscordSettings) error {
 	if db == nil {
 		return fmt.Errorf("db not initialized")
@@ -1103,8 +1148,7 @@ func SaveDiscordSettings(s DiscordSettings) error {
 	_, err := db.ExecContext(context.Background(), `
 		INSERT INTO discord_settings (broadcaster_login, guild_id, live_channel_id, mod_channel_id, bday_channel_id, updated_at)
 		VALUES ($1, $2, $3, $4, $5, NOW())
-		ON CONFLICT (broadcaster_login) DO UPDATE SET
-			guild_id        = EXCLUDED.guild_id,
+		ON CONFLICT (broadcaster_login, guild_id) DO UPDATE SET
 			live_channel_id = EXCLUDED.live_channel_id,
 			mod_channel_id  = EXCLUDED.mod_channel_id,
 			bday_channel_id = EXCLUDED.bday_channel_id,

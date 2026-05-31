@@ -27,6 +27,7 @@ export default function DiscordSettingsPage() {
   const [otherSectionOpen, setOtherSectionOpen] = usePersistentSectionState("axyra.sidebar.otherSectionOpen", true);
   const [moderationOpen, setModerationOpen] = usePersistentSectionState("axyra.sidebar.moderationOpen", true);
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const serverDropdownRef = useRef<HTMLDivElement | null>(null);
   const pathname = usePathname();
 
   // Discord state
@@ -42,12 +43,25 @@ export default function DiscordSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [serverDropdownOpen, setServerDropdownOpen] = useState(false);
+
+  // Close server dropdown on outside click
+  useEffect(() => {
+    function handleOutside(e: MouseEvent) {
+      if (serverDropdownRef.current && !serverDropdownRef.current.contains(e.target as Node)) {
+        setServerDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, []);
 
   // Read auth from localStorage
   useEffect(() => {
     if (typeof window === "undefined") return;
     const storedLogin = window.localStorage.getItem("axyra.login");
     const storedAvatar = window.localStorage.getItem("axyra.avatar");
+    const storedGuild = window.localStorage.getItem("axyra.discord.selectedGuild");
     if (storedLogin) {
       setIsLoggedIn(true);
       const activeChannel = window.localStorage.getItem("axyra.activeChannel");
@@ -55,7 +69,44 @@ export default function DiscordSettingsPage() {
       setChannelLogin((activeChannel || storedLogin).toLowerCase());
     }
     if (storedAvatar) setAvatarUrl(storedAvatar);
+    if (storedGuild) setSelectedGuildId(storedGuild);
   }, []);
+
+  // After guilds load, if the stored guild isn't in the list fall back to first
+  useEffect(() => {
+    if (loadingGuilds || guilds.length === 0) return;
+    setSelectedGuildId((prev) => {
+      if (prev && guilds.some((g) => g.id === prev)) return prev;
+      const first = guilds[0].id;
+      window.localStorage.setItem("axyra.discord.selectedGuild", first);
+      return first;
+    });
+  }, [loadingGuilds, guilds]);
+
+  // Persist selected guild to localStorage whenever it changes
+  useEffect(() => {
+    if (selectedGuildId) window.localStorage.setItem("axyra.discord.selectedGuild", selectedGuildId);
+  }, [selectedGuildId]);
+
+  // Load saved settings for the selected (broadcaster, guild) pair
+  useEffect(() => {
+    if (!channelLogin || !selectedGuildId) return;
+    setLoadingSettings(true);
+    setLiveChannelId("");
+    setModChannelId("");
+    setBdayChannelId("");
+    fetch(`${backendUrl}/discord/settings?login=${encodeURIComponent(channelLogin)}&guild_id=${encodeURIComponent(selectedGuildId)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data) {
+          setLiveChannelId(data.live_channel_id ?? "");
+          setModChannelId(data.mod_channel_id ?? "");
+          setBdayChannelId(data.bday_channel_id ?? "");
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingSettings(false));
+  }, [channelLogin, selectedGuildId]);
 
   // Fetch guilds the bot is in
   useEffect(() => {
@@ -66,24 +117,6 @@ export default function DiscordSettingsPage() {
       .catch(() => setGuilds([]))
       .finally(() => setLoadingGuilds(false));
   }, []);
-
-  // Load saved settings when channelLogin is known
-  useEffect(() => {
-    if (!channelLogin) return;
-    setLoadingSettings(true);
-    fetch(`${backendUrl}/discord/settings?login=${encodeURIComponent(channelLogin)}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (data) {
-          if (data.guild_id) setSelectedGuildId(data.guild_id);
-          setLiveChannelId(data.live_channel_id ?? "");
-          setModChannelId(data.mod_channel_id ?? "");
-          setBdayChannelId(data.bday_channel_id ?? "");
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoadingSettings(false));
-  }, [channelLogin]);
 
   // Fetch channels when selected guild changes
   useEffect(() => {
@@ -364,49 +397,78 @@ export default function DiscordSettingsPage() {
           {!loadingGuilds && guilds.length > 0 && (
             <div className="w-full flex flex-col rounded-2xl border border-slate-800 bg-slate-900/80 overflow-hidden">
 
-              {/* Content header — server badge top-right */}
+              {/* Content header — server switcher dropdown top-right */}
               <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-slate-800">
                 <h1 className="text-2xl font-semibold text-slate-100">Discord Integration</h1>
-                {selectedGuildId && guilds.find((g) => g.id === selectedGuildId) ? (() => {
-                  const guild = guilds.find((g) => g.id === selectedGuildId)!;
-                  return (
-                    <div className="flex items-center gap-2.5 rounded-xl border border-slate-700 bg-slate-950/60 px-3 py-2">
-                      {guild.icon ? (
-                        <Image src={guild.icon} alt={guild.name} width={28} height={28} className="rounded-full" />
+
+                {/* Server switcher */}
+                <div className="relative" ref={serverDropdownRef}>
+                  <button
+                    type="button"
+                    onClick={() => setServerDropdownOpen((o) => !o)}
+                    className="flex items-center gap-2.5 rounded-xl border border-slate-700 bg-slate-950/60 px-3 py-2 hover:bg-slate-800/70 transition"
+                  >
+                    {(() => {
+                      const guild = guilds.find((g) => g.id === selectedGuildId);
+                      return guild ? (
+                        <>
+                          {guild.icon ? (
+                            <Image src={guild.icon} alt={guild.name} width={28} height={28} className="rounded-full" />
+                          ) : (
+                            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#5865F2] text-xs font-bold text-white shrink-0">
+                              {guild.name.slice(0, 1).toUpperCase()}
+                            </div>
+                          )}
+                          <span className="text-sm font-medium text-slate-200 max-w-[160px] truncate">{guild.name}</span>
+                        </>
                       ) : (
-                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#5865F2] text-xs font-bold text-white">
-                          {guild.name.slice(0, 1).toUpperCase()}
-                        </div>
-                      )}
-                      <span className="text-sm font-medium text-slate-200 max-w-[160px] truncate">{guild.name}</span>
+                        <span className="text-sm text-slate-400">Select a server</span>
+                      );
+                    })()}
+                    <svg
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                      className={`h-4 w-4 text-slate-400 transition-transform shrink-0 ${serverDropdownOpen ? "rotate-180" : ""}`}
+                    >
+                      <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+
+                  {serverDropdownOpen && (
+                    <div className="absolute right-0 top-full mt-1 z-50 min-w-[200px] rounded-xl border border-slate-700 bg-slate-900 shadow-xl py-1">
+                      {guilds.map((g) => (
+                        <button
+                          key={g.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedGuildId(g.id);
+                            setServerDropdownOpen(false);
+                          }}
+                          className={`flex w-full items-center gap-2.5 px-3 py-2 text-sm hover:bg-slate-800 transition ${
+                            g.id === selectedGuildId ? "text-accent font-medium" : "text-slate-200"
+                          }`}
+                        >
+                          {g.icon ? (
+                            <Image src={g.icon} alt={g.name} width={24} height={24} className="rounded-full shrink-0" />
+                          ) : (
+                            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#5865F2] text-xs font-bold text-white shrink-0">
+                              {g.name.slice(0, 1).toUpperCase()}
+                            </div>
+                          )}
+                          <span className="truncate">{g.name}</span>
+                          {g.id === selectedGuildId && (
+                            <svg viewBox="0 0 20 20" fill="currentColor" className="ml-auto h-4 w-4 shrink-0 text-accent">
+                              <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
+                            </svg>
+                          )}
+                        </button>
+                      ))}
                     </div>
-                  );
-                })() : (
-                  <div className="text-xs text-slate-500 italic">No server selected</div>
-                )}
+                  )}
+                </div>
               </div>
 
               <div className="flex flex-col gap-5 p-6">
-
-                {/* Server selector */}
-                <div className="flex flex-col gap-2">
-                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">Server</label>
-                  <select
-                    value={selectedGuildId}
-                    onChange={(e) => {
-                      setSelectedGuildId(e.target.value);
-                      setLiveChannelId("");
-                      setModChannelId("");
-                      setBdayChannelId("");
-                    }}
-                    className={channelSelectClass}
-                  >
-                    <option value="">— Select a server —</option>
-                    {guilds.map((g) => (
-                      <option key={g.id} value={g.id}>{g.name}</option>
-                    ))}
-                  </select>
-                </div>
 
                 {/* Channel settings — only show once a server is picked */}
                 {selectedGuildId && (

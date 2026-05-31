@@ -530,14 +530,14 @@ func handleSlowmodeSlash(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	}
 }
 
-// PostDiscordLiveNotification sends a live alert to the broadcaster's
-// configured Discord channel when they go live on Twitch.
+// PostDiscordLiveNotification sends a live alert to every Discord server the
+// broadcaster has configured.
 func PostDiscordLiveNotification(broadcasterLogin, title, game string) {
 	if discordSession == nil {
 		return
 	}
-	settings, err := GetDiscordSettings(broadcasterLogin)
-	if err != nil || settings == nil || settings.LiveChannelID == "" {
+	all, err := GetAllDiscordSettingsForBroadcaster(broadcasterLogin)
+	if err != nil || len(all) == 0 {
 		return
 	}
 	if title == "" {
@@ -548,19 +548,24 @@ func PostDiscordLiveNotification(broadcasterLogin, title, game string) {
 	}
 	msg := fmt.Sprintf("🔴 **%s is now live!**\n🎮 %s\n📺 %s\nhttps://twitch.tv/%s",
 		broadcasterLogin, game, title, broadcasterLogin)
-	if _, err := discordSession.ChannelMessageSend(settings.LiveChannelID, msg); err != nil {
-		log.Println("[Discord] failed to post live notification:", err)
+	for _, settings := range all {
+		if settings.LiveChannelID == "" {
+			continue
+		}
+		if _, err := discordSession.ChannelMessageSend(settings.LiveChannelID, msg); err != nil {
+			log.Println("[Discord] failed to post live notification:", err)
+		}
 	}
 }
 
-// PostDiscordModAlert sends a ban or timeout alert to the broadcaster's
-// configured mod-log Discord channel.
+// PostDiscordModAlert sends a ban or timeout alert to every Discord server the
+// broadcaster has configured for mod alerts.
 func PostDiscordModAlert(broadcasterLogin, moderator, target, action, reason string) {
 	if discordSession == nil {
 		return
 	}
-	settings, err := GetDiscordSettings(broadcasterLogin)
-	if err != nil || settings == nil || settings.ModChannelID == "" {
+	all, err := GetAllDiscordSettingsForBroadcaster(broadcasterLogin)
+	if err != nil || len(all) == 0 {
 		return
 	}
 	emoji := "🔨"
@@ -571,24 +576,34 @@ func PostDiscordModAlert(broadcasterLogin, moderator, target, action, reason str
 	if reason != "" {
 		msg += "\nReason: " + reason
 	}
-	if _, err := discordSession.ChannelMessageSend(settings.ModChannelID, msg); err != nil {
-		log.Println("[Discord] failed to post mod alert:", err)
+	for _, settings := range all {
+		if settings.ModChannelID == "" {
+			continue
+		}
+		if _, err := discordSession.ChannelMessageSend(settings.ModChannelID, msg); err != nil {
+			log.Println("[Discord] failed to post mod alert:", err)
+		}
 	}
 }
 
-// PostDiscordBirthdayAnnouncement sends a birthday message to the broadcaster's
-// configured birthday Discord channel.
+// PostDiscordBirthdayAnnouncement sends a birthday message to every Discord
+// server the broadcaster has configured for birthday announcements.
 func PostDiscordBirthdayAnnouncement(broadcasterLogin, names string) {
 	if discordSession == nil {
 		return
 	}
-	settings, err := GetDiscordSettings(broadcasterLogin)
-	if err != nil || settings == nil || settings.BdayChannelID == "" {
+	all, err := GetAllDiscordSettingsForBroadcaster(broadcasterLogin)
+	if err != nil || len(all) == 0 {
 		return
 	}
 	msg := fmt.Sprintf("🎂 Happy Birthday to **%s** in **%s**'s community! 🎉", names, broadcasterLogin)
-	if _, err := discordSession.ChannelMessageSend(settings.BdayChannelID, msg); err != nil {
-		log.Println("[Discord] failed to post birthday announcement:", err)
+	for _, settings := range all {
+		if settings.BdayChannelID == "" {
+			continue
+		}
+		if _, err := discordSession.ChannelMessageSend(settings.BdayChannelID, msg); err != nil {
+			log.Println("[Discord] failed to post birthday announcement:", err)
+		}
 	}
 }
 

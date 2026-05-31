@@ -1778,18 +1778,19 @@ func handleDiscordSettings(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		login := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("login")))
-		if login == "" {
-			http.Error(w, "missing login", http.StatusBadRequest)
+		guildID := strings.TrimSpace(r.URL.Query().Get("guild_id"))
+		if login == "" || guildID == "" {
+			http.Error(w, "missing login or guild_id", http.StatusBadRequest)
 			return
 		}
-		settings, err := GetDiscordSettings(login)
+		settings, err := GetDiscordSettings(login, guildID)
 		if err != nil {
 			log.Println("get discord settings:", err)
 			http.Error(w, "db error", http.StatusInternalServerError)
 			return
 		}
 		if settings == nil {
-			settings = &DiscordSettings{BroadcasterLogin: login}
+			settings = &DiscordSettings{BroadcasterLogin: login, GuildID: guildID}
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{
