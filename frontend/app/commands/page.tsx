@@ -168,6 +168,7 @@ export default function CommandsPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [newCmdName, setNewCmdName] = useState("");
   const [newCmdResponse, setNewCmdResponse] = useState("");
+  const [newCmdRole, setNewCmdRole] = useState<CustomCommandRole>("all");
   const [addCmdError, setAddCmdError] = useState<string | null>(null);
   const [addingCmd, setAddingCmd] = useState(false);
   const addModalRef = useRef<HTMLDivElement>(null);
@@ -616,7 +617,7 @@ export default function CommandsPage() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => { setNewCmdName(""); setNewCmdResponse(""); setAddCmdError(null); setShowAddModal(true); }}
+                    onClick={() => { setNewCmdName(""); setNewCmdResponse(""); setNewCmdRole("all"); setAddCmdError(null); setShowAddModal(true); }}
                     className="px-4 py-2 rounded-lg bg-accent text-white text-sm font-medium hover:bg-accent/90 transition shadow-[0_0_14px_rgba(129,140,248,0.4)] whitespace-nowrap"
                   >
                     Add +
@@ -810,10 +811,10 @@ export default function CommandsPage() {
                                       onChange={(e) => setEditRole(e.target.value as CustomCommandRole)}
                                       className="flex-1 rounded-md border border-slate-700 bg-slate-900/80 px-2 py-1 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-accent/60"
                                     >
-                                      <option value="all">All users</option>
-                                      <option value="broadcaster">Broadcaster only</option>
-                                      <option value="moderator">Broadcaster & moderators</option>
-                                      <option value="vip">Broadcaster, mods & VIPs</option>
+                                      <option value="all">Everyone</option>
+                                      <option value="vip">VIP+</option>
+                                      <option value="moderator">Mod+</option>
+                                      <option value="broadcaster">Owner only</option>
                                     </select>
                                   </div>
                                   {editError && (
@@ -986,6 +987,19 @@ export default function CommandsPage() {
                   className="rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-accent/60 resize-none"
                 />
               </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-slate-300">User level</label>
+                <select
+                  value={newCmdRole}
+                  onChange={(e) => setNewCmdRole(e.target.value as CustomCommandRole)}
+                  className="rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-accent/60"
+                >
+                  <option value="all">Everyone</option>
+                  <option value="vip">VIP+</option>
+                  <option value="moderator">Mod+</option>
+                  <option value="broadcaster">Owner only</option>
+                </select>
+              </div>
               {addCmdError && <div className="text-xs text-red-400">{addCmdError}</div>}
               <div className="flex justify-end gap-2 mt-1">
                 <button
@@ -1008,14 +1022,14 @@ export default function CommandsPage() {
                       const res = await fetch(`${backendUrl}/commands/custom/add`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ login: channelLogin, command: newCmdName.trim(), response: newCmdResponse.trim() }),
+                        body: JSON.stringify({ login: channelLogin, command: newCmdName.trim(), response: newCmdResponse.trim(), role: newCmdRole }),
                       });
                       if (!res.ok) {
                         setAddCmdError("Failed to add command. Please try again.");
                       } else {
                         setCustomCommands((prev) => [
                           ...prev,
-                          { name: newCmdName.trim(), description: newCmdResponse.trim(), enabled: true, role: "all" },
+                          { name: newCmdName.trim(), description: newCmdResponse.trim(), enabled: true, role: newCmdRole },
                         ]);
                         setShowAddModal(false);
                       }

@@ -561,7 +561,7 @@ func handleChatMessageEvent(channelLogin, chatterLogin, chatterID, messageID, me
 			}
 		}
 		if db != nil {
-			if err := UpsertCustomCommand(channelLogin, chatterLogin, trigger, response); err != nil {
+			if err := UpsertCustomCommand(channelLogin, chatterLogin, trigger, response, "all"); err != nil {
 				log.Println("failed to upsert custom command:", err)
 				if err2 := sendHelixChatMessage(channelLogin, "Failed to save custom command"); err2 != nil {
 					log.Println("failed to send !addcom error response:", err2)
@@ -680,7 +680,7 @@ func handleChatMessageEvent(channelLogin, chatterLogin, chatterID, messageID, me
 			}
 		}
 		if db != nil {
-			if err := UpsertCustomCommand(channelLogin, chatterLogin, trigger, newResponse); err != nil {
+			if err := UpsertCustomCommand(channelLogin, chatterLogin, trigger, newResponse, "all"); err != nil {
 				log.Println("failed to update custom command:", err)
 				if err2 := sendHelixChatMessage(channelLogin, "Failed to edit custom command"); err2 != nil {
 					log.Println("failed to send !editcom error response:", err2)

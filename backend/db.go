@@ -259,20 +259,24 @@ func SetModuleEnabled(broadcasterLogin, moduleName string, enabled bool) error {
 
 // UpsertCustomCommand creates or updates a custom command for a broadcaster.
 // The command name should include the leading '!' and is stored in lowercase.
-func UpsertCustomCommand(broadcasterLogin, createdBy, commandName, response string) error {
+func UpsertCustomCommand(broadcasterLogin, createdBy, commandName, response, role string) error {
 	if db == nil {
 		return nil
 	}
 	broadcasterLogin = strings.ToLower(broadcasterLogin)
 	commandName = strings.ToLower(commandName)
+	if role == "" {
+		role = "all"
+	}
 	_, err := db.Exec(`
-	INSERT INTO custom_commands (broadcaster_login, command, response, created_by, created_at)
-	VALUES ($1, $2, $3, $4, now())
+	INSERT INTO custom_commands (broadcaster_login, command, response, created_by, created_at, permitted_role)
+	VALUES ($1, $2, $3, $4, now(), $5)
 	ON CONFLICT (broadcaster_login, command) DO UPDATE
 	SET response = EXCLUDED.response,
 	    created_by = EXCLUDED.created_by,
-	    created_at = EXCLUDED.created_at;
-	`, broadcasterLogin, commandName, response, createdBy)
+	    created_at = EXCLUDED.created_at,
+	    permitted_role = EXCLUDED.permitted_role;
+	`, broadcasterLogin, commandName, response, createdBy, role)
 	return err
 }
 

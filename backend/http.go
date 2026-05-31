@@ -285,7 +285,7 @@ func handleCustomCommandsImport(w http.ResponseWriter, r *http.Request) {
 		if !strings.HasPrefix(name, "!") {
 			name = "!" + name
 		}
-		if err := UpsertCustomCommand(login, "import:"+strings.ToLower(provider), name, resp); err != nil {
+		if err := UpsertCustomCommand(login, "import:"+strings.ToLower(provider), name, resp, "all"); err != nil {
 			log.Println("failed to import custom command:", name, err)
 			continue
 		}
@@ -494,7 +494,7 @@ func handleNightbotAuthCallback(clientID, clientSecret, redirectURI string) http
 			if !strings.HasPrefix(name, "!") {
 				name = "!" + name
 			}
-			if err := UpsertCustomCommand(login, "import:nightbot", name, respText); err != nil {
+			if err := UpsertCustomCommand(login, "import:nightbot", name, respText, "all"); err != nil {
 				log.Println("failed to import nightbot command:", name, err)
 				continue
 			}
@@ -527,6 +527,7 @@ func handleCustomCommandsAdd(w http.ResponseWriter, r *http.Request) {
 		Login    string `json:"login"`
 		Command  string `json:"command"`
 		Response string `json:"response"`
+		Role     string `json:"role"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		http.Error(w, "bad json", http.StatusBadRequest)
@@ -535,11 +536,15 @@ func handleCustomCommandsAdd(w http.ResponseWriter, r *http.Request) {
 	login := strings.ToLower(strings.TrimSpace(body.Login))
 	cmd := strings.TrimSpace(body.Command)
 	resp := strings.TrimSpace(body.Response)
+	role := strings.TrimSpace(body.Role)
+	if role == "" {
+		role = "all"
+	}
 	if login == "" || cmd == "" || resp == "" {
 		http.Error(w, "missing login, command, or response", http.StatusBadRequest)
 		return
 	}
-	if err := UpsertCustomCommand(login, login, cmd, resp); err != nil {
+	if err := UpsertCustomCommand(login, login, cmd, resp, role); err != nil {
 		log.Println("failed to add custom command:", err)
 		http.Error(w, "db error", http.StatusInternalServerError)
 		return
