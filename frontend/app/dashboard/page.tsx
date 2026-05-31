@@ -334,107 +334,106 @@ export default function DashboardPage() {
         <div
           className={`${sidebarOpen ? "w-60" : "w-16"} flex flex-col rounded-2xl border border-slate-800 bg-slate-900/80 p-3 transition-all duration-200`}
         >
-          <nav className="mt-1 flex flex-col gap-4 text-sm text-slate-200">
+          <nav className="mt-1 flex flex-col gap-5 text-sm">
             {/* Main section */}
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-0.5">
               <button
                 type="button"
                 onClick={() => setMainSectionOpen((open: boolean) => !open)}
-                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-200"
+                className="flex items-center justify-between px-2 mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500 hover:text-slate-300"
               >
                 <span>Main</span>
-                {sidebarOpen && <span className="text-[10px]">{mainSectionOpen ? "▾" : "▸"}</span>}
+                {sidebarOpen && <span className="text-[10px]">{mainSectionOpen ? "∧" : "∨"}</span>}
               </button>
               {mainSectionOpen && (
                 <>
                   <Link
                     href="/dashboard"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    className={`flex items-center gap-3 px-2 py-1.5 rounded-lg transition ${
                       pathname === "/dashboard"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "text-accent font-medium"
+                        : "text-slate-300 hover:text-slate-100"
                     }`}
                   >
-                    <span className="text-lg">📊</span>
+                    <span className="text-base">📊</span>
                     {sidebarOpen && <span>Dashboard</span>}
                   </Link>
 
                   <button
                     type="button"
                     onClick={() => setCommandsOpen((open: boolean) => !open)}
-                    className="flex items-center justify-between gap-3 rounded-xl px-3 py-2 text-left font-medium text-slate-200 hover:bg-slate-800/80 transition"
+                    className="flex items-center justify-between gap-3 px-2 py-1.5 rounded-lg text-slate-300 hover:text-slate-100 transition"
                   >
                     <div className="flex items-center gap-3">
-                      <span className="text-lg">❓</span>
+                      <span className="text-base">❓</span>
                       {sidebarOpen && <span>Commands</span>}
                     </div>
                     {sidebarOpen && (
-                      <span className="text-xs text-slate-400">{commandsOpen ? "▾" : "▸"}</span>
+                      <span className="text-[10px] text-slate-500">{commandsOpen ? "∧" : "∨"}</span>
                     )}
                   </button>
                   {commandsOpen && (
-                    <div className="mt-1 ml-6 flex flex-col gap-1 text-xs text-slate-200">
+                    <div className="ml-7 flex flex-col gap-0.5 text-xs">
                       <Link
                         href="/commands?view=default"
-                        className={`rounded-lg px-3 py-1.5 transition ${
+                        className={`px-2 py-1.5 rounded-lg transition ${
                           pathname === "/commands"
-                            ? "bg-slate-800/80 text-slate-50"
-                            : "hover:bg-slate-800/60"
+                            ? "text-accent font-medium"
+                            : "text-slate-400 hover:text-slate-200"
                         }`}
                       >
                         Default commands
                       </Link>
                       <Link
                         href="/commands?view=custom"
-                        className={`rounded-lg px-3 py-1.5 transition ${
+                        className={`px-2 py-1.5 rounded-lg transition ${
                           pathname === "/commands"
-                            ? "bg-slate-800/80 text-slate-50"
-                            : "hover:bg-slate-800/60"
+                            ? "text-accent font-medium"
+                            : "text-slate-400 hover:text-slate-200"
                         }`}
                       >
                         Custom commands
                       </Link>
                     </div>
                   )}
-
                 </>
               )}
             </div>
 
             {/* Moderation section */}
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-0.5">
               <button
                 type="button"
                 onClick={() => setModerationOpen((open: boolean) => !open)}
-                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-200"
+                className="flex items-center justify-between px-2 mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500 hover:text-slate-300"
               >
                 <span>Moderation</span>
                 {sidebarOpen && (
-                  <span className="text-[10px]">{moderationOpen ? "▾" : "▸"}</span>
+                  <span className="text-[10px]">{moderationOpen ? "∧" : "∨"}</span>
                 )}
               </button>
               {moderationOpen && (
                 <>
                   <Link
                     href="/moderation/blocked-terms"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    className={`flex items-center gap-3 px-2 py-1.5 rounded-lg transition ${
                       pathname === "/moderation/blocked-terms"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "text-accent font-medium"
+                        : "text-slate-300 hover:text-slate-100"
                     }`}
                   >
-                    <span className="text-lg">🚫</span>
+                    <span className="text-base">🚫</span>
                     {sidebarOpen && <span>Blocked Terms</span>}
                   </Link>
                   <Link
                     href="/moderation/spam-filters"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    className={`flex items-center gap-3 px-2 py-1.5 rounded-lg transition ${
                       pathname === "/moderation/spam-filters"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "text-accent font-medium"
+                        : "text-slate-300 hover:text-slate-100"
                     }`}
                   >
-                    <span className="text-lg">🧹</span>
+                    <span className="text-base">🧹</span>
                     {sidebarOpen && <span>Spam Filters</span>}
                   </Link>
                 </>
@@ -442,37 +441,37 @@ export default function DashboardPage() {
             </div>
 
             {/* Vanity section */}
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-0.5">
               <button
                 type="button"
                 onClick={() => setVanitySectionOpen((open: boolean) => !open)}
-                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-200"
+                className="flex items-center justify-between px-2 mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500 hover:text-slate-300"
               >
                 <span>Vanity</span>
-                {sidebarOpen && <span className="text-[10px]">{vanitySectionOpen ? "▾" : "▸"}</span>}
+                {sidebarOpen && <span className="text-[10px]">{vanitySectionOpen ? "∧" : "∨"}</span>}
               </button>
               {vanitySectionOpen && (
                 <>
                   <Link
                     href="/modules"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    className={`flex items-center gap-3 px-2 py-1.5 rounded-lg transition ${
                       pathname === "/modules"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "text-accent font-medium"
+                        : "text-slate-300 hover:text-slate-100"
                     }`}
                   >
-                    <span className="text-lg">🧩</span>
+                    <span className="text-base">🧩</span>
                     {sidebarOpen && <span>Modules</span>}
                   </Link>
                   <Link
                     href="/birthdays"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    className={`flex items-center gap-3 px-2 py-1.5 rounded-lg transition ${
                       pathname === "/birthdays"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "text-accent font-medium"
+                        : "text-slate-300 hover:text-slate-100"
                     }`}
                   >
-                    <span className="text-lg">🎂</span>
+                    <span className="text-base">🎂</span>
                     {sidebarOpen && <span>Birthdays</span>}
                   </Link>
                 </>
@@ -480,48 +479,48 @@ export default function DashboardPage() {
             </div>
 
             {/* Other section */}
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-0.5">
               <button
                 type="button"
                 onClick={() => setOtherSectionOpen((open: boolean) => !open)}
-                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-200"
+                className="flex items-center justify-between px-2 mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500 hover:text-slate-300"
               >
                 <span>Other</span>
-                {sidebarOpen && <span className="text-[10px]">{otherSectionOpen ? "▾" : "▸"}</span>}
+                {sidebarOpen && <span className="text-[10px]">{otherSectionOpen ? "∧" : "∨"}</span>}
               </button>
               {otherSectionOpen && (
                 <>
                   <Link
                     href="/privacy"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    className={`flex items-center gap-3 px-2 py-1.5 rounded-lg transition ${
                       pathname === "/privacy"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "text-accent font-medium"
+                        : "text-slate-300 hover:text-slate-100"
                     }`}
                   >
-                    <span className="text-lg">🔒</span>
+                    <span className="text-base">🔒</span>
                     {sidebarOpen && <span>Privacy</span>}
                   </Link>
                   <Link
                     href="/terms"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    className={`flex items-center gap-3 px-2 py-1.5 rounded-lg transition ${
                       pathname === "/terms"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "text-accent font-medium"
+                        : "text-slate-300 hover:text-slate-100"
                     }`}
                   >
-                    <span className="text-lg">📜</span>
+                    <span className="text-base">📜</span>
                     {sidebarOpen && <span>Terms</span>}
                   </Link>
                   <Link
                     href="/api-docs"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    className={`flex items-center gap-3 px-2 py-1.5 rounded-lg transition ${
                       pathname === "/api-docs"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "text-accent font-medium"
+                        : "text-slate-300 hover:text-slate-100"
                     }`}
                   >
-                    <span className="text-lg">📘</span>
+                    <span className="text-base">📘</span>
                     {sidebarOpen && <span>API Docs</span>}
                   </Link>
                 </>
