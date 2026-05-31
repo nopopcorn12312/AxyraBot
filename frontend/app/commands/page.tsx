@@ -604,7 +604,7 @@ export default function CommandsPage() {
             </div>
 
             <div className="flex-1 overflow-auto rounded-xl border border-slate-800 bg-slate-950/60 min-h-0">
-              <table className="min-w-full w-full table-fixed text-sm text-left">
+              <table className="min-w-full w-full table-fixed h-full text-sm text-left">
                 <thead className="bg-slate-900/80 text-slate-300">
                   <tr>
                     <th className="px-4 py-3 font-semibold w-36">Command</th>
@@ -658,6 +658,8 @@ export default function CommandsPage() {
                           </td>
                         </tr>
                       )}
+                      {/* filler row — absorbs remaining height */}
+                      <tr className="h-full border-t border-slate-800"><td colSpan={4} /></tr>
                     </>
                   )}
                   {view === "custom" && (() => {
@@ -868,6 +870,8 @@ export default function CommandsPage() {
                           </td>
                         </tr>
                       )}
+                      {/* filler row — absorbs remaining height */}
+                      <tr className="h-full border-t border-slate-800"><td colSpan={4} /></tr>
                     </>);
                   })()}
                 </tbody>
