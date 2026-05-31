@@ -4,15 +4,20 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { usePersistentSectionState } from "../../hooks/usePersistentSectionState";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import AxyraLogo from "../../images/AxyraBotPFP.png";
 
 const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL || "";
+const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://your-backend.onrender.com";
 
 export default function SpamFiltersPage() {
   const pathname = usePathname();
 
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mainSectionOpen, setMainSectionOpen] = usePersistentSectionState(
     "axyra.sidebar.mainSectionOpen",
@@ -34,6 +39,40 @@ export default function SpamFiltersPage() {
     "axyra.sidebar.moderationOpen",
     true,
   );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const storedLogin = window.localStorage.getItem("axyra.login");
+    const storedAvatar = window.localStorage.getItem("axyra.avatar");
+    if (storedLogin) setIsLoggedIn(true);
+    if (storedAvatar) setAvatarUrl(storedAvatar);
+  }, []);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [menuOpen]);
+
+  const handleLogout = () => {
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem("axyra.login");
+      window.localStorage.removeItem("axyra.avatar");
+    }
+    setIsLoggedIn(false);
+    setAvatarUrl(null);
+    setMenuOpen(false);
+  };
+
+  const redirectTarget = frontendUrl || "http://localhost:3000";
+  const connectUrl = `${backendUrl}/auth/start?redirect=${encodeURIComponent(redirectTarget)}`;
+  const primaryHref = isLoggedIn ? "/dashboard" : connectUrl;
+  const primaryLabel = isLoggedIn ? "Dashboard" : "Login with Twitch";
 
   return (
     <main className="min-h-screen flex flex-col bg-[radial-gradient(circle_at_top,_#1e293b,_#020617)]">
@@ -61,13 +100,46 @@ export default function SpamFiltersPage() {
           </Link>
         </div>
         <div className="flex items-center gap-4">
-          <Link
-            href={`${frontendUrl}/import`}
-            className="inline-flex items-center gap-1 rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1.5 text-xs font-medium text-slate-100 hover:bg-slate-800 hover:border-slate-500 transition"
-          >
-            <span className="text-xs">⬆</span>
-            <span>Import</span>
-          </Link>
+          <a href={primaryHref} className="hidden">{primaryLabel}</a>
+          {isLoggedIn && (
+            <>
+              <Link
+                href="/import"
+                className="inline-flex items-center gap-1 rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1.5 text-xs font-medium text-slate-100 hover:bg-slate-800 hover:border-slate-500 transition"
+              >
+                <span className="text-xs">⬆</span>
+                <span>Import</span>
+              </Link>
+              <div className="relative" ref={menuRef}>
+                <button
+                  type="button"
+                  onClick={() => setMenuOpen((open) => !open)}
+                  className="flex items-center gap-2 rounded-full bg-slate-900/80 px-1.5 py-1 hover:bg-slate-800 transition"
+                >
+                  {avatarUrl && (
+                    <Image
+                      src={avatarUrl}
+                      alt="Twitch profile picture"
+                      width={32}
+                      height={32}
+                      className="rounded-full"
+                    />
+                  )}
+                </button>
+                {menuOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-36 rounded-lg border border-slate-700 bg-slate-900/95 py-2 shadow-lg">
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="w-full px-4 py-2 text-sm text-left text-slate-200 hover:bg-slate-800"
+                    >
+                      Log out
+                    </button>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </div>
       </header>
 
