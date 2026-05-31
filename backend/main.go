@@ -566,7 +566,12 @@ func handleChatMessageEvent(channelLogin, chatterLogin, chatterID, messageID, me
 					switch bt.Action {
 					case "delete":
 						if err := deleteHelixMessage(channelLogin, messageID); err != nil {
-							log.Println("blocked term delete message error:", err)
+							log.Println("blocked term delete message error:", err, "— falling back to 1s timeout")
+							// Fallback: a 1-second timeout clears the message from chat when
+							// delete is rejected (e.g. Twitch protects verified bot messages).
+							if terr := timeoutUser(channelLogin, chatterLogin, 1, fmt.Sprintf("Blocked term: %s", bt.Term)); terr != nil {
+								log.Println("blocked term delete fallback timeout error:", terr)
+							}
 						}
 					case "timeout":
 						secs := bt.TimeoutSeconds
