@@ -636,7 +636,7 @@ export default function ModulesPage() {
                           </span>
                         </div>
                         <div className="flex items-center gap-3">
-                          <span className="text-[10px] text-slate-400">
+                          <span className="text-base font-bold text-slate-400">
                             {openModule === m.name ? "▾" : "▸"}
                           </span>
                           <ModuleToggle
@@ -833,7 +833,7 @@ export default function ModulesPage() {
                                         className="w-full rounded-md border border-slate-700 bg-slate-900/80 px-2 py-1 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-accent/60"
                                         placeholder="Leave empty to use the default response"
                                       />
-                                      <p className="text-[10px] text-slate-400">
+                                      <p className="text-base font-bold text-slate-400">
                                         You can use simple placeholders like
                                         {" "}
                                         <code className="rounded bg-slate-800 px-1 py-0.5 text-[10px]">

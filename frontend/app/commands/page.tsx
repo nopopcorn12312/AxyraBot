@@ -387,7 +387,7 @@ export default function CommandsPage() {
                 className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-200"
               >
                 <span>Main</span>
-                {sidebarOpen && <span className="text-[10px]">{mainSectionOpen ? "▾" : "▸"}</span>}
+                {sidebarOpen && <span className="text-base font-bold">{mainSectionOpen ? "▾" : "▸"}</span>}
               </button>
               {mainSectionOpen && (
                 <>
@@ -413,7 +413,7 @@ export default function CommandsPage() {
                       {sidebarOpen && <span>Commands</span>}
                     </div>
                     {sidebarOpen && (
-                      <span className="text-xs text-slate-400">{commandsOpen ? "▾" : "▸"}</span>
+                      <span className="text-base font-bold text-slate-400">{commandsOpen ? "▾" : "▸"}</span>
                     )}
                   </button>
                   {commandsOpen && (
@@ -454,7 +454,7 @@ export default function CommandsPage() {
               >
                 <span>Moderation</span>
                 {sidebarOpen && (
-                  <span className="text-[10px]">{moderationOpen ? "▾" : "▸"}</span>
+                  <span className="text-base font-bold">{moderationOpen ? "▾" : "▸"}</span>
                 )}
               </button>
               {moderationOpen && (
@@ -493,7 +493,7 @@ export default function CommandsPage() {
                 className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-200"
               >
                 <span>Vanity</span>
-                {sidebarOpen && <span className="text-[10px]">{vanitySectionOpen ? "▾" : "▸"}</span>}
+                {sidebarOpen && <span className="text-base font-bold">{vanitySectionOpen ? "▾" : "▸"}</span>}
               </button>
               {vanitySectionOpen && (
                 <>
@@ -531,7 +531,7 @@ export default function CommandsPage() {
                 className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-200"
               >
                 <span>Other</span>
-                {sidebarOpen && <span className="text-[10px]">{otherSectionOpen ? "▾" : "▸"}</span>}
+                {sidebarOpen && <span className="text-base font-bold">{otherSectionOpen ? "▾" : "▸"}</span>}
               </button>
               {otherSectionOpen && (
                 <>
