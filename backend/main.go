@@ -141,10 +141,12 @@ func main() {
 
 	// If we have an OAuth token, validate it and, if possible, derive the
 	// correct login name from Twitch so our IRC NICK matches the token.
+	botTokenValid := false
 	if oauth != "" {
 		access := strings.TrimPrefix(oauth, "oauth:")
 		if login, err := getLoginFromToken(access); err == nil && login != "" {
 			botName = login
+			botTokenValid = true
 			log.Println("Using bot login from token:", botName)
 		} else if err != nil {
 			log.Println("failed to validate bot token:", err)
@@ -169,6 +171,24 @@ func main() {
 					log.Println("failed to start notifier:", err)
 				}
 			}
+		}
+	}
+
+	// If the bot token was missing or expired, try to recover it. Recovery
+	// checks (in order): TWITCH_BOT_REFRESH_TOKEN env var, then the users
+	// table in the DB (populated when the bot account logs in via /auth/callback).
+	// This ensures the bot keeps working across cloud redeployments where
+	// the ephemeral tokens.json file is not persisted.
+	if !botTokenValid && clientID != "" && clientSecret != "" {
+		if newOAuth, newLogin, err := recoverBotToken(botName, clientID, clientSecret); err == nil {
+			oauth = newOAuth
+			os.Setenv("TWITCH_BOT_OAUTH", oauth)
+			if newLogin != "" {
+				botName = newLogin
+			}
+			log.Println("Recovered bot token for:", botName)
+		} else {
+			log.Println("bot token recovery failed; EventSub chat subscriptions may not work:", err)
 		}
 	}
 
@@ -312,7 +332,7 @@ func startEventSubWS() {
 										if event, ok := payload["event"].(map[string]interface{}); ok {
 											channelLogin, _ := event["broadcaster_user_login"].(string)
 											chatterLogin, _ := event["chatter_user_login"].(string)
-												messageID, _ := event["message_id"].(string)
+											messageID, _ := event["message_id"].(string)
 											msgText := ""
 											if msgObj, ok := event["message"].(map[string]interface{}); ok {
 												if t, ok := msgObj["text"].(string); ok {
@@ -320,7 +340,7 @@ func startEventSubWS() {
 												}
 											}
 											if channelLogin != "" && msgText != "" {
-													go handleChatMessageEvent(channelLogin, chatterLogin, messageID, msgText)
+												go handleChatMessageEvent(channelLogin, chatterLogin, messageID, msgText)
 											}
 										}
 									case "channel.follow":
@@ -3072,11 +3092,16 @@ func registerEventSubSubscriptions(appToken, clientID, channel, tokensPath strin
 					time.Sleep(500 * time.Millisecond)
 				}
 
-				// Additionally subscribe to stream.online using the app access token
-				// so we can announce when the broadcaster goes live.
-				streamCond := map[string]string{"broadcaster_user_id": broadcasterID}
-				if err := createEventSubSubscription(appToken, clientID, "stream.online", "1", streamCond, sid, "websocket", "", ""); err != nil {
-					log.Println("failed creating stream.online subscription for", ch, ":", err)
+				// Additionally subscribe to stream.online using the bot's user access
+				// token. Twitch requires a user access token for all WebSocket EventSub
+				// subscriptions; app access tokens are only valid with webhook transport.
+				if botToken == "" {
+					log.Println("skipping stream.online subscription for", ch, "; botToken not available")
+				} else {
+					streamCond := map[string]string{"broadcaster_user_id": broadcasterID}
+					if err := createEventSubSubscription(botToken, clientID, "stream.online", "1", streamCond, sid, "websocket", "", ""); err != nil {
+						log.Println("failed creating stream.online subscription for", ch, ":", err)
+					}
 				}
 			}
 			return
@@ -3084,6 +3109,89 @@ func registerEventSubSubscriptions(appToken, clientID, channel, tokensPath strin
 		time.Sleep(500 * time.Millisecond)
 	}
 	log.Println("timed out waiting for EventSub session id; cannot register subscriptions")
+}
+
+// refreshUserToken calls the Twitch token endpoint to exchange a refresh
+// token for a new access token. Returns the new access token, the (possibly
+// rotated) refresh token, and any error.
+func refreshUserToken(clientID, clientSecret, refreshToken string) (string, string, error) {
+	v := url.Values{}
+	v.Set("grant_type", "refresh_token")
+	v.Set("refresh_token", refreshToken)
+	v.Set("client_id", clientID)
+	v.Set("client_secret", clientSecret)
+	resp, err := http.Post("https://id.twitch.tv/oauth2/token", "application/x-www-form-urlencoded", strings.NewReader(v.Encode()))
+	if err != nil {
+		return "", "", err
+	}
+	defer resp.Body.Close()
+	var r struct {
+		AccessToken  string `json:"access_token"`
+		RefreshToken string `json:"refresh_token"`
+		Error        string `json:"error"`
+		Message      string `json:"message"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
+		return "", "", err
+	}
+	if r.Error != "" {
+		return "", "", fmt.Errorf("token refresh: %s — %s", r.Error, r.Message)
+	}
+	newRefresh := r.RefreshToken
+	if newRefresh == "" {
+		newRefresh = refreshToken // keep old token if server didn't rotate it
+	}
+	return r.AccessToken, newRefresh, nil
+}
+
+// recoverBotToken tries to obtain a valid bot user access token when the
+// value stored in TWITCH_BOT_OAUTH is expired or missing. It checks sources
+// in this order:
+//  1. TWITCH_BOT_REFRESH_TOKEN environment variable (set this in your cloud
+//     service's config to allow automatic refresh without a file system).
+//  2. The users table in the DB, keyed by botLogin (populated the first time
+//     the bot account logs in via /auth/callback).
+//
+// On success it returns the token in "oauth:TOKEN" form, the resolved login,
+// and nil. It also persists the refreshed token back to the DB so subsequent
+// restarts stay fresh.
+func recoverBotToken(botLogin, clientID, clientSecret string) (string, string, error) {
+	// 1. Env-provided refresh token (preferred for cloud deployments)
+	if rt := os.Getenv("TWITCH_BOT_REFRESH_TOKEN"); rt != "" {
+		newAccess, newRefresh, err := refreshUserToken(clientID, clientSecret, rt)
+		if err == nil && newAccess != "" {
+			os.Setenv("TWITCH_BOT_REFRESH_TOKEN", newRefresh)
+			if db != nil && botLogin != "" {
+				_ = SaveUserTokens(strings.ToLower(botLogin), newAccess, newRefresh)
+			}
+			login, _ := getLoginFromToken(newAccess)
+			return "oauth:" + newAccess, login, nil
+		}
+		log.Println("TWITCH_BOT_REFRESH_TOKEN refresh failed:", err)
+	}
+
+	// 2. DB lookup by bot login (populated via /auth/callback)
+	if db != nil && botLogin != "" {
+		access, refresh, err := GetUserTokens(strings.ToLower(botLogin))
+		if err == nil && access != "" {
+			// Try the stored access token first
+			if login, err := getLoginFromToken(access); err == nil && login != "" {
+				return "oauth:" + access, login, nil
+			}
+			// Access token expired; try refreshing with stored refresh token
+			if refresh != "" {
+				newAccess, newRefresh, err := refreshUserToken(clientID, clientSecret, refresh)
+				if err == nil && newAccess != "" {
+					_ = SaveUserTokens(strings.ToLower(botLogin), newAccess, newRefresh)
+					login, _ := getLoginFromToken(newAccess)
+					return "oauth:" + newAccess, login, nil
+				}
+				log.Println("DB bot token refresh failed:", err)
+			}
+		}
+	}
+
+	return "", "", fmt.Errorf("no valid bot token source available (set TWITCH_BOT_REFRESH_TOKEN or have the bot account log in via /auth/callback)")
 }
 
 // Token storage and refresh helpers
@@ -3185,6 +3293,18 @@ func tokenRefresher(path, clientID, clientSecret string) {
 			// update environment for current process
 			os.Setenv("TWITCH_BOT_OAUTH", "oauth:"+t.AccessToken)
 			log.Println("refreshed bot access token and updated tokens.json")
+		}
+
+		// Persist refreshed token to DB so it survives cloud redeployments where
+		// tokens.json is on ephemeral storage.
+		if db != nil {
+			botLogin := strings.ToLower(os.Getenv("TWITCH_BOT_USERNAME"))
+			if botLogin == "" {
+				botLogin = "axyrabot"
+			}
+			if err := SaveUserTokens(botLogin, t.AccessToken, t.RefreshToken); err != nil {
+				log.Println("failed to save refreshed bot token to db:", err)
+			}
 		}
 
 		// sleep a short while before next check
