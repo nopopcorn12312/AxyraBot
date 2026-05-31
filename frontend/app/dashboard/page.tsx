@@ -586,40 +586,6 @@ export default function DashboardPage() {
         </div>
 
         <div className="flex-1 flex flex-col gap-3 text-slate-50 min-h-0">
-          {/* Channel switcher — shown when user is an editor on other channels */}
-          {login && (editorChannels.length > 0) && (
-            <div className="flex items-center gap-2 px-1">
-              <span className="text-xs text-slate-400 font-medium">Managing:</span>
-              <div className="flex items-center gap-1 flex-wrap">
-                <button
-                  type="button"
-                  onClick={() => handleChannelSwitch(login)}
-                  className={`rounded-full px-3 py-1 text-xs font-medium transition ${
-                    activeChannel === login
-                      ? "bg-accent text-white shadow-[0_0_12px_rgba(129,140,248,0.5)]"
-                      : "bg-slate-800 text-slate-300 hover:bg-slate-700"
-                  }`}
-                >
-                  {login} <span className="opacity-60">(you)</span>
-                </button>
-                {editorChannels.map((ch) => (
-                  <button
-                    key={ch}
-                    type="button"
-                    onClick={() => handleChannelSwitch(ch)}
-                    className={`rounded-full px-3 py-1 text-xs font-medium transition ${
-                      activeChannel === ch
-                        ? "bg-accent text-white shadow-[0_0_12px_rgba(129,140,248,0.5)]"
-                        : "bg-slate-800 text-slate-300 hover:bg-slate-700"
-                    }`}
-                  >
-                    {ch}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
           <div className="flex-1 flex flex-col lg:flex-row gap-6 min-h-0">
           <div className="flex-1 lg:basis-2/3 rounded-2xl border border-slate-800 bg-slate-900/80 p-6 flex flex-col min-h-0">
             <div className="flex items-center justify-between mb-3">
