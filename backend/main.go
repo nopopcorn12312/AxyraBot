@@ -335,6 +335,7 @@ func startEventSubWS() {
 										if event, ok := payload["event"].(map[string]interface{}); ok {
 											channelLogin, _ := event["broadcaster_user_login"].(string)
 											chatterLogin, _ := event["chatter_user_login"].(string)
+											chatterID, _ := event["chatter_user_id"].(string)
 											messageID, _ := event["message_id"].(string)
 											msgText := ""
 											if msgObj, ok := event["message"].(map[string]interface{}); ok {
@@ -343,7 +344,7 @@ func startEventSubWS() {
 												}
 											}
 											if channelLogin != "" && msgText != "" {
-												go handleChatMessageEvent(channelLogin, chatterLogin, messageID, msgText)
+												go handleChatMessageEvent(channelLogin, chatterLogin, chatterID, messageID, msgText)
 											}
 										}
 									case "channel.follow":
@@ -1739,7 +1740,7 @@ func banUser(channelLogin, targetLogin, reason string) error {
 	buf, _ := json.Marshal(body)
 	endpoint := fmt.Sprintf("https://api.twitch.tv/helix/moderation/bans?broadcaster_id=%s&moderator_id=%s",
 		url.QueryEscape(broadcasterID), url.QueryEscape(broadcasterID))
-	req, err = http.NewRequest("POST", endpoint, bytes.NewReader(buf))
+	req, err := http.NewRequest("POST", endpoint, bytes.NewReader(buf))
 	if err != nil {
 		return err
 	}
