@@ -165,7 +165,7 @@ export default function CommandsPage() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [customPage, setCustomPage] = useState(1);
-  const CUSTOM_PAGE_SIZE = 13;
+  const CUSTOM_PAGE_SIZE = 14;
   const menuRef = useRef<HTMLDivElement | null>(null);
   const pathname = usePathname();
 
