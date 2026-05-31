@@ -327,6 +327,7 @@ export default function DiscordSettingsPage() {
   const channelSelectClass = "rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-accent/60 max-w-sm disabled:opacity-50 disabled:cursor-not-allowed";
 
   return (
+    <>
     <main className="h-screen overflow-hidden flex flex-col bg-[radial-gradient(circle_at_top,_#1e293b,_#020617)]">
       <header className="w-full flex items-center justify-between px-6 py-4">
         <div className="flex items-center gap-4 flex-1">
@@ -858,5 +859,6 @@ export default function DiscordSettingsPage() {
         </div>
       </div>
     )}
+    </>
   );
 }
