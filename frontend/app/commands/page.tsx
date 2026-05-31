@@ -200,11 +200,13 @@ export default function CommandsPage() {
 
     // Determine which channel's commands to display. If a channel is supplied
     // in the URL, always show that broadcaster's commands (so shared links
-    // work for viewers). Otherwise, fall back to the logged-in broadcaster.
+    // work for viewers). Otherwise, fall back to the active channel (which may
+    // differ from the logged-in user when they are managing another channel).
     if (channelFromQuery) {
       setChannelLogin(channelFromQuery.toLowerCase());
     } else if (storedLogin) {
-      setChannelLogin(storedLogin.toLowerCase());
+      const activeChannel = window.localStorage.getItem("axyra.activeChannel");
+      setChannelLogin((activeChannel || storedLogin).toLowerCase());
     }
   }, []);
 

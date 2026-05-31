@@ -28,6 +28,7 @@ func startHTTPServer(clientID, clientSecret string) {
 	mux.HandleFunc("/stream/update", withCORS(handleStreamUpdate(clientID)))
 	mux.HandleFunc("/commands/default-settings", withCORS(handleDefaultCommandSettings))
 	mux.HandleFunc("/commands/custom", withCORS(handleCustomCommands))
+	mux.HandleFunc("/commands/custom/add", withCORS(handleCustomCommandsAdd))
 	mux.HandleFunc("/commands/custom/update", withCORS(handleCustomCommandsUpdate))
 	mux.HandleFunc("/commands/custom/delete", withCORS(handleCustomCommandsDelete))
 	mux.HandleFunc("/commands/import", withCORS(handleCustomCommandsImport))
@@ -514,6 +515,40 @@ func handleNightbotAuthCallback(clientID, clientSecret, redirectURI string) http
 		}
 		redirectWithStatus(status, imported)
 	}
+}
+
+// handleCustomCommandsAdd creates a new custom command for a broadcaster.
+func handleCustomCommandsAdd(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	var body struct {
+		Login    string `json:"login"`
+		Command  string `json:"command"`
+		Response string `json:"response"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "bad json", http.StatusBadRequest)
+		return
+	}
+	login := strings.ToLower(strings.TrimSpace(body.Login))
+	cmd := strings.TrimSpace(body.Command)
+	resp := strings.TrimSpace(body.Response)
+	if login == "" || cmd == "" || resp == "" {
+		http.Error(w, "missing login, command, or response", http.StatusBadRequest)
+		return
+	}
+	if err := UpsertCustomCommand(login, login, cmd, resp); err != nil {
+		log.Println("failed to add custom command:", err)
+		http.Error(w, "db error", http.StatusInternalServerError)
+		return
+	}
+	if err := InsertAuditLog(login, "bot", "custom_command_add", fmt.Sprintf("Added custom command %s", cmd)); err != nil {
+		log.Println("failed to insert audit log for custom command add:", err)
+	}
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprint(w, "ok")
 }
 
 // handleCustomCommandsUpdate updates the name, response text, and role for a
