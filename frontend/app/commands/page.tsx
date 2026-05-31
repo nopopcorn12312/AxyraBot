@@ -165,6 +165,12 @@ export default function CommandsPage() {
   const [customPage, setCustomPage] = useState(1);
   const CUSTOM_PAGE_SIZE = 14;
   const [commandSearch, setCommandSearch] = useState("");
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newCmdName, setNewCmdName] = useState("");
+  const [newCmdResponse, setNewCmdResponse] = useState("");
+  const [addCmdError, setAddCmdError] = useState<string | null>(null);
+  const [addingCmd, setAddingCmd] = useState(false);
+  const addModalRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const pathname = usePathname();
 
@@ -605,6 +611,13 @@ export default function CommandsPage() {
                     className="pl-10 pr-4 py-2 rounded-lg border border-slate-700 bg-slate-950/60 text-base text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-accent/60 w-64"
                   />
                 </div>
+                <button
+                  type="button"
+                  onClick={() => { setNewCmdName(""); setNewCmdResponse(""); setAddCmdError(null); setShowAddModal(true); }}
+                  className="px-4 py-2 rounded-lg bg-accent text-white text-sm font-medium hover:bg-accent/90 transition shadow-[0_0_14px_rgba(129,140,248,0.4)] whitespace-nowrap"
+                >
+                  Add +
+                </button>
               )}
             </div>
 
@@ -931,6 +944,91 @@ export default function CommandsPage() {
           </div>
         </div>
       </div>
+      {showAddModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          onMouseDown={(e) => { if (e.target === e.currentTarget) setShowAddModal(false); }}
+        >
+          <div ref={addModalRef} className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-semibold text-slate-50">Add Custom Command</h2>
+              <button
+                type="button"
+                onClick={() => setShowAddModal(false)}
+                className="text-slate-400 hover:text-slate-200 transition"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5"><path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" /></svg>
+              </button>
+            </div>
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-slate-300">Command name</label>
+                <input
+                  type="text"
+                  placeholder="e.g. !socials"
+                  value={newCmdName}
+                  onChange={(e) => setNewCmdName(e.target.value)}
+                  className="rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-accent/60"
+                  autoFocus
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-slate-300">Bot response</label>
+                <textarea
+                  placeholder="What the bot says when the command is triggered..."
+                  value={newCmdResponse}
+                  onChange={(e) => setNewCmdResponse(e.target.value)}
+                  rows={3}
+                  className="rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-accent/60 resize-none"
+                />
+              </div>
+              {addCmdError && <div className="text-xs text-red-400">{addCmdError}</div>}
+              <div className="flex justify-end gap-2 mt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800 transition"
+                  disabled={addingCmd}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={!newCmdName.trim() || !newCmdResponse.trim() || addingCmd}
+                  className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent/90 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  onClick={async () => {
+                    if (!channelLogin || !newCmdName.trim() || !newCmdResponse.trim()) return;
+                    setAddingCmd(true);
+                    setAddCmdError(null);
+                    try {
+                      const res = await fetch(`${backendUrl}/commands/custom/add`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ login: channelLogin, command: newCmdName.trim(), response: newCmdResponse.trim() }),
+                      });
+                      if (!res.ok) {
+                        setAddCmdError("Failed to add command. Please try again.");
+                      } else {
+                        setCustomCommands((prev) => [
+                          ...prev,
+                          { name: newCmdName.trim(), description: newCmdResponse.trim(), enabled: true, role: "all" },
+                        ]);
+                        setShowAddModal(false);
+                      }
+                    } catch {
+                      setAddCmdError("Network error. Please try again.");
+                    } finally {
+                      setAddingCmd(false);
+                    }
+                  }}
+                >
+                  {addingCmd ? "Adding..." : "Add Command"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {deleteTarget && (
         <DeleteCommandModal
           commandName={deleteTarget}
