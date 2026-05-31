@@ -908,3 +908,87 @@ func DeleteBlockedTerm(broadcasterLogin string, id int64) error {
 	_, err := db.Exec(`DELETE FROM blocked_terms WHERE broadcaster_login=$1 AND id=$2`, broadcasterLogin, id)
 	return err
 }
+
+// UserRole represents a role assignment for a user in a broadcaster's channel.
+type UserRole struct {
+	ID               int64
+	BroadcasterLogin string
+	Username         string
+	Role             string // "Editor", "Mod", "Regular"
+	CreatedAt        time.Time
+}
+
+// EnsureRolesTable creates the user_roles table if it does not exist.
+func EnsureRolesTable() error {
+	if db == nil {
+		return nil
+	}
+	_, err := db.Exec(`
+	CREATE TABLE IF NOT EXISTS user_roles (
+		id                BIGSERIAL PRIMARY KEY,
+		broadcaster_login TEXT        NOT NULL,
+		username          TEXT        NOT NULL,
+		role              TEXT        NOT NULL DEFAULT 'Regular',
+		created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+		UNIQUE (broadcaster_login, username)
+	);`)
+	return err
+}
+
+// AddUserRole inserts or replaces a role assignment for a user.
+func AddUserRole(broadcasterLogin, username, role string) (int64, error) {
+	if db == nil {
+		return 0, fmt.Errorf("db not initialized")
+	}
+	broadcasterLogin = strings.ToLower(strings.TrimSpace(broadcasterLogin))
+	username = strings.ToLower(strings.TrimSpace(username))
+	var id int64
+	row := db.QueryRow(`
+	INSERT INTO user_roles (broadcaster_login, username, role)
+	VALUES ($1, $2, $3)
+	ON CONFLICT (broadcaster_login, username) DO UPDATE
+	SET role = EXCLUDED.role
+	RETURNING id;
+	`, broadcasterLogin, username, role)
+	if err := row.Scan(&id); err != nil {
+		return 0, err
+	}
+	return id, nil
+}
+
+// ListUserRoles returns all role assignments for a broadcaster ordered by username.
+func ListUserRoles(broadcasterLogin string) ([]UserRole, error) {
+	res := []UserRole{}
+	if db == nil {
+		return res, nil
+	}
+	broadcasterLogin = strings.ToLower(strings.TrimSpace(broadcasterLogin))
+	rows, err := db.Query(`
+	SELECT id, broadcaster_login, username, role, created_at
+	FROM user_roles
+	WHERE broadcaster_login = $1
+	ORDER BY username;
+	`, broadcasterLogin)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var r UserRole
+		if err := rows.Scan(&r.ID, &r.BroadcasterLogin, &r.Username, &r.Role, &r.CreatedAt); err != nil {
+			return nil, err
+		}
+		res = append(res, r)
+	}
+	return res, nil
+}
+
+// DeleteUserRole removes a role assignment by ID for a broadcaster.
+func DeleteUserRole(broadcasterLogin string, id int64) error {
+	if db == nil {
+		return nil
+	}
+	broadcasterLogin = strings.ToLower(strings.TrimSpace(broadcasterLogin))
+	_, err := db.Exec(`DELETE FROM user_roles WHERE broadcaster_login=$1 AND id=$2`, broadcasterLogin, id)
+	return err
+}

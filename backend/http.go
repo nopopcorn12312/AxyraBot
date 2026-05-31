@@ -30,6 +30,8 @@ func startHTTPServer(clientID, clientSecret string) {
 	mux.HandleFunc("/commands/import", withCORS(handleCustomCommandsImport))
 	mux.HandleFunc("/moderation/blocked-terms", withCORS(handleBlockedTerms))
 	mux.HandleFunc("/moderation/blocked-terms/delete", withCORS(handleBlockedTermsDelete))
+	mux.HandleFunc("/roles", withCORS(handleRoles))
+	mux.HandleFunc("/roles/delete", withCORS(handleRolesDelete))
 	mux.HandleFunc("/modules/settings", withCORS(handleModuleSettings))
 	mux.HandleFunc("/birthdays/list", withCORS(handleBirthdaysList))
 	mux.HandleFunc("/birthdays/settings", withCORS(handleBirthdaysSettings))
@@ -1512,6 +1514,100 @@ func ensureValidUserToken(login string) (string, string, error) {
 }
 
 // --- Blocked Terms ------------------------------------------------------------
+
+// handleRoles handles GET (list) and POST (add/update) for user role assignments.
+func handleRoles(w http.ResponseWriter, r *http.Request) {
+	if err := EnsureRolesTable(); err != nil {
+		log.Println("roles table ensure failed:", err)
+		http.Error(w, "db error", http.StatusInternalServerError)
+		return
+	}
+	switch r.Method {
+	case http.MethodGet:
+		login := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("login")))
+		if login == "" {
+			http.Error(w, "missing login", http.StatusBadRequest)
+			return
+		}
+		roles, err := ListUserRoles(login)
+		if err != nil {
+			log.Println("list user roles:", err)
+			http.Error(w, "db error", http.StatusInternalServerError)
+			return
+		}
+		type row struct {
+			ID       int64  `json:"id"`
+			Username string `json:"username"`
+			Role     string `json:"role"`
+		}
+		out := make([]row, len(roles))
+		for i, r := range roles {
+			out[i] = row{ID: r.ID, Username: r.Username, Role: r.Role}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{"roles": out})
+	case http.MethodPost:
+		var body struct {
+			Login    string `json:"login"`
+			Username string `json:"username"`
+			Role     string `json:"role"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "bad json", http.StatusBadRequest)
+			return
+		}
+		login := strings.ToLower(strings.TrimSpace(body.Login))
+		username := strings.TrimSpace(body.Username)
+		role := strings.TrimSpace(body.Role)
+		if login == "" || username == "" {
+			http.Error(w, "missing login or username", http.StatusBadRequest)
+			return
+		}
+		switch role {
+		case "Editor", "Mod", "Regular":
+		default:
+			role = "Regular"
+		}
+		id, err := AddUserRole(login, username, role)
+		if err != nil {
+			log.Println("add user role:", err)
+			http.Error(w, "db error", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{"id": id})
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
+}
+
+// handleRolesDelete deletes a role assignment by ID.
+func handleRolesDelete(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	var body struct {
+		Login string `json:"login"`
+		ID    int64  `json:"id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "bad json", http.StatusBadRequest)
+		return
+	}
+	login := strings.ToLower(strings.TrimSpace(body.Login))
+	if login == "" || body.ID == 0 {
+		http.Error(w, "missing login or id", http.StatusBadRequest)
+		return
+	}
+	if err := DeleteUserRole(login, body.ID); err != nil {
+		log.Println("delete user role:", err)
+		http.Error(w, "db error", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprint(w, "ok")
+}
 
 // handleBlockedTerms handles GET (list) and POST (add/update) for blocked terms.
 func handleBlockedTerms(w http.ResponseWriter, r *http.Request) {

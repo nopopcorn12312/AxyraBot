@@ -12,6 +12,12 @@ const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL;
 
 type RoleOption = "Editor" | "Mod" | "Regular";
 
+type RoleRow = {
+  id: number;
+  username: string;
+  role: string;
+};
+
 export default function RolesPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -22,6 +28,9 @@ export default function RolesPage() {
   const [newRole, setNewRole] = useState<RoleOption>("Regular");
   const [addError, setAddError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [roles, setRoles] = useState<RoleRow[]>([]);
+  const [channelLogin, setChannelLogin] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   const [mainSectionOpen, setMainSectionOpen] = usePersistentSectionState(
     "axyra.sidebar.mainSectionOpen",
@@ -56,7 +65,24 @@ export default function RolesPage() {
     if (storedAvatar) {
       setAvatarUrl(storedAvatar);
     }
+    if (storedLogin) {
+      setChannelLogin(storedLogin.toLowerCase());
+    }
   }, []);
+
+  useEffect(() => {
+    if (!channelLogin) return;
+    const controller = new AbortController();
+    (async () => {
+      try {
+        const res = await fetch(`${backendUrl}/roles?login=${encodeURIComponent(channelLogin)}`, { signal: controller.signal });
+        if (!res.ok) return;
+        const data: { roles?: RoleRow[] } = await res.json();
+        setRoles(data.roles ?? []);
+      } catch { /* ignore */ }
+    })();
+    return () => controller.abort();
+  }, [channelLogin]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -385,9 +411,59 @@ export default function RolesPage() {
                 Add
               </button>
             </div>
-            <p className="text-slate-400 text-sm">
-              Role configuration coming soon.
-            </p>
+
+            <div className="flex-1 overflow-auto rounded-xl border border-slate-800 bg-slate-950/60 min-h-0">
+              <table className="min-w-full w-full table-fixed h-full text-sm text-left">
+                <thead className="bg-slate-900/80 text-slate-300 sticky top-0 z-10">
+                  <tr>
+                    <th className="px-4 py-3 font-semibold">Username</th>
+                    <th className="px-4 py-3 font-semibold w-40">Role</th>
+                    <th className="px-4 py-3 font-semibold w-24 text-center">Delete</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {roles.map((row) => (
+                    <tr key={row.id} className="border-t border-slate-800 hover:bg-slate-900/60">
+                      <td className="px-4 py-2 font-mono text-slate-100 truncate">{row.username}</td>
+                      <td className="px-4 py-2 text-slate-300">{row.role}</td>
+                      <td className="px-4 py-2 text-center">
+                        <button
+                          type="button"
+                          disabled={deletingId === row.id}
+                          onClick={async () => {
+                            if (!channelLogin) return;
+                            setDeletingId(row.id);
+                            try {
+                              const res = await fetch(`${backendUrl}/roles/delete`, {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ login: channelLogin, id: row.id }),
+                              });
+                              if (res.ok) setRoles((prev) => prev.filter((r) => r.id !== row.id));
+                            } finally {
+                              setDeletingId(null);
+                            }
+                          }}
+                          className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-red-700 bg-red-700/80 text-white hover:bg-red-600/90 disabled:opacity-50"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+                            <path d="M6 2a1 1 0 0 0-1 1v1H3.5a.5.5 0 0 0 0 1h.54l.76 10.137A2 2 0 0 0 6.79 17h6.42a2 2 0 0 0 1.99-1.863L15.96 5H16.5a.5.5 0 0 0 0-1H15V3a1 1 0 0 0-1-1H6Zm1 2V3h6v1H7Z" />
+                          </svg>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {roles.length === 0 && (
+                    <tr>
+                      <td colSpan={3} className="px-4 py-6 text-center text-slate-400">
+                        No roles assigned yet. Click &ldquo;Add&rdquo; to get started.
+                      </td>
+                    </tr>
+                  )}
+                  <tr className="h-full border-t border-slate-800"><td colSpan={3} /></tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
@@ -456,11 +532,29 @@ export default function RolesPage() {
                   type="button"
                   onClick={async () => {
                     if (!newUsername.trim()) { setAddError("Please enter a username."); return; }
+                    if (!channelLogin) return;
                     setAdding(true);
                     setAddError(null);
                     try {
-                      // TODO: wire up to backend endpoint
-                      setShowAddModal(false);
+                      const res = await fetch(`${backendUrl}/roles`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ login: channelLogin, username: newUsername.trim(), role: newRole }),
+                      });
+                      if (!res.ok) {
+                        setAddError("Failed to add role. Please try again.");
+                      } else {
+                        const data: { id: number } = await res.json();
+                        setRoles((prev) => {
+                          const next = [...prev.filter((r) => r.username.toLowerCase() !== newUsername.trim().toLowerCase()), {
+                            id: data.id,
+                            username: newUsername.trim().toLowerCase(),
+                            role: newRole,
+                          }];
+                          return next.sort((a, b) => a.username.localeCompare(b.username));
+                        });
+                        setShowAddModal(false);
+                      }
                     } catch {
                       setAddError("Network error. Please try again.");
                     } finally {
