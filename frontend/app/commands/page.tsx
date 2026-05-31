@@ -300,7 +300,7 @@ export default function CommandsPage() {
   const primaryLabel = isLoggedIn ? "Dashboard" : "Login with Twitch";
 
   return (
-    <main className="min-h-screen flex flex-col bg-[radial-gradient(circle_at_top,_#1e293b,_#020617)]">
+    <main className="h-screen overflow-hidden flex flex-col bg-[radial-gradient(circle_at_top,_#1e293b,_#020617)]">
       <header className="w-full flex items-center justify-between px-6 py-4">
         <div className="flex items-center gap-4 flex-1">
           <button
@@ -373,7 +373,7 @@ export default function CommandsPage() {
         </div>
       </header>
 
-      <div className="flex flex-1 w-full gap-6 px-4 pb-6 items-stretch">
+      <div className="flex flex-1 w-full gap-6 px-4 pb-6 items-stretch min-h-0">
         <div
           className={`${sidebarOpen ? "w-60" : "w-16"} flex flex-col rounded-2xl border border-slate-800 bg-slate-900/80 p-3 transition-all duration-200`}
         >
@@ -573,8 +573,8 @@ export default function CommandsPage() {
           </nav>
         </div>
 
-        <div className="flex-1 flex flex-col gap-6 text-slate-50">
-          <div className="w-full rounded-2xl border border-slate-800 bg-slate-900/80 p-6">
+        <div className="flex-1 flex flex-col gap-6 text-slate-50 min-h-0">
+          <div className="w-full flex-1 flex flex-col rounded-2xl border border-slate-800 bg-slate-900/80 p-6 min-h-0">
             <div className="flex items-center justify-between mb-4">
               <h1 className="text-2xl font-semibold">Commands</h1>
               <div className="inline-flex rounded-full bg-slate-900/80 border border-slate-700 p-1 text-xs">
@@ -603,7 +603,7 @@ export default function CommandsPage() {
               </div>
             </div>
 
-            <div className="overflow-auto rounded-xl border border-slate-800 bg-slate-950/60 h-[440px]">
+            <div className="flex-1 overflow-auto rounded-xl border border-slate-800 bg-slate-950/60 min-h-0">
               <table className="min-w-full text-sm text-left">
                 <thead className="bg-slate-900/80 text-slate-300">
                   <tr>
