@@ -28,3 +28,5 @@ services:
       # Optional: Neon/Postgres connection string, if you want DB features
       - key: DATABASE_URL
         value: "postgres://user:password@host:5432/dbname?sslmode=require"
+      - key: FRONTEND_URL
+        value: "https://axyrabot.com"

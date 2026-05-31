@@ -2547,7 +2547,7 @@ func getFrontendBaseURL() string {
 	if u := os.Getenv("FRONTEND_ORIGIN"); u != "" {
 		return strings.TrimRight(u, "/")
 	}
-	return "http://localhost:3000"
+	return "https://axyrabot.com"
 }
 
 // getAIResponse calls an external AI provider (such as OpenAI) to generate

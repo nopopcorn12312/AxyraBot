@@ -10,7 +10,7 @@ import { usePersistentSectionState } from "../hooks/usePersistentSectionState";
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://your-backend.onrender.com";
 const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL;
 
-export default function PrivacyPage() {
+export default function RolesPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -77,7 +77,7 @@ export default function PrivacyPage() {
   const primaryLabel = isLoggedIn ? "Dashboard" : "Login with Twitch";
 
   return (
-    <main className="min-h-screen flex flex-col bg-[radial-gradient(circle_at_top,_#1e293b,_#020617)]">
+    <main className="h-screen overflow-hidden flex flex-col bg-[radial-gradient(circle_at_top,_#1e293b,_#020617)]">
       <header className="w-full flex items-center justify-between px-6 py-4">
         <div className="flex items-center gap-4 flex-1">
           <button
@@ -102,10 +102,7 @@ export default function PrivacyPage() {
           </Link>
         </div>
         <div className="flex items-center gap-4">
-          <a
-            href={primaryHref}
-            className="hidden"
-          >
+          <a href={primaryHref} className="hidden">
             {primaryLabel}
           </a>
           {isLoggedIn && (
@@ -150,7 +147,7 @@ export default function PrivacyPage() {
         </div>
       </header>
 
-      <div className="flex flex-1 w-full gap-6 px-4 pb-6 items-stretch">
+      <div className="flex flex-1 w-full gap-6 px-4 pb-6 items-stretch min-h-0">
         <div
           className={`${sidebarOpen ? "w-60" : "w-16"} flex flex-col rounded-2xl border border-slate-800 bg-slate-900/80 p-3 transition-all duration-200`}
         >
@@ -228,7 +225,6 @@ export default function PrivacyPage() {
                       </Link>
                     </div>
                   )}
-
                 </>
               )}
             </div>
@@ -362,146 +358,12 @@ export default function PrivacyPage() {
           </nav>
         </div>
 
-        <div className="flex-1 flex flex-col gap-6 text-slate-50 overflow-y-auto">
-          <div className="w-full rounded-2xl border border-slate-800 bg-slate-900/80 p-6 space-y-5">
-            <header className="space-y-1">
-              <h1 className="text-2xl font-semibold">Privacy Policy for AxyraBot</h1>
-              <p className="text-xs text-slate-400">Last updated: January 1, 2026</p>
-            </header>
-
-            <p className="text-sm text-slate-300">
-              AxyraBot is a Twitch chat bot that provides moderation, automation, and engagement features in Twitch
-              channels. This Privacy Policy is designed to comply with the Twitch Developer Agreement and Twitch API
-              requirements, and explains how data is collected, used, stored, and protected.
+        <div className="flex-1 flex flex-col gap-6 text-slate-50 min-h-0">
+          <div className="w-full flex-1 flex flex-col rounded-2xl border border-slate-800 bg-slate-900/80 p-6 min-h-0">
+            <h1 className="text-2xl font-semibold mb-4">Roles</h1>
+            <p className="text-slate-400 text-sm">
+              Role configuration coming soon.
             </p>
-
-            <section className="space-y-2">
-              <h2 className="text-lg font-semibold text-slate-100">1. Data Collected</h2>
-              <p className="text-sm text-slate-300">
-                AxyraBot only collects data necessary to provide its functionality, as permitted by Twitch. This may
-                include:
-              </p>
-              <ul className="list-disc list-inside text-sm text-slate-300 space-y-1 ml-2">
-                <li>Twitch usernames and user IDs</li>
-                <li>Chat messages sent in channels where AxyraBot is present</li>
-                <li>Command usage and interaction data</li>
-                <li>Channel-specific configuration settings set by moderators or channel owners</li>
-              </ul>
-              <p className="text-sm text-slate-300 mt-2">AxyraBot does not collect or store:</p>
-              <ul className="list-disc list-inside text-sm text-slate-300 space-y-1 ml-2">
-                <li>Real names, email addresses, IP addresses, or precise location data</li>
-                <li>Passwords, authentication credentials, or payment information</li>
-                <li>Data unrelated to Twitch bot functionality</li>
-              </ul>
-            </section>
-
-            <section className="space-y-2">
-              <h2 className="text-lg font-semibold text-slate-100">2. Use of Twitch Data</h2>
-              <p className="text-sm text-slate-300">
-                All data collected by AxyraBot is used strictly to:
-              </p>
-              <ul className="list-disc list-inside text-sm text-slate-300 space-y-1 ml-2">
-                <li>Provide moderation features (e.g., message filtering, timeouts, logging)</li>
-                <li>Respond to chat commands and automation triggers</li>
-                <li>Manage opt-in features such as giveaways or birthday lists</li>
-                <li>Maintain and improve bot reliability</li>
-              </ul>
-              <p className="text-sm text-slate-300">
-                Data is not used for advertising, tracking, profiling, or marketing purposes.
-              </p>
-            </section>
-
-            <section className="space-y-2">
-              <h2 className="text-lg font-semibold text-slate-100">3. Data Storage and Retention</h2>
-              <p className="text-sm text-slate-300">
-                AxyraBot follows Twitch&apos;s data minimization requirements:
-              </p>
-              <ul className="list-disc list-inside text-sm text-slate-300 space-y-1 ml-2">
-                <li>Data is stored only for as long as necessary to provide functionality</li>
-                <li>Temporary data may be processed in real time and not retained</li>
-                <li>
-                  Persistent data (such as channel settings or opt-in lists) is retained until it is removed by a
-                  channel moderator or owner, AxyraBot is removed from the channel, or the data is no longer required
-                  for operation
-                </li>
-              </ul>
-            </section>
-
-            <section className="space-y-2">
-              <h2 className="text-lg font-semibold text-slate-100">4. Data Sharing and Disclosure</h2>
-              <p className="text-sm text-slate-300">
-                AxyraBot does not sell, rent, or share Twitch data with third parties.
-              </p>
-              <p className="text-sm text-slate-300">Data may only be disclosed if:</p>
-              <ul className="list-disc list-inside text-sm text-slate-300 space-y-1 ml-2">
-                <li>Required by applicable law</li>
-                <li>
-                  Necessary to comply with Twitch&apos;s Terms of Service, Developer Agreement, or valid legal requests
-                </li>
-              </ul>
-            </section>
-
-            <section className="space-y-2">
-              <h2 className="text-lg font-semibold text-slate-100">5. Third-Party Services</h2>
-              <p className="text-sm text-slate-300">
-                AxyraBot accesses Twitch services via the official Twitch API and is subject to Twitch&apos;s Privacy Policy
-                and Terms of Service. AxyraBot is not responsible for Twitch&apos;s own data practices.
-              </p>
-              <p className="text-sm text-slate-300">
-                If third-party services are used for hosting or infrastructure, they are used solely to operate the bot
-                and do not receive Twitch data for independent use.
-              </p>
-            </section>
-
-            <section className="space-y-2">
-              <h2 className="text-lg font-semibold text-slate-100">6. Security Measures</h2>
-              <p className="text-sm text-slate-300">
-                Reasonable administrative and technical safeguards are used to protect stored data against unauthorized
-                access, alteration, or loss. While best practices are followed, no system can be guaranteed to be
-                completely secure.
-              </p>
-            </section>
-
-            <section className="space-y-2">
-              <h2 className="text-lg font-semibold text-slate-100">7. User Rights and Control</h2>
-              <p className="text-sm text-slate-300">
-                Channel owners and moderators may request deletion of stored channel configuration data, disable
-                features, or remove AxyraBot from their channel at any time.
-              </p>
-              <p className="text-sm text-slate-300">
-                Requests regarding data handling should be directed to the bot owner or official support contact.
-              </p>
-            </section>
-
-            <section className="space-y-2">
-              <h2 className="text-lg font-semibold text-slate-100">8. Policy Updates</h2>
-              <p className="text-sm text-slate-300">
-                This Privacy Policy may be updated as required to maintain compliance with Twitch policies or
-                applicable laws. Updates take effect immediately upon posting.
-              </p>
-            </section>
-
-            <section className="space-y-2">
-              <h2 className="text-lg font-semibold text-slate-100">9. Contact</h2>
-              <p className="text-sm text-slate-300">
-                For questions or concerns about this Privacy Policy or AxyraBot&apos;s data practices, contact the bot
-                owner via the official support or repository listed with AxyraBot.
-              </p>
-              <p className="text-sm text-slate-300">
-                By using AxyraBot, you acknowledge that you have read and understood this Privacy Policy.
-              </p>
-            </section>
-
-            <section className="space-y-2 border-t border-slate-800 pt-4 mt-2">
-              <h2 className="text-lg font-semibold text-slate-100">Short Public-Facing Privacy Notice</h2>
-              <h3 className="text-sm font-semibold text-slate-200">AxyraBot Privacy Summary</h3>
-              <p className="text-sm text-slate-300">
-                AxyraBot only uses Twitch-provided data (such as usernames, user IDs, and chat messages) to operate
-                moderation and chat features. Data is not sold, shared, or used for advertising. Information is stored
-                only as long as necessary and can be removed by channel moderators at any time. AxyraBot complies with
-                Twitch&apos;s Developer Agreement and API requirements.
-              </p>
-            </section>
           </div>
         </div>
       </div>

@@ -71,7 +71,7 @@ export default function ModerationPage() {
     setMenuOpen(false);
   };
 
-  const redirectTarget = frontendUrl || "http://localhost:3000";
+  const redirectTarget = frontendUrl || "https://axyrabot.com";
   const connectUrl = `${backendUrl}/auth/start?redirect=${encodeURIComponent(redirectTarget)}`;
   const primaryHref = isLoggedIn ? "/dashboard" : connectUrl;
   const primaryLabel = isLoggedIn ? "Dashboard" : "Login with Twitch";
@@ -174,6 +174,18 @@ export default function ModerationPage() {
                   >
                     <span className="text-lg">📊</span>
                     {sidebarOpen && <span>Dashboard</span>}
+                  </Link>
+
+                  <Link
+                    href="/roles"
+                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                      pathname === "/roles"
+                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
+                        : "text-slate-200 hover:bg-slate-800/80"
+                    }`}
+                  >
+                    <span className="text-lg">🎭</span>
+                    {sidebarOpen && <span>Roles</span>}
                   </Link>
 
                   <button
