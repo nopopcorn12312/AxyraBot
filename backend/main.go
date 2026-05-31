@@ -3252,11 +3252,11 @@ func tokenRefresher(path, clientID, clientSecret string) {
 					botLogin = "axyrabot"
 				}
 				if access, refresh, dbErr := GetUserTokens(botLogin); dbErr == nil && refresh != "" {
-					t = &tokenFile{AccessToken: access, RefreshToken: refresh, Expiry: 0}
+					t = tokenFile{AccessToken: access, RefreshToken: refresh, Expiry: 0}
 					err = nil
 				}
 			}
-			if err != nil || t == nil || t.RefreshToken == "" {
+			if err != nil || t.RefreshToken == "" {
 				time.Sleep(30 * time.Second)
 				continue
 			}
