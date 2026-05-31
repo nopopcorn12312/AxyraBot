@@ -166,6 +166,7 @@ export default function CommandsPage() {
   const [deleting, setDeleting] = useState(false);
   const [customPage, setCustomPage] = useState(1);
   const CUSTOM_PAGE_SIZE = 14;
+  const [commandSearch, setCommandSearch] = useState("");
   const menuRef = useRef<HTMLDivElement | null>(null);
   const pathname = usePathname();
 
@@ -226,8 +227,8 @@ export default function CommandsPage() {
     return () => controller.abort();
   }, [channelLogin, view]);
 
-  // Reset to page 1 whenever the commands list changes
-  useEffect(() => { setCustomPage(1); }, [customCommands.length]);
+  // Reset to page 1 whenever the commands list or search query changes
+  useEffect(() => { setCustomPage(1); }, [customCommands.length, commandSearch]);
 
   useEffect(() => {
     if (!channelLogin || view !== "custom") return;
@@ -577,7 +578,22 @@ export default function CommandsPage() {
           <div className="w-full flex-1 flex flex-col rounded-2xl border border-slate-800 bg-slate-900/80 p-6 min-h-0">
             <div className="flex items-center justify-between mb-4">
               <h1 className="text-2xl font-semibold">Commands</h1>
-              <div className="inline-flex rounded-full bg-slate-900/80 border border-slate-700 p-1 text-xs">
+              <div className="flex items-center gap-3">
+                {view === "custom" && (
+                  <div className="relative">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none">
+                      <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9Z" clipRule="evenodd" />
+                    </svg>
+                    <input
+                      type="text"
+                      placeholder="Search commands..."
+                      value={commandSearch}
+                      onChange={(e) => setCommandSearch(e.target.value)}
+                      className="pl-8 pr-3 py-1.5 rounded-lg border border-slate-700 bg-slate-950/60 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-accent/60 w-52"
+                    />
+                  </div>
+                )}
+                <div className="inline-flex rounded-full bg-slate-900/80 border border-slate-700 p-1 text-xs">
                 <button
                   type="button"
                   onClick={() => setView("default")}
@@ -600,6 +616,7 @@ export default function CommandsPage() {
                 >
                   Custom commands
                 </button>
+                </div>
               </div>
             </div>
 
@@ -663,9 +680,13 @@ export default function CommandsPage() {
                     </>
                   )}
                   {view === "custom" && (() => {
-                    const totalPages = Math.max(1, Math.ceil(customCommands.length / CUSTOM_PAGE_SIZE));
+                    const query = commandSearch.trim().toLowerCase();
+                    const filtered = query
+                      ? customCommands.filter((c) => c.name.toLowerCase().includes(query) || c.description.toLowerCase().includes(query))
+                      : customCommands;
+                    const totalPages = Math.max(1, Math.ceil(filtered.length / CUSTOM_PAGE_SIZE));
                     const safePage = Math.min(customPage, totalPages);
-                    const pageRows = customCommands.slice((safePage - 1) * CUSTOM_PAGE_SIZE, safePage * CUSTOM_PAGE_SIZE);
+                    const pageRows = filtered.slice((safePage - 1) * CUSTOM_PAGE_SIZE, safePage * CUSTOM_PAGE_SIZE);
                     return (
                       <>{pageRows.map((row) => (
                         <Fragment key={row.name}>
@@ -870,6 +891,13 @@ export default function CommandsPage() {
                           </td>
                         </tr>
                       )}
+                      {customCommands.length > 0 && pageRows.length === 0 && (
+                        <tr>
+                          <td colSpan={4} className="px-4 py-4 text-center text-slate-400">
+                            No commands match your search.
+                          </td>
+                        </tr>
+                      )}
                       {/* filler row — absorbs remaining height */}
                       <tr className="h-full border-t border-slate-800"><td colSpan={4} /></tr>
                     </>);
@@ -879,8 +907,13 @@ export default function CommandsPage() {
             </div>
 
             {/* Pagination — custom commands only */}
-            {view === "custom" && customCommands.length > CUSTOM_PAGE_SIZE && (() => {
-              const totalPages = Math.max(1, Math.ceil(customCommands.length / CUSTOM_PAGE_SIZE));
+            {view === "custom" && (() => {
+              const query = commandSearch.trim().toLowerCase();
+              const filtered = query
+                ? customCommands.filter((c) => c.name.toLowerCase().includes(query) || c.description.toLowerCase().includes(query))
+                : customCommands;
+              const totalPages = Math.max(1, Math.ceil(filtered.length / CUSTOM_PAGE_SIZE));
+              if (totalPages <= 1) return null;
               const safePage = Math.min(customPage, totalPages);
               return (
                 <div className="flex items-center justify-center gap-4 mt-4">
