@@ -10,11 +10,19 @@ import { usePersistentSectionState } from "../hooks/usePersistentSectionState";
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://your-backend.onrender.com";
 const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL;
 
+type RoleOption = "Editor" | "Mod" | "Regular";
+
 export default function RolesPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newUsername, setNewUsername] = useState("");
+  const [newRole, setNewRole] = useState<RoleOption>("Regular");
+  const [addError, setAddError] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
+  const modalRef = useRef<HTMLDivElement>(null);
   const [mainSectionOpen, setMainSectionOpen] = usePersistentSectionState(
     "axyra.sidebar.mainSectionOpen",
     true,
@@ -60,6 +68,13 @@ export default function RolesPage() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [menuOpen]);
+
+  useEffect(() => {
+    if (!showAddModal) return;
+    function handleKey(e: KeyboardEvent) { if (e.key === "Escape") setShowAddModal(false); }
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [showAddModal]);
 
   const handleLogout = () => {
     if (typeof window !== "undefined") {
@@ -359,13 +374,109 @@ export default function RolesPage() {
 
         <div className="flex-1 flex flex-col gap-6 text-slate-50 min-h-0">
           <div className="w-full flex-1 flex flex-col rounded-2xl border border-slate-800 bg-slate-900/80 p-6 min-h-0">
-            <h1 className="text-2xl font-semibold mb-4">Roles</h1>
+            <div className="mb-4 flex items-center justify-between gap-4">
+              <h1 className="text-2xl font-semibold">Roles</h1>
+              <button
+                type="button"
+                onClick={() => { setNewUsername(""); setNewRole("Regular"); setAddError(null); setShowAddModal(true); }}
+                className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent/90 transition shadow-[0_0_14px_rgba(129,140,248,0.4)]"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4"><path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" /></svg>
+                Add
+              </button>
+            </div>
             <p className="text-slate-400 text-sm">
               Role configuration coming soon.
             </p>
           </div>
         </div>
       </div>
+
+      {/* Add Role modal */}
+      {showAddModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          onMouseDown={(e) => { if (e.target === e.currentTarget) setShowAddModal(false); }}
+        >
+          <div ref={modalRef} className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-semibold text-slate-50">Add Role</h2>
+              <button
+                type="button"
+                onClick={() => setShowAddModal(false)}
+                className="text-slate-400 hover:text-slate-200 transition"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5"><path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" /></svg>
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-4">
+              {/* Username input */}
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-slate-300">Username</label>
+                <input
+                  type="text"
+                  placeholder="e.g. username"
+                  value={newUsername}
+                  onChange={(e) => setNewUsername(e.target.value)}
+                  className="rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-accent/60"
+                  autoFocus
+                />
+              </div>
+
+              {/* Role dropdown */}
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-slate-300">Role</label>
+                <select
+                  value={newRole}
+                  onChange={(e) => setNewRole(e.target.value as RoleOption)}
+                  className="rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-accent/60"
+                >
+                  <option value="Editor">Editor</option>
+                  <option value="Mod">Mod</option>
+                  <option value="Regular">Regular</option>
+                </select>
+              </div>
+
+              {addError && (
+                <div className="text-xs text-red-400">{addError}</div>
+              )}
+
+              {/* Buttons */}
+              <div className="flex justify-end gap-2 mt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800 transition"
+                  disabled={adding}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!newUsername.trim()) { setAddError("Please enter a username."); return; }
+                    setAdding(true);
+                    setAddError(null);
+                    try {
+                      // TODO: wire up to backend endpoint
+                      setShowAddModal(false);
+                    } catch {
+                      setAddError("Network error. Please try again.");
+                    } finally {
+                      setAdding(false);
+                    }
+                  }}
+                  disabled={!newUsername.trim() || adding}
+                  className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent/90 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {adding ? "Adding..." : "Add Role"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
