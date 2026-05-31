@@ -164,6 +164,8 @@ export default function CommandsPage() {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [customPage, setCustomPage] = useState(1);
+  const CUSTOM_PAGE_SIZE = 10;
   const menuRef = useRef<HTMLDivElement | null>(null);
   const pathname = usePathname();
 
@@ -223,6 +225,9 @@ export default function CommandsPage() {
     })();
     return () => controller.abort();
   }, [channelLogin, view]);
+
+  // Reset to page 1 whenever the commands list changes
+  useEffect(() => { setCustomPage(1); }, [customCommands.length]);
 
   useEffect(() => {
     if (!channelLogin || view !== "custom") return;
@@ -655,9 +660,12 @@ export default function CommandsPage() {
                       )}
                     </>
                   )}
-                  {view === "custom" && (
-                    <>
-                      {customCommands.map((row) => (
+                  {view === "custom" && (() => {
+                    const totalPages = Math.max(1, Math.ceil(customCommands.length / CUSTOM_PAGE_SIZE));
+                    const safePage = Math.min(customPage, totalPages);
+                    const pageRows = customCommands.slice((safePage - 1) * CUSTOM_PAGE_SIZE, safePage * CUSTOM_PAGE_SIZE);
+                    return (
+                      <>{pageRows.map((row) => (
                         <Fragment key={row.name}>
                           <tr className="border-t border-slate-800 hover:bg-slate-900/60">
                             <td className="px-4 py-2 font-mono text-slate-100">{row.name}</td>
@@ -860,11 +868,41 @@ export default function CommandsPage() {
                           </td>
                         </tr>
                       )}
-                    </>
-                  )}
+                    </>);
+                  })()}
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination — custom commands only */}
+            {view === "custom" && customCommands.length > CUSTOM_PAGE_SIZE && (() => {
+              const totalPages = Math.max(1, Math.ceil(customCommands.length / CUSTOM_PAGE_SIZE));
+              const safePage = Math.min(customPage, totalPages);
+              return (
+                <div className="flex items-center justify-center gap-4 mt-4">
+                  <button
+                    type="button"
+                    onClick={() => setCustomPage((p) => Math.max(1, p - 1))}
+                    disabled={safePage === 1}
+                    className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-700 bg-slate-900/80 text-slate-300 hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                  >
+                    ‹
+                  </button>
+                  <span className="text-sm text-slate-300">
+                    Page <span className="font-semibold text-slate-100">{safePage}</span> of{" "}
+                    <span className="font-semibold text-slate-100">{totalPages}</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setCustomPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={safePage === totalPages}
+                    className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-700 bg-slate-900/80 text-slate-300 hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                  >
+                    ›
+                  </button>
+                </div>
+              );
+            })()}
           </div>
         </div>
       </div>
