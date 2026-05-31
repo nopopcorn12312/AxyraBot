@@ -854,6 +854,7 @@ func handleAuthStart(clientID string) http.HandlerFunc {
 		q.Set("redirect_uri", getRedirectURI(r))
 		q.Set("response_type", "code")
 		q.Set("scope", scopes)
+		q.Set("force_verify", "true") // always show consent screen so new scopes are granted
 		q.Set("state", state)
 		if redirect != "" {
 			q.Set("redirect", redirect)
