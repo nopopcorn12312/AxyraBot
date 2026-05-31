@@ -565,47 +565,47 @@ export default function CommandsPage() {
         <div className="flex-1 flex flex-col gap-6 text-slate-50 min-h-0">
           <div className="w-full flex-1 flex flex-col rounded-2xl border border-slate-800 bg-slate-900/80 p-6 min-h-0">
             <div className="flex items-center justify-between mb-4">
-              <h1 className="text-2xl font-semibold">Commands</h1>
               <div className="flex items-center gap-3">
-                {view === "custom" && (
-                  <div className="relative">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none">
-                      <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9Z" clipRule="evenodd" />
-                    </svg>
-                    <input
-                      type="text"
-                      placeholder="Search commands..."
-                      value={commandSearch}
-                      onChange={(e) => setCommandSearch(e.target.value)}
-                      className="pl-8 pr-3 py-1.5 rounded-lg border border-slate-700 bg-slate-950/60 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-accent/60 w-52"
-                    />
-                  </div>
-                )}
+                <h1 className="text-2xl font-semibold">Commands</h1>
                 <div className="inline-flex rounded-full bg-slate-900/80 border border-slate-700 p-1 text-xs">
-                <button
-                  type="button"
-                  onClick={() => setView("default")}
-                  className={`px-3 py-1 rounded-full font-medium transition ${
-                    view === "default"
-                      ? "bg-accent text-white shadow-[0_0_14px_rgba(129,140,248,0.6)]"
-                      : "text-slate-300 hover:bg-slate-800/80"
-                  }`}
-                >
-                  Default commands
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setView("custom")}
-                  className={`ml-1 px-3 py-1 rounded-full font-medium transition ${
-                    view === "custom"
-                      ? "bg-accent text-white shadow-[0_0_14px_rgba(129,140,248,0.6)]"
-                      : "text-slate-300 hover:bg-slate-800/80"
-                  }`}
-                >
-                  Custom commands
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => setView("default")}
+                    className={`px-3 py-1 rounded-full font-medium transition ${
+                      view === "default"
+                        ? "bg-accent text-white shadow-[0_0_14px_rgba(129,140,248,0.6)]"
+                        : "text-slate-300 hover:bg-slate-800/80"
+                    }`}
+                  >
+                    Default commands
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setView("custom")}
+                    className={`ml-1 px-3 py-1 rounded-full font-medium transition ${
+                      view === "custom"
+                        ? "bg-accent text-white shadow-[0_0_14px_rgba(129,140,248,0.6)]"
+                        : "text-slate-300 hover:bg-slate-800/80"
+                    }`}
+                  >
+                    Custom commands
+                  </button>
                 </div>
               </div>
+              {view === "custom" && (
+                <div className="relative">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none">
+                    <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9Z" clipRule="evenodd" />
+                  </svg>
+                  <input
+                    type="text"
+                    placeholder="Search commands..."
+                    value={commandSearch}
+                    onChange={(e) => setCommandSearch(e.target.value)}
+                    className="pl-8 pr-3 py-1.5 rounded-lg border border-slate-700 bg-slate-950/60 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-accent/60 w-52"
+                  />
+                </div>
+              )}
             </div>
 
             <div className="flex-1 overflow-auto rounded-xl border border-slate-800 bg-slate-950/60 min-h-0">
