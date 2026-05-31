@@ -604,10 +604,10 @@ export default function CommandsPage() {
             </div>
 
             <div className="flex-1 overflow-auto rounded-xl border border-slate-800 bg-slate-950/60 min-h-0">
-              <table className="min-w-full text-sm text-left">
+              <table className="min-w-full w-full table-fixed text-sm text-left">
                 <thead className="bg-slate-900/80 text-slate-300">
                   <tr>
-                    <th className="px-4 py-3 font-semibold">Command</th>
+                    <th className="px-4 py-3 font-semibold w-36">Command</th>
                     <th className="px-4 py-3 font-semibold">Description</th>
                     <th className="px-4 py-3 font-semibold w-32 text-center">Enabled</th>
                     <th className="px-4 py-3 font-semibold w-24 text-center">Actions</th>
@@ -618,8 +618,8 @@ export default function CommandsPage() {
                     <>
                       {defaultCommands.map((row) => (
                         <tr key={row.name} className="border-t border-slate-800 hover:bg-slate-900/60">
-                          <td className="px-4 py-2 font-mono text-slate-100">{row.label ?? row.name}</td>
-                          <td className="px-4 py-2 text-slate-300">{row.description}</td>
+                          <td className="px-4 py-2 font-mono text-slate-100 truncate">{row.label ?? row.name}</td>
+                          <td className="px-4 py-2 text-slate-300 max-w-0 truncate" title={row.description}>{row.description}</td>
                           <td className="px-4 py-2 text-center">
                             {channelLogin && loggedInLogin === channelLogin ? (
                               <CommandToggle
@@ -668,8 +668,8 @@ export default function CommandsPage() {
                       <>{pageRows.map((row) => (
                         <Fragment key={row.name}>
                           <tr className="border-t border-slate-800 hover:bg-slate-900/60">
-                            <td className="px-4 py-2 font-mono text-slate-100">{row.name}</td>
-                            <td className="px-4 py-2 text-slate-300">{row.description}</td>
+                            <td className="px-4 py-2 font-mono text-slate-100 truncate">{row.name}</td>
+                            <td className="px-4 py-2 text-slate-300 max-w-0 truncate" title={row.description}>{row.description}</td>
                             <td className="px-4 py-2 text-center">
                               {isLoggedIn && channelLogin && loggedInLogin === channelLogin ? (
                                 <CommandToggle
