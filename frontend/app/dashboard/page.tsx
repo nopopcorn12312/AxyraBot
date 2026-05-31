@@ -519,6 +519,7 @@ export default function DashboardPage() {
                     <span className="text-lg">🎂</span>
                     {sidebarOpen && <span>Birthdays</span>}
                   </Link>
+                  {!(activeChannel && activeChannel !== login) && (
                   <Link
                     href="/roles"
                     className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
@@ -530,6 +531,7 @@ export default function DashboardPage() {
                     <span className="text-lg">🎭</span>
                     {sidebarOpen && <span>Roles</span>}
                   </Link>
+                  )}
                 </>
               )}
             </div>

@@ -26,6 +26,7 @@ const providerDisplay: Record<Provider, string> = {
 
 export default function ImportPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isEditor, setIsEditor] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [login, setLogin] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -65,6 +66,7 @@ export default function ImportPage() {
     if (storedLogin) {
       setIsLoggedIn(true);
       const activeChannel = window.localStorage.getItem("axyra.activeChannel");
+      if (activeChannel && activeChannel.toLowerCase() !== storedLogin.toLowerCase()) setIsEditor(true);
       setLogin((activeChannel || storedLogin).toLowerCase());
     }
     if (storedAvatar) {
@@ -392,6 +394,7 @@ export default function ImportPage() {
                     <span className="text-lg">🎂</span>
                     {sidebarOpen && <span>Birthdays</span>}
                   </Link>
+                  {!isEditor && (
                   <Link
                     href="/roles"
                     className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
@@ -403,6 +406,7 @@ export default function ImportPage() {
                     <span className="text-lg">🎭</span>
                     {sidebarOpen && <span>Roles</span>}
                   </Link>
+                  )}
                 </>
               )}
             </div>

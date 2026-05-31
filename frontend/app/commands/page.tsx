@@ -126,6 +126,7 @@ function CommandToggle({ enabled, onChange }: CommandToggleProps) {
 
 export default function CommandsPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isEditor, setIsEditor] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [channelLogin, setChannelLogin] = useState<string | null>(null);
   const [loggedInLogin, setLoggedInLogin] = useState<string | null>(null);
@@ -188,6 +189,8 @@ export default function CommandsPage() {
     if (storedLogin) {
       setIsLoggedIn(true);
       setLoggedInLogin(storedLogin.toLowerCase());
+      const activeChannel = window.localStorage.getItem("axyra.activeChannel");
+      if (activeChannel && activeChannel.toLowerCase() !== storedLogin.toLowerCase()) setIsEditor(true);
     }
     if (storedAvatar) {
       setAvatarUrl(storedAvatar);
@@ -521,6 +524,7 @@ export default function CommandsPage() {
                     <span className="text-lg">🎂</span>
                     {sidebarOpen && <span>Birthdays</span>}
                   </Link>
+                  {!isEditor && (
                   <Link
                     href="/roles"
                     className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
@@ -532,6 +536,7 @@ export default function CommandsPage() {
                     <span className="text-lg">🎭</span>
                     {sidebarOpen && <span>Roles</span>}
                   </Link>
+                  )}
                 </>
               )}
             </div>

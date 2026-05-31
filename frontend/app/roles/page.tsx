@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import AxyraBotPFP from "../images/AxyraBotPFP.png";
 import ManagingChannelBadge from "../components/ManagingChannelBadge";
 import { usePersistentSectionState } from "../hooks/usePersistentSectionState";
@@ -20,6 +20,7 @@ type RoleRow = {
 };
 
 export default function RolesPage() {
+  const router = useRouter();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -68,6 +69,10 @@ export default function RolesPage() {
     }
     if (storedLogin) {
       const activeChannel = window.localStorage.getItem("axyra.activeChannel");
+      if (activeChannel && activeChannel.toLowerCase() !== storedLogin.toLowerCase()) {
+        router.replace("/dashboard");
+        return;
+      }
       setChannelLogin((activeChannel || storedLogin).toLowerCase());
     }
   }, []);
@@ -335,6 +340,7 @@ export default function RolesPage() {
                     <span className="text-lg">🎂</span>
                     {sidebarOpen && <span>Birthdays</span>}
                   </Link>
+                  {true && (
                   <Link
                     href="/roles"
                     className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
@@ -346,6 +352,7 @@ export default function RolesPage() {
                     <span className="text-lg">🎭</span>
                     {sidebarOpen && <span>Roles</span>}
                   </Link>
+                  )}
                 </>
               )}
             </div>

@@ -13,6 +13,7 @@ const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL;
 
 export default function TermsPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isEditor, setIsEditor] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -45,6 +46,8 @@ export default function TermsPage() {
     const storedAvatar = window.localStorage.getItem("axyra.avatar");
     if (storedLogin) {
       setIsLoggedIn(true);
+      const activeChannel = window.localStorage.getItem("axyra.activeChannel");
+      if (activeChannel && activeChannel.toLowerCase() !== storedLogin.toLowerCase()) setIsEditor(true);
     }
     if (storedAvatar) {
       setAvatarUrl(storedAvatar);
@@ -297,6 +300,7 @@ export default function TermsPage() {
                     <span className="text-lg">🎂</span>
                     {sidebarOpen && <span>Birthdays</span>}
                   </Link>
+                  {!isEditor && (
                   <Link
                     href="/roles"
                     className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
@@ -308,6 +312,7 @@ export default function TermsPage() {
                     <span className="text-lg">🎭</span>
                     {sidebarOpen && <span>Roles</span>}
                   </Link>
+                  )}
                 </>
               )}
             </div>

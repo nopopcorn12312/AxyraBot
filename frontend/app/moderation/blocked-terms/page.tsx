@@ -23,6 +23,7 @@ export default function BlockedTermsPage() {
   const pathname = usePathname();
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isEditor, setIsEditor] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -100,7 +101,11 @@ export default function BlockedTermsPage() {
     if (typeof window === "undefined") return;
     const login = window.localStorage.getItem("axyra.login");
     const activeChannel = window.localStorage.getItem("axyra.activeChannel");
-    if (login) setChannelLogin((activeChannel || login).toLowerCase());
+    if (login) {
+      setIsLoggedIn(true);
+      if (activeChannel && activeChannel.toLowerCase() !== login.toLowerCase()) setIsEditor(true);
+      setChannelLogin((activeChannel || login).toLowerCase());
+    }
   }, []);
 
   useEffect(() => {
@@ -339,6 +344,7 @@ export default function BlockedTermsPage() {
                     <span className="text-lg">🎂</span>
                     {sidebarOpen && <span>Birthdays</span>}
                   </Link>
+                  {!isEditor && (
                   <Link
                     href="/roles"
                     className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
@@ -350,6 +356,7 @@ export default function BlockedTermsPage() {
                     <span className="text-lg">🎭</span>
                     {sidebarOpen && <span>Roles</span>}
                   </Link>
+                  )}
                 </>
               )}
             </div>
