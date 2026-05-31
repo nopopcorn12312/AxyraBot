@@ -5,7 +5,9 @@ import (
 	"log"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
 )
@@ -29,7 +31,7 @@ func InitDiscord() {
 		return
 	}
 
-	discordSession.Identify.Intents = discordgo.IntentsGuilds | discordgo.IntentsGuildMessages
+	discordSession.Identify.Intents = discordgo.IntentsGuilds | discordgo.IntentsGuildMessages | discordgo.IntentsGuildMembers | discordgo.IntentsMessageContent
 
 	discordSession.AddHandler(func(s *discordgo.Session, r *discordgo.Ready) {
 		log.Printf("[Discord] logged in as %s\n", r.User.Username)
@@ -49,17 +51,114 @@ func InitDiscord() {
 func registerSlashCommands(s *discordgo.Session, appID string) {
 	guildID := os.Getenv("DISCORD_DEV_GUILD_ID") // leave empty for global
 
+	var (
+		permBan     int64 = discordgo.PermissionBanMembers
+		permKick    int64 = discordgo.PermissionKickMembers
+		permTimeout int64 = discordgo.PermissionModerateMembers
+		permManMsg  int64 = discordgo.PermissionManageMessages
+		permManChan int64 = discordgo.PermissionManageChannels
+	)
+
 	commands := []*discordgo.ApplicationCommand{
 		{
 			Name:        "commands",
 			Description: "List custom Twitch bot commands for a channel",
 			Options: []*discordgo.ApplicationCommandOption{
-				{
-					Type:        discordgo.ApplicationCommandOptionString,
-					Name:        "channel",
-					Description: "Twitch channel name (defaults to this server's linked channel)",
-					Required:    false,
-				},
+				{Type: discordgo.ApplicationCommandOptionString, Name: "channel", Description: "Twitch channel name (defaults to this server's linked channel)", Required: false},
+			},
+		},
+		{
+			Name:                     "ban",
+			Description:              "Ban a member from the server",
+			DefaultMemberPermissions: &permBan,
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionUser, Name: "user", Description: "The user to ban", Required: true},
+				{Type: discordgo.ApplicationCommandOptionString, Name: "reason", Description: "Reason for the ban", Required: false},
+			},
+		},
+		{
+			Name:                     "kick",
+			Description:              "Kick a member from the server",
+			DefaultMemberPermissions: &permKick,
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionUser, Name: "user", Description: "The user to kick", Required: true},
+				{Type: discordgo.ApplicationCommandOptionString, Name: "reason", Description: "Reason for the kick", Required: false},
+			},
+		},
+		{
+			Name:                     "timeout",
+			Description:              "Timeout a member (e.g. 10m, 2h, 1d — max 28d)",
+			DefaultMemberPermissions: &permTimeout,
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionUser, Name: "user", Description: "The user to timeout", Required: true},
+				{Type: discordgo.ApplicationCommandOptionString, Name: "duration", Description: "Duration e.g. 10m 2h 1d", Required: true},
+				{Type: discordgo.ApplicationCommandOptionString, Name: "reason", Description: "Reason for the timeout", Required: false},
+			},
+		},
+		{
+			Name:                     "untimeout",
+			Description:              "Remove a timeout from a member",
+			DefaultMemberPermissions: &permTimeout,
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionUser, Name: "user", Description: "The user to un-timeout", Required: true},
+			},
+		},
+		{
+			Name:                     "warn",
+			Description:              "Issue a warning to a member (stored in the database)",
+			DefaultMemberPermissions: &permTimeout,
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionUser, Name: "user", Description: "The user to warn", Required: true},
+				{Type: discordgo.ApplicationCommandOptionString, Name: "reason", Description: "Reason for the warning", Required: true},
+			},
+		},
+		{
+			Name:                     "warnings",
+			Description:              "View the warning history for a member",
+			DefaultMemberPermissions: &permTimeout,
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionUser, Name: "user", Description: "The user to check", Required: true},
+			},
+		},
+		{
+			Name:                     "clearwarnings",
+			Description:              "Clear all warnings for a member",
+			DefaultMemberPermissions: &permTimeout,
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionUser, Name: "user", Description: "The user to clear warnings for", Required: true},
+			},
+		},
+		{
+			Name:                     "purge",
+			Description:              "Bulk delete messages in the current channel (max 100)",
+			DefaultMemberPermissions: &permManMsg,
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionInteger, Name: "amount", Description: "Number of messages to delete (1–100)", Required: true},
+			},
+		},
+		{
+			Name:                     "lock",
+			Description:              "Lock a channel so @everyone cannot send messages",
+			DefaultMemberPermissions: &permManChan,
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionChannel, Name: "channel", Description: "Channel to lock (defaults to current)", Required: false},
+			},
+		},
+		{
+			Name:                     "unlock",
+			Description:              "Unlock a channel so @everyone can send messages again",
+			DefaultMemberPermissions: &permManChan,
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionChannel, Name: "channel", Description: "Channel to unlock (defaults to current)", Required: false},
+			},
+		},
+		{
+			Name:                     "slowmode",
+			Description:              "Set slowmode delay in a channel (0 to disable, max 21600s)",
+			DefaultMemberPermissions: &permManChan,
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionInteger, Name: "seconds", Description: "Delay in seconds (0–21600)", Required: true},
+				{Type: discordgo.ApplicationCommandOptionChannel, Name: "channel", Description: "Channel to configure (defaults to current)", Required: false},
 			},
 		},
 	}
@@ -80,6 +179,28 @@ func discordInteractionHandler(s *discordgo.Session, i *discordgo.InteractionCre
 	switch i.ApplicationCommandData().Name {
 	case "commands":
 		handleCommandsSlash(s, i)
+	case "ban":
+		handleBanSlash(s, i)
+	case "kick":
+		handleKickSlash(s, i)
+	case "timeout":
+		handleTimeoutSlash(s, i)
+	case "untimeout":
+		handleUntimeoutSlash(s, i)
+	case "warn":
+		handleWarnSlash(s, i)
+	case "warnings":
+		handleWarningsSlash(s, i)
+	case "clearwarnings":
+		handleClearWarningsSlash(s, i)
+	case "purge":
+		handlePurgeSlash(s, i)
+	case "lock":
+		handleLockSlash(s, i)
+	case "unlock":
+		handleUnlockSlash(s, i)
+	case "slowmode":
+		handleSlowmodeSlash(s, i)
 	}
 }
 
@@ -134,6 +255,279 @@ func handleCommandsSlash(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{Content: content},
 	})
+}
+
+// ── Shared helpers ────────────────────────────────────────────────────────────
+
+// optMap converts a slice of slash-command options into a name-keyed map for
+// easy lookup without repeated linear scans.
+func optMap(opts []*discordgo.ApplicationCommandInteractionDataOption) map[string]*discordgo.ApplicationCommandInteractionDataOption {
+	m := make(map[string]*discordgo.ApplicationCommandInteractionDataOption, len(opts))
+	for _, o := range opts {
+		m[o.Name] = o
+	}
+	return m
+}
+
+// respondEphemeral sends a message visible only to the invoker.
+func respondEphemeral(s *discordgo.Session, i *discordgo.InteractionCreate, msg string) {
+	_ = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{Content: msg, Flags: discordgo.MessageFlagsEphemeral},
+	})
+}
+
+// respondPublic sends a message visible to everyone in the channel.
+func respondPublic(s *discordgo.Session, i *discordgo.InteractionCreate, msg string) {
+	_ = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{Content: msg},
+	})
+}
+
+// strPtr returns a pointer to a string literal — required by WebhookEdit.
+func strPtr(v string) *string { return &v }
+
+// parseDuration parses a human duration string (e.g. "10m", "2h", "7d") into
+// a time.Duration. Supported suffixes: s, m, h, d.
+func parseDuration(s string) (time.Duration, error) {
+	s = strings.ToLower(strings.TrimSpace(s))
+	if len(s) < 2 {
+		return 0, fmt.Errorf("invalid duration %q", s)
+	}
+	suffix := s[len(s)-1]
+	val, err := strconv.ParseFloat(s[:len(s)-1], 64)
+	if err != nil || val <= 0 {
+		return 0, fmt.Errorf("invalid duration %q", s)
+	}
+	switch suffix {
+	case 's':
+		return time.Duration(val * float64(time.Second)), nil
+	case 'm':
+		return time.Duration(val * float64(time.Minute)), nil
+	case 'h':
+		return time.Duration(val * float64(time.Hour)), nil
+	case 'd':
+		return time.Duration(val * 24 * float64(time.Hour)), nil
+	}
+	return 0, fmt.Errorf("unknown duration unit %q — use s/m/h/d", string(suffix))
+}
+
+// postModLogEmbed sends a rich embed to the guild's configured mod-log channel.
+func postModLogEmbed(s *discordgo.Session, guildID, action string, target, mod *discordgo.User, reason string, color int) {
+	settings, err := GetDiscordSettingsByGuild(guildID)
+	if err != nil || settings == nil || settings.ModChannelID == "" {
+		return
+	}
+	_, _ = s.ChannelMessageSendEmbed(settings.ModChannelID, &discordgo.MessageEmbed{
+		Title: action,
+		Color: color,
+		Fields: []*discordgo.MessageEmbedField{
+			{Name: "User", Value: fmt.Sprintf("<@%s> (`%s`)", target.ID, target.Username), Inline: true},
+			{Name: "Moderator", Value: fmt.Sprintf("<@%s> (`%s`)", mod.ID, mod.Username), Inline: true},
+			{Name: "Reason", Value: reason, Inline: false},
+		},
+		Timestamp: time.Now().UTC().Format(time.RFC3339),
+	})
+}
+
+// ── Moderation slash command handlers ─────────────────────────────────────────
+
+func handleBanSlash(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	opts := optMap(i.ApplicationCommandData().Options)
+	target := opts["user"].UserValue(s)
+	reason := "No reason provided"
+	if r, ok := opts["reason"]; ok {
+		reason = r.StringValue()
+	}
+	if err := s.GuildBanCreateWithReason(i.GuildID, target.ID, reason, 0); err != nil {
+		respondEphemeral(s, i, fmt.Sprintf("❌ Failed to ban: %s", err))
+		return
+	}
+	postModLogEmbed(s, i.GuildID, "🔨 Member Banned", target, i.Member.User, reason, 0xED4245)
+	respondPublic(s, i, fmt.Sprintf("✅ **%s** has been banned. Reason: %s", target.Username, reason))
+}
+
+func handleKickSlash(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	opts := optMap(i.ApplicationCommandData().Options)
+	target := opts["user"].UserValue(s)
+	reason := "No reason provided"
+	if r, ok := opts["reason"]; ok {
+		reason = r.StringValue()
+	}
+	if err := s.GuildMemberDeleteWithReason(i.GuildID, target.ID, reason); err != nil {
+		respondEphemeral(s, i, fmt.Sprintf("❌ Failed to kick: %s", err))
+		return
+	}
+	postModLogEmbed(s, i.GuildID, "👢 Member Kicked", target, i.Member.User, reason, 0xFEE75C)
+	respondPublic(s, i, fmt.Sprintf("✅ **%s** has been kicked. Reason: %s", target.Username, reason))
+}
+
+func handleTimeoutSlash(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	opts := optMap(i.ApplicationCommandData().Options)
+	target := opts["user"].UserValue(s)
+	durStr := opts["duration"].StringValue()
+	reason := "No reason provided"
+	if r, ok := opts["reason"]; ok {
+		reason = r.StringValue()
+	}
+	dur, err := parseDuration(durStr)
+	if err != nil {
+		respondEphemeral(s, i, fmt.Sprintf("❌ Invalid duration — use e.g. `10m`, `2h`, `1d` (max 28d)"))
+		return
+	}
+	if dur > 28*24*time.Hour {
+		dur = 28 * 24 * time.Hour
+	}
+	until := time.Now().Add(dur)
+	if err := s.GuildMemberTimeout(i.GuildID, target.ID, &until); err != nil {
+		respondEphemeral(s, i, fmt.Sprintf("❌ Failed to timeout: %s", err))
+		return
+	}
+	postModLogEmbed(s, i.GuildID, "⏱️ Member Timed Out", target, i.Member.User,
+		fmt.Sprintf("Duration: %s — %s", durStr, reason), 0xEB459E)
+	respondPublic(s, i, fmt.Sprintf("⏱️ **%s** has been timed out for **%s**. Reason: %s", target.Username, durStr, reason))
+}
+
+func handleUntimeoutSlash(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	opts := optMap(i.ApplicationCommandData().Options)
+	target := opts["user"].UserValue(s)
+	if err := s.GuildMemberTimeout(i.GuildID, target.ID, nil); err != nil {
+		respondEphemeral(s, i, fmt.Sprintf("❌ Failed to remove timeout: %s", err))
+		return
+	}
+	postModLogEmbed(s, i.GuildID, "✅ Timeout Removed", target, i.Member.User, "Timeout manually removed", 0x57F287)
+	respondPublic(s, i, fmt.Sprintf("✅ Timeout removed for **%s**.", target.Username))
+}
+
+func handleWarnSlash(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	opts := optMap(i.ApplicationCommandData().Options)
+	target := opts["user"].UserValue(s)
+	reason := opts["reason"].StringValue()
+	count, err := AddDiscordWarning(i.GuildID, target.ID, target.Username, i.Member.User.ID, i.Member.User.Username, reason)
+	if err != nil {
+		respondEphemeral(s, i, "❌ Failed to save warning.")
+		return
+	}
+	postModLogEmbed(s, i.GuildID, fmt.Sprintf("⚠️ Member Warned (warning #%d)", count), target, i.Member.User, reason, 0xFEE75C)
+	respondPublic(s, i, fmt.Sprintf("⚠️ **%s** has been warned (warning #%d). Reason: %s", target.Username, count, reason))
+}
+
+func handleWarningsSlash(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	opts := optMap(i.ApplicationCommandData().Options)
+	target := opts["user"].UserValue(s)
+	warnings, err := GetDiscordWarnings(i.GuildID, target.ID)
+	if err != nil {
+		respondEphemeral(s, i, "❌ Failed to fetch warnings.")
+		return
+	}
+	if len(warnings) == 0 {
+		respondEphemeral(s, i, fmt.Sprintf("✅ **%s** has no warnings.", target.Username))
+		return
+	}
+	var lines []string
+	for idx, w := range warnings {
+		lines = append(lines, fmt.Sprintf("**#%d** — %s *(by %s, %s)*",
+			idx+1, w.Reason, w.ModUsername, w.CreatedAt.Format("Jan 2 2006")))
+	}
+	content := fmt.Sprintf("**Warnings for %s (%d total):**\n%s", target.Username, len(warnings), strings.Join(lines, "\n"))
+	if len(content) > 2000 {
+		content = content[:1997] + "..."
+	}
+	respondEphemeral(s, i, content)
+}
+
+func handleClearWarningsSlash(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	opts := optMap(i.ApplicationCommandData().Options)
+	target := opts["user"].UserValue(s)
+	count, err := ClearDiscordWarnings(i.GuildID, target.ID)
+	if err != nil {
+		respondEphemeral(s, i, "❌ Failed to clear warnings.")
+		return
+	}
+	respondPublic(s, i, fmt.Sprintf("🗑️ Cleared **%d** warning(s) for **%s**.", count, target.Username))
+}
+
+func handlePurgeSlash(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	opts := optMap(i.ApplicationCommandData().Options)
+	amount := int(opts["amount"].IntValue())
+	if amount < 1 {
+		amount = 1
+	}
+	if amount > 100 {
+		amount = 100
+	}
+	// Defer so we have time to fetch + delete without the interaction expiring.
+	_ = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{Flags: discordgo.MessageFlagsEphemeral},
+	})
+	msgs, err := s.ChannelMessages(i.ChannelID, amount, "", "", "")
+	if err != nil {
+		_, _ = s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{Content: strPtr("❌ Failed to fetch messages.")})
+		return
+	}
+	ids := make([]string, len(msgs))
+	for j, m := range msgs {
+		ids[j] = m.ID
+	}
+	if err := s.ChannelMessagesBulkDelete(i.ChannelID, ids); err != nil {
+		_, _ = s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{Content: strPtr(fmt.Sprintf("❌ Bulk delete failed: %s", err))})
+		return
+	}
+	_, _ = s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{Content: strPtr(fmt.Sprintf("🗑️ Deleted **%d** message(s).", len(ids)))})
+}
+
+func handleLockSlash(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	channelID := i.ChannelID
+	opts := optMap(i.ApplicationCommandData().Options)
+	if ch, ok := opts["channel"]; ok {
+		channelID = ch.ChannelValue(s).ID
+	}
+	// Deny @everyone (role ID == guild ID) from sending messages.
+	if err := s.ChannelPermissionSet(channelID, i.GuildID, discordgo.PermissionOverwriteTypeRole, 0, discordgo.PermissionSendMessages); err != nil {
+		respondEphemeral(s, i, fmt.Sprintf("❌ Failed to lock channel: %s", err))
+		return
+	}
+	respondPublic(s, i, fmt.Sprintf("🔒 <#%s> has been locked.", channelID))
+}
+
+func handleUnlockSlash(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	channelID := i.ChannelID
+	opts := optMap(i.ApplicationCommandData().Options)
+	if ch, ok := opts["channel"]; ok {
+		channelID = ch.ChannelValue(s).ID
+	}
+	// Restore @everyone send-messages to neutral (remove the deny).
+	if err := s.ChannelPermissionSet(channelID, i.GuildID, discordgo.PermissionOverwriteTypeRole, discordgo.PermissionSendMessages, 0); err != nil {
+		respondEphemeral(s, i, fmt.Sprintf("❌ Failed to unlock channel: %s", err))
+		return
+	}
+	respondPublic(s, i, fmt.Sprintf("🔓 <#%s> has been unlocked.", channelID))
+}
+
+func handleSlowmodeSlash(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	opts := optMap(i.ApplicationCommandData().Options)
+	seconds := int(opts["seconds"].IntValue())
+	if seconds < 0 {
+		seconds = 0
+	}
+	if seconds > 21600 {
+		seconds = 21600
+	}
+	channelID := i.ChannelID
+	if ch, ok := opts["channel"]; ok {
+		channelID = ch.ChannelValue(s).ID
+	}
+	if _, err := s.ChannelEditComplex(channelID, &discordgo.ChannelEdit{RateLimitPerUser: &seconds}); err != nil {
+		respondEphemeral(s, i, fmt.Sprintf("❌ Failed to set slowmode: %s", err))
+		return
+	}
+	if seconds == 0 {
+		respondPublic(s, i, fmt.Sprintf("✅ Slowmode disabled in <#%s>.", channelID))
+	} else {
+		respondPublic(s, i, fmt.Sprintf("✅ Slowmode set to **%ds** in <#%s>.", seconds, channelID))
+	}
 }
 
 // PostDiscordLiveNotification sends a live alert to the broadcaster's

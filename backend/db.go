@@ -697,6 +697,17 @@ func EnsureSchema() error {
 	 bday_channel_id    TEXT NOT NULL DEFAULT '',
 	 updated_at         TIMESTAMPTZ NOT NULL DEFAULT now()
 	);
+	CREATE TABLE IF NOT EXISTS discord_warnings (
+	 id           SERIAL PRIMARY KEY,
+	 guild_id     TEXT NOT NULL,
+	 user_id      TEXT NOT NULL,
+	 username     TEXT NOT NULL DEFAULT '',
+	 moderator_id TEXT NOT NULL,
+	 mod_username TEXT NOT NULL DEFAULT '',
+	 reason       TEXT NOT NULL DEFAULT '',
+	 created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+	);
+	CREATE INDEX IF NOT EXISTS idx_discord_warnings_guild_user ON discord_warnings(guild_id, user_id);
 	`)
 	if err != nil {
 		return err
@@ -1102,3 +1113,71 @@ func SaveDiscordSettings(s DiscordSettings) error {
 	return err
 }
 
+// DiscordWarning represents a single warning issued to a Discord member.
+type DiscordWarning struct {
+	ID          int64
+	GuildID     string
+	UserID      string
+	Username    string
+	ModeratorID string
+	ModUsername string
+	Reason      string
+	CreatedAt   time.Time
+}
+
+// AddDiscordWarning stores a new warning and returns the user's total warning
+// count in the guild after the insert.
+func AddDiscordWarning(guildID, userID, username, modID, modUsername, reason string) (int, error) {
+	if db == nil {
+		return 0, fmt.Errorf("db not initialized")
+	}
+	if _, err := db.Exec(`
+		INSERT INTO discord_warnings (guild_id, user_id, username, moderator_id, mod_username, reason)
+		VALUES ($1, $2, $3, $4, $5, $6)
+	`, guildID, userID, username, modID, modUsername, reason); err != nil {
+		return 0, err
+	}
+	var count int
+	err := db.QueryRow(`SELECT COUNT(*) FROM discord_warnings WHERE guild_id=$1 AND user_id=$2`,
+		guildID, userID).Scan(&count)
+	return count, err
+}
+
+// GetDiscordWarnings returns all warnings for a user in a guild, newest first.
+func GetDiscordWarnings(guildID, userID string) ([]DiscordWarning, error) {
+	if db == nil {
+		return nil, fmt.Errorf("db not initialized")
+	}
+	rows, err := db.Query(`
+		SELECT id, guild_id, user_id, username, moderator_id, mod_username, reason, created_at
+		FROM discord_warnings
+		WHERE guild_id = $1 AND user_id = $2
+		ORDER BY created_at DESC
+	`, guildID, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []DiscordWarning
+	for rows.Next() {
+		var w DiscordWarning
+		if err := rows.Scan(&w.ID, &w.GuildID, &w.UserID, &w.Username, &w.ModeratorID, &w.ModUsername, &w.Reason, &w.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, w)
+	}
+	return out, nil
+}
+
+// ClearDiscordWarnings removes all warnings for a user in a guild and returns
+// the number of records deleted.
+func ClearDiscordWarnings(guildID, userID string) (int64, error) {
+	if db == nil {
+		return 0, fmt.Errorf("db not initialized")
+	}
+	res, err := db.Exec(`DELETE FROM discord_warnings WHERE guild_id = $1 AND user_id = $2`, guildID, userID)
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
+}
