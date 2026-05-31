@@ -548,9 +548,44 @@ func isChatCommand(message, command string) bool {
 // channel.chat.message and runs simple command handlers.
 // messageID is the EventSub message_id for the chat message that triggered
 // this handler and is used when sending true reply messages via Helix.
-func handleChatMessageEvent(channelLogin, chatterLogin, messageID, message string) {
+func handleChatMessageEvent(channelLogin, chatterLogin, chatterID, messageID, message string) {
 	channelLogin = strings.ToLower(channelLogin)
 	log.Printf("[CHAT] channel=%s user=%s msgID=%s msg=%q", channelLogin, chatterLogin, messageID, message)
+
+	// ── Blocked term enforcement ──────────────────────────────────────────────
+	if db != nil && strings.ToLower(chatterLogin) != strings.ToLower(channelLogin) {
+		terms, err := ListBlockedTerms(channelLogin)
+		if err != nil {
+			log.Println("blocked terms load error:", err)
+		} else {
+			lowerMsg := strings.ToLower(message)
+			for _, bt := range terms {
+				if strings.Contains(lowerMsg, strings.ToLower(bt.Term)) {
+					log.Printf("[BLOCKED TERM] channel=%s user=%s term=%q action=%s", channelLogin, chatterLogin, bt.Term, bt.Action)
+					switch bt.Action {
+					case "delete":
+						if err := deleteHelixMessage(channelLogin, messageID); err != nil {
+							log.Println("blocked term delete message error:", err)
+						}
+					case "timeout":
+						secs := bt.TimeoutSeconds
+						if secs <= 0 {
+							secs = 60
+						}
+						if err := timeoutUser(channelLogin, chatterLogin, secs, fmt.Sprintf("Blocked term: %s", bt.Term)); err != nil {
+							log.Println("blocked term timeout error:", err)
+						}
+					case "ban":
+						if err := banUser(channelLogin, chatterLogin, fmt.Sprintf("Blocked term: %s", bt.Term)); err != nil {
+							log.Println("blocked term ban error:", err)
+						}
+					}
+					return // stop processing further after enforcement
+				}
+			}
+		}
+	}
+	// ─────────────────────────────────────────────────────────────────────────
 
 	// update approximate watch time based on chat activity, but only while live
 	if db != nil && isChannelLive(channelLogin) {
@@ -1609,6 +1644,116 @@ func timeoutUser(channelLogin, targetLogin string, seconds int, reason string) e
 	if resp.StatusCode/100 != 2 {
 		b, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("helix bans status %s: %s", resp.Status, string(b))
+	}
+	return nil
+}
+
+// deleteHelixMessage deletes a single chat message using the Helix
+// DELETE /helix/chat/messages endpoint (requires moderator:manage:chat_messages).
+// The broadcaster's stored token is used as both broadcaster and moderator.
+func deleteHelixMessage(channelLogin, messageID string) error {
+	channelLogin = strings.ToLower(channelLogin)
+	clientID := os.Getenv("TWITCH_CLIENT_ID")
+	if clientID == "" {
+		return fmt.Errorf("TWITCH_CLIENT_ID not set")
+	}
+	access, err := GetUserAccessToken(channelLogin)
+	if err != nil || access == "" {
+		return fmt.Errorf("no user token for channel %s: %w", channelLogin, err)
+	}
+	broadcasterID, err := getUserIDFromToken(access)
+	if err != nil {
+		return fmt.Errorf("getUserIDFromToken failed: %w", err)
+	}
+	endpoint := fmt.Sprintf(
+		"https://api.twitch.tv/helix/chat/messages?broadcaster_id=%s&moderator_id=%s&message_id=%s",
+		url.QueryEscape(broadcasterID), url.QueryEscape(broadcasterID), url.QueryEscape(messageID),
+	)
+	req, err := http.NewRequest("DELETE", endpoint, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Client-ID", clientID)
+	req.Header.Set("Authorization", "Bearer "+access)
+	client := &http.Client{Timeout: 10 * time.Second}
+	res, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusNoContent && res.StatusCode/100 != 2 {
+		b, _ := io.ReadAll(res.Body)
+		return fmt.Errorf("helix delete message status %s: %s", res.Status, string(b))
+	}
+	return nil
+}
+
+// banUser permanently bans a user from the channel using the Helix
+// POST /helix/moderation/bans endpoint (requires moderator:manage:banned_users).
+func banUser(channelLogin, targetLogin, reason string) error {
+	channelLogin = strings.ToLower(channelLogin)
+	targetLogin = strings.ToLower(targetLogin)
+	clientID := os.Getenv("TWITCH_CLIENT_ID")
+	if clientID == "" {
+		return fmt.Errorf("TWITCH_CLIENT_ID not set")
+	}
+	access, err := GetUserAccessToken(channelLogin)
+	if err != nil || access == "" {
+		return fmt.Errorf("no user token for channel %s: %w", channelLogin, err)
+	}
+	broadcasterID, err := getUserIDFromToken(access)
+	if err != nil {
+		return fmt.Errorf("getUserIDFromToken failed: %w", err)
+	}
+	// resolve target user id
+	usersReq, err := http.NewRequest("GET", "https://api.twitch.tv/helix/users?login="+url.QueryEscape(targetLogin), nil)
+	if err != nil {
+		return err
+	}
+	usersReq.Header.Set("Client-ID", clientID)
+	usersReq.Header.Set("Authorization", "Bearer "+access)
+	httpClient := &http.Client{Timeout: 10 * time.Second}
+	usersResp, err := httpClient.Do(usersReq)
+	if err != nil {
+		return err
+	}
+	defer usersResp.Body.Close()
+	var usersRes struct {
+		Data []struct {
+			ID string `json:"id"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(usersResp.Body).Decode(&usersRes); err != nil {
+		return err
+	}
+	if len(usersRes.Data) == 0 {
+		return fmt.Errorf("user not found: %s", targetLogin)
+	}
+	targetID := usersRes.Data[0].ID
+	body := map[string]interface{}{
+		"data": map[string]interface{}{
+			"user_id": targetID,
+			"reason":  reason,
+		},
+	}
+	buf, _ := json.Marshal(body)
+	endpoint := fmt.Sprintf("https://api.twitch.tv/helix/moderation/bans?broadcaster_id=%s&moderator_id=%s",
+		url.QueryEscape(broadcasterID), url.QueryEscape(broadcasterID))
+	req, err = http.NewRequest("POST", endpoint, bytes.NewReader(buf))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Client-ID", clientID)
+	req.Header.Set("Authorization", "Bearer "+access)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode/100 != 2 {
+		b, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("helix ban status %s: %s", resp.Status, string(b))
 	}
 	return nil
 }

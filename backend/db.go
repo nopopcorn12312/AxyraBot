@@ -819,6 +819,7 @@ func DeleteBirthdayCommandMessage(broadcasterLogin, commandName string) error {
 	_, err := db.Exec(`DELETE FROM birthday_command_messages WHERE broadcaster_login=$1 AND command_name=$2`, broadcasterLogin, commandName)
 	return err
 }
+
 // ─── Blocked Terms ────────────────────────────────────────────────────────────
 
 // BlockedTerm represents a single stored blocked term for a broadcaster.

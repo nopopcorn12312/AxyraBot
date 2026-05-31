@@ -1511,105 +1511,104 @@ func ensureValidUserToken(login string) (string, string, error) {
 	return userID, tr.AccessToken, nil
 }
 
-
 // --- Blocked Terms ------------------------------------------------------------
 
 // handleBlockedTerms handles GET (list) and POST (add/update) for blocked terms.
 func handleBlockedTerms(w http.ResponseWriter, r *http.Request) {
-if err := EnsureBlockedTermsTable(); err != nil {
-log.Println("blocked terms table ensure failed:", err)
-http.Error(w, "db error", http.StatusInternalServerError)
-return
-}
-switch r.Method {
-case http.MethodGet:
-login := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("login")))
-if login == "" {
-http.Error(w, "missing login", http.StatusBadRequest)
-return
-}
-terms, err := ListBlockedTerms(login)
-if err != nil {
-log.Println("list blocked terms:", err)
-http.Error(w, "db error", http.StatusInternalServerError)
-return
-}
-type row struct {
-ID             int64  `json:"id"`
-Term           string `json:"term"`
-Action         string `json:"action"`
-TimeoutSeconds int    `json:"timeout_seconds"`
-}
-out := make([]row, len(terms))
-for i, t := range terms {
-out[i] = row{ID: t.ID, Term: t.Term, Action: t.Action, TimeoutSeconds: t.TimeoutSeconds}
-}
-w.Header().Set("Content-Type", "application/json")
-json.NewEncoder(w).Encode(map[string]any{"terms": out})
-case http.MethodPost:
-var body struct {
-Login          string `json:"login"`
-Term           string `json:"term"`
-Action         string `json:"action"`
-TimeoutSeconds int    `json:"timeout_seconds"`
-}
-if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-http.Error(w, "bad json", http.StatusBadRequest)
-return
-}
-login := strings.ToLower(strings.TrimSpace(body.Login))
-term := strings.TrimSpace(body.Term)
-action := strings.TrimSpace(body.Action)
-if login == "" || term == "" {
-http.Error(w, "missing login or term", http.StatusBadRequest)
-return
-}
-if action == "" {
-action = "delete"
-}
-id, err := AddBlockedTerm(login, term, action, body.TimeoutSeconds)
-if err != nil {
-log.Println("add blocked term:", err)
-http.Error(w, "db error", http.StatusInternalServerError)
-return
-}
-if err := InsertAuditLog(login, "bot", "blocked_term_add", fmt.Sprintf("Added blocked term: %s (%s)", term, action)); err != nil {
-log.Println("audit log blocked term add:", err)
-}
-w.Header().Set("Content-Type", "application/json")
-json.NewEncoder(w).Encode(map[string]any{"id": id})
-default:
-w.WriteHeader(http.StatusMethodNotAllowed)
-}
+	if err := EnsureBlockedTermsTable(); err != nil {
+		log.Println("blocked terms table ensure failed:", err)
+		http.Error(w, "db error", http.StatusInternalServerError)
+		return
+	}
+	switch r.Method {
+	case http.MethodGet:
+		login := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("login")))
+		if login == "" {
+			http.Error(w, "missing login", http.StatusBadRequest)
+			return
+		}
+		terms, err := ListBlockedTerms(login)
+		if err != nil {
+			log.Println("list blocked terms:", err)
+			http.Error(w, "db error", http.StatusInternalServerError)
+			return
+		}
+		type row struct {
+			ID             int64  `json:"id"`
+			Term           string `json:"term"`
+			Action         string `json:"action"`
+			TimeoutSeconds int    `json:"timeout_seconds"`
+		}
+		out := make([]row, len(terms))
+		for i, t := range terms {
+			out[i] = row{ID: t.ID, Term: t.Term, Action: t.Action, TimeoutSeconds: t.TimeoutSeconds}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{"terms": out})
+	case http.MethodPost:
+		var body struct {
+			Login          string `json:"login"`
+			Term           string `json:"term"`
+			Action         string `json:"action"`
+			TimeoutSeconds int    `json:"timeout_seconds"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "bad json", http.StatusBadRequest)
+			return
+		}
+		login := strings.ToLower(strings.TrimSpace(body.Login))
+		term := strings.TrimSpace(body.Term)
+		action := strings.TrimSpace(body.Action)
+		if login == "" || term == "" {
+			http.Error(w, "missing login or term", http.StatusBadRequest)
+			return
+		}
+		if action == "" {
+			action = "delete"
+		}
+		id, err := AddBlockedTerm(login, term, action, body.TimeoutSeconds)
+		if err != nil {
+			log.Println("add blocked term:", err)
+			http.Error(w, "db error", http.StatusInternalServerError)
+			return
+		}
+		if err := InsertAuditLog(login, "bot", "blocked_term_add", fmt.Sprintf("Added blocked term: %s (%s)", term, action)); err != nil {
+			log.Println("audit log blocked term add:", err)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{"id": id})
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
 }
 
 // handleBlockedTermsDelete deletes a blocked term by ID.
 func handleBlockedTermsDelete(w http.ResponseWriter, r *http.Request) {
-if r.Method != http.MethodPost {
-w.WriteHeader(http.StatusMethodNotAllowed)
-return
-}
-var body struct {
-Login string `json:"login"`
-ID    int64  `json:"id"`
-}
-if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-http.Error(w, "bad json", http.StatusBadRequest)
-return
-}
-login := strings.ToLower(strings.TrimSpace(body.Login))
-if login == "" || body.ID == 0 {
-http.Error(w, "missing login or id", http.StatusBadRequest)
-return
-}
-if err := DeleteBlockedTerm(login, body.ID); err != nil {
-log.Println("delete blocked term:", err)
-http.Error(w, "db error", http.StatusInternalServerError)
-return
-}
-if err := InsertAuditLog(login, "bot", "blocked_term_delete", fmt.Sprintf("Deleted blocked term id %d", body.ID)); err != nil {
-log.Println("audit log blocked term delete:", err)
-}
-w.WriteHeader(http.StatusOK)
-fmt.Fprint(w, "ok")
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	var body struct {
+		Login string `json:"login"`
+		ID    int64  `json:"id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "bad json", http.StatusBadRequest)
+		return
+	}
+	login := strings.ToLower(strings.TrimSpace(body.Login))
+	if login == "" || body.ID == 0 {
+		http.Error(w, "missing login or id", http.StatusBadRequest)
+		return
+	}
+	if err := DeleteBlockedTerm(login, body.ID); err != nil {
+		log.Println("delete blocked term:", err)
+		http.Error(w, "db error", http.StatusInternalServerError)
+		return
+	}
+	if err := InsertAuditLog(login, "bot", "blocked_term_delete", fmt.Sprintf("Deleted blocked term id %d", body.ID)); err != nil {
+		log.Println("audit log blocked term delete:", err)
+	}
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprint(w, "ok")
 }
