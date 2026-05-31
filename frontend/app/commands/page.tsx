@@ -2,8 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Fragment, useEffect, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
+import { Fragment, Suspense, useEffect, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import AxyraBotPFP from "../images/AxyraBotPFP.png";
 import ManagingChannelBadge from "../components/ManagingChannelBadge";
 import { usePersistentSectionState } from "../hooks/usePersistentSectionState";
@@ -124,7 +124,7 @@ function CommandToggle({ enabled, onChange }: CommandToggleProps) {
   );
 }
 
-export default function CommandsPage() {
+function CommandsPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isEditor, setIsEditor] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -148,7 +148,10 @@ export default function CommandsPage() {
     "axyra.sidebar.moderationOpen",
     true,
   );
-  const [view, setView] = useState<"default" | "custom">("default");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const view = (searchParams.get("view") === "custom" ? "custom" : "default") as "default" | "custom";
+  const setView = (next: "default" | "custom") => router.push(`/commands?view=${next}`);
   const [defaultSettings, setDefaultSettings] = useState<Record<string, boolean>>({});
   const [customCommands, setCustomCommands] = useState<
     { name: string; description: string; enabled: boolean; role: CustomCommandRole }[]
@@ -178,13 +181,6 @@ export default function CommandsPage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
-    const fromQuery = params.get("view");
-    if (fromQuery === "custom") {
-      setView("custom");
-    } else if (fromQuery === "default") {
-      setView("default");
-    }
-
     const storedLogin = window.localStorage.getItem("axyra.login");
     const storedAvatar = window.localStorage.getItem("axyra.avatar");
     const channelFromQuery = params.get("channel");
@@ -1132,5 +1128,13 @@ function DeleteCommandModal({
         </div>
       </div>
     </div>
+  );
+}
+
+export default function CommandsPageWrapper() {
+  return (
+    <Suspense>
+      <CommandsPage />
+    </Suspense>
   );
 }
