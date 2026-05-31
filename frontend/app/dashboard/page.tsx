@@ -530,8 +530,8 @@ export default function DashboardPage() {
           </nav>
         </div>
 
-        <div className="flex-1 flex flex-col lg:flex-row gap-6 text-slate-50">
-          <div className="flex-1 lg:basis-2/3 max-h-80 rounded-2xl border border-slate-800 bg-slate-900/80 p-6 flex flex-col">
+        <div className="flex-1 flex flex-col lg:flex-row gap-6 text-slate-50 min-h-0">
+          <div className="flex-1 lg:basis-2/3 rounded-2xl border border-slate-800 bg-slate-900/80 p-6 flex flex-col min-h-0">
             <div className="flex items-center justify-between mb-3">
               <h1 className="text-2xl font-semibold">Recent Activity</h1>
               <span className="text-xs text-slate-400">Latest changes from Twitch &amp; AxyraBot</span>
