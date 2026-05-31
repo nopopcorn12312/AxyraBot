@@ -45,6 +45,8 @@ func startHTTPServer(clientID, clientSecret string) {
 	mux.HandleFunc("/discord/settings", withCORS(handleDiscordSettings))
 	mux.HandleFunc("/discord/guilds", withCORS(handleDiscordGuilds))
 	mux.HandleFunc("/discord/channels", withCORS(handleDiscordChannels))
+	mux.HandleFunc("/discord/roles", withCORS(handleDiscordRoles))
+	mux.HandleFunc("/discord/role-mappings", withCORS(handleDiscordRoleMappings))
 
 	// Optional Nightbot OAuth integration for importing commands without
 	// copy/paste. These handlers are only registered when all required
@@ -1770,6 +1772,101 @@ func handleDiscordChannels(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{"channels": channels})
+}
+
+// handleDiscordRoles returns all non-managed roles in a Discord guild.
+func handleDiscordRoles(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	guildID := strings.TrimSpace(r.URL.Query().Get("guild_id"))
+	if guildID == "" {
+		http.Error(w, "missing guild_id", http.StatusBadRequest)
+		return
+	}
+	roles, err := GetGuildRoles(guildID)
+	if err != nil {
+		log.Println("get guild roles:", err)
+		http.Error(w, "failed to fetch roles", http.StatusInternalServerError)
+		return
+	}
+	if roles == nil {
+		roles = []GuildRole{}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{"roles": roles})
+}
+
+// handleDiscordRoleMappings handles GET and POST for per-(broadcaster,guild)
+// Twitch-level → Discord-role mappings.
+func handleDiscordRoleMappings(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		login := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("login")))
+		guildID := strings.TrimSpace(r.URL.Query().Get("guild_id"))
+		if login == "" || guildID == "" {
+			http.Error(w, "missing login or guild_id", http.StatusBadRequest)
+			return
+		}
+		mappings, err := GetDiscordRoleMappings(login, guildID)
+		if err != nil {
+			log.Println("get discord role mappings:", err)
+			http.Error(w, "db error", http.StatusInternalServerError)
+			return
+		}
+		// Build a level→{id,name} map for easy consumption by the frontend.
+		out := map[string]map[string]string{}
+		for _, m := range mappings {
+			out[m.TwitchLevel] = map[string]string{
+				"discord_role_id":   m.DiscordRoleID,
+				"discord_role_name": m.DiscordRoleName,
+			}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(out)
+
+	case http.MethodPost:
+		var body struct {
+			Login    string            `json:"login"`
+			GuildID  string            `json:"guild_id"`
+			Mappings map[string]string `json:"mappings"` // level → discord_role_id
+			Roles    map[string]string `json:"roles"`    // discord_role_id → discord_role_name
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "bad json", http.StatusBadRequest)
+			return
+		}
+		login := strings.ToLower(strings.TrimSpace(body.Login))
+		guildID := strings.TrimSpace(body.GuildID)
+		if login == "" || guildID == "" {
+			http.Error(w, "missing login or guild_id", http.StatusBadRequest)
+			return
+		}
+		validLevels := map[string]bool{"everyone": true, "vip": true, "moderator": true, "owner": true}
+		for level, roleID := range body.Mappings {
+			if !validLevels[level] {
+				continue
+			}
+			roleName := body.Roles[roleID]
+			if err := SaveDiscordRoleMapping(DiscordRoleMapping{
+				BroadcasterLogin: login,
+				GuildID:          guildID,
+				TwitchLevel:      level,
+				DiscordRoleID:    roleID,
+				DiscordRoleName:  roleName,
+			}); err != nil {
+				log.Println("save discord role mapping:", err)
+				http.Error(w, "db error", http.StatusInternalServerError)
+				return
+			}
+		}
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "ok")
+
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
 }
 
 // handleDiscordSettings handles GET and POST for per-broadcaster Discord

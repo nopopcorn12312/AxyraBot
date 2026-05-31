@@ -731,6 +731,35 @@ type GuildChannel struct {
 	Name string `json:"name"`
 }
 
+// GuildRole represents a role in a Discord server.
+type GuildRole struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Color int    `json:"color"` // RGB int from Discord (0 = no colour / default)
+}
+
+// GetGuildRoles returns all non-managed, non-@everyone roles in the guild,
+// sorted alphabetically. Managed roles (e.g. bot roles) are excluded.
+func GetGuildRoles(guildID string) ([]GuildRole, error) {
+	if discordSession == nil {
+		return nil, fmt.Errorf("discord not initialized")
+	}
+	roles, err := discordSession.GuildRoles(guildID)
+	if err != nil {
+		return nil, err
+	}
+	var out []GuildRole
+	for _, r := range roles {
+		if r.Managed || r.Name == "@everyone" {
+			continue
+		}
+		out = append(out, GuildRole{ID: r.ID, Name: r.Name, Color: r.Color})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	return out, nil
+}
+
+
 // GetBotGuilds returns all Discord servers (guilds) the bot is currently in.
 func GetBotGuilds() []BotGuild {
 	if discordSession == nil {

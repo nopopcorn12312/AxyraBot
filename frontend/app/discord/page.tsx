@@ -45,6 +45,17 @@ export default function DiscordSettingsPage() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [serverDropdownOpen, setServerDropdownOpen] = useState(false);
 
+  // Role mapping state
+  type GuildRole = { id: string; name: string; color: number };
+  const [guildRoles, setGuildRoles] = useState<GuildRole[]>([]);
+  const [loadingRoles, setLoadingRoles] = useState(false);
+  const [roleMap, setRoleMap] = useState<Record<string, string>>({
+    everyone: "", vip: "", moderator: "", owner: "",
+  });
+  const [savingRoles, setSavingRoles] = useState(false);
+  const [roleSaveSuccess, setRoleSaveSuccess] = useState(false);
+  const [roleSaveError, setRoleSaveError] = useState<string | null>(null);
+
   // Close server dropdown on outside click
   useEffect(() => {
     function handleOutside(e: MouseEvent) {
@@ -132,6 +143,40 @@ export default function DiscordSettingsPage() {
       .finally(() => setLoadingChannels(false));
   }, [selectedGuildId]);
 
+  // Fetch roles when selected guild changes
+  useEffect(() => {
+    if (!selectedGuildId) {
+      setGuildRoles([]);
+      return;
+    }
+    setLoadingRoles(true);
+    fetch(`${backendUrl}/discord/roles?guild_id=${encodeURIComponent(selectedGuildId)}`)
+      .then((r) => (r.ok ? r.json() : { roles: [] }))
+      .then((data) => setGuildRoles(data.roles ?? []))
+      .catch(() => setGuildRoles([]))
+      .finally(() => setLoadingRoles(false));
+  }, [selectedGuildId]);
+
+  // Load saved role mappings when (channelLogin + selectedGuildId) both set
+  useEffect(() => {
+    if (!channelLogin || !selectedGuildId) return;
+    fetch(`${backendUrl}/discord/role-mappings?login=${encodeURIComponent(channelLogin)}&guild_id=${encodeURIComponent(selectedGuildId)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data) {
+          setRoleMap({
+            everyone: data.everyone?.discord_role_id ?? "",
+            vip: data.vip?.discord_role_id ?? "",
+            moderator: data.moderator?.discord_role_id ?? "",
+            owner: data.owner?.discord_role_id ?? "",
+          });
+        } else {
+          setRoleMap({ everyone: "", vip: "", moderator: "", owner: "" });
+        }
+      })
+      .catch(() => {});
+  }, [channelLogin, selectedGuildId]);
+
   useEffect(() => {
     if (!menuOpen) return;
     function handleClickOutside(e: MouseEvent) {
@@ -178,6 +223,38 @@ export default function DiscordSettingsPage() {
       setSaveError("Network error. Please try again.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSaveRoles = async () => {
+    if (!channelLogin || !selectedGuildId) return;
+    setSavingRoles(true);
+    setRoleSaveError(null);
+    setRoleSaveSuccess(false);
+    // Build a roleId→name lookup from the current guildRoles list
+    const roleNames: Record<string, string> = {};
+    for (const r of guildRoles) roleNames[r.id] = r.name;
+    try {
+      const res = await fetch(`${backendUrl}/discord/role-mappings`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          login: channelLogin,
+          guild_id: selectedGuildId,
+          mappings: roleMap,
+          roles: roleNames,
+        }),
+      });
+      if (!res.ok) {
+        setRoleSaveError("Failed to save role mappings.");
+      } else {
+        setRoleSaveSuccess(true);
+        setTimeout(() => setRoleSaveSuccess(false), 3000);
+      }
+    } catch {
+      setRoleSaveError("Network error. Please try again.");
+    } finally {
+      setSavingRoles(false);
     }
   };
 
@@ -543,6 +620,79 @@ export default function DiscordSettingsPage() {
                     <span className="text-sm text-slate-400">Lists all custom Twitch commands for your channel. Works in any server the bot is in.</span>
                   </div>
                 </div>
+
+                {/* ── Role Mappings ── */}
+                {selectedGuildId && (
+                  <div className="border-t border-slate-800 pt-5 flex flex-col gap-4">
+                    <div className="flex flex-col gap-1">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Role Mappings</p>
+                      <p className="text-xs text-slate-500">
+                        Match Discord roles to Twitch permission levels. Members with the assigned role will be treated as that level when using bot commands in this server.
+                      </p>
+                    </div>
+
+                    {loadingRoles ? (
+                      <div className="flex items-center gap-2 text-sm text-slate-500">
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-600 border-t-accent" />
+                        Loading roles…
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        {(["owner", "moderator", "vip", "everyone"] as const).map((level) => {
+                          const labels: Record<string, { label: string; desc: string; color: string }> = {
+                            owner:     { label: "Owner",     desc: "Full broadcaster access",       color: "bg-red-500" },
+                            moderator: { label: "Mods",      desc: "Moderator-level commands",      color: "bg-blue-500" },
+                            vip:       { label: "VIP",       desc: "VIP-level commands",            color: "bg-purple-500" },
+                            everyone:  { label: "Everyone",  desc: "All users (default baseline)",  color: "bg-slate-500" },
+                          };
+                          const meta = labels[level];
+                          const selectedRole = guildRoles.find((r) => r.id === roleMap[level]);
+                          const roleColor = selectedRole && selectedRole.color !== 0
+                            ? `#${selectedRole.color.toString(16).padStart(6, "0")}`
+                            : null;
+                          return (
+                            <div key={level} className="flex flex-col gap-1.5 rounded-lg border border-slate-700/60 bg-slate-950/40 p-3">
+                              <div className="flex items-center gap-2">
+                                <span className={`h-2 w-2 rounded-full ${meta.color} shrink-0`} />
+                                <span className="text-xs font-semibold text-slate-200">{meta.label}</span>
+                                <span className="text-xs text-slate-500">— {meta.desc}</span>
+                              </div>
+                              <select
+                                value={roleMap[level]}
+                                onChange={(e) => setRoleMap((prev) => ({ ...prev, [level]: e.target.value }))}
+                                className={channelSelectClass + " w-full max-w-full"}
+                                style={roleColor ? { borderColor: roleColor + "66", color: roleColor } : undefined}
+                              >
+                                <option value="">— No mapping —</option>
+                                {guildRoles.map((r) => {
+                                  const hex = r.color !== 0 ? `#${r.color.toString(16).padStart(6, "0")}` : undefined;
+                                  return (
+                                    <option key={r.id} value={r.id} style={hex ? { color: hex } : undefined}>
+                                      {r.name}
+                                    </option>
+                                  );
+                                })}
+                              </select>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-4">
+                      <button
+                        type="button"
+                        onClick={handleSaveRoles}
+                        disabled={savingRoles || !channelLogin || !selectedGuildId}
+                        className="rounded-lg bg-accent px-5 py-2 text-sm font-medium text-white hover:bg-accent/90 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        {savingRoles ? "Saving…" : "Save Roles"}
+                      </button>
+                      {roleSaveSuccess && <span className="text-sm text-emerald-400">✓ Saved!</span>}
+                      {roleSaveError && <span className="text-sm text-red-400">{roleSaveError}</span>}
+                    </div>
+                  </div>
+                )}
 
               </div>
             </div>

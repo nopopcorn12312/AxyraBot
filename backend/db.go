@@ -709,6 +709,15 @@ func EnsureSchema() error {
 	 created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 	);
 	CREATE INDEX IF NOT EXISTS idx_discord_warnings_guild_user ON discord_warnings(guild_id, user_id);
+	CREATE TABLE IF NOT EXISTS discord_role_mappings (
+	 broadcaster_login TEXT NOT NULL,
+	 guild_id          TEXT NOT NULL,
+	 twitch_level      TEXT NOT NULL,
+	 discord_role_id   TEXT NOT NULL DEFAULT '',
+	 discord_role_name TEXT NOT NULL DEFAULT '',
+	 updated_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+	 PRIMARY KEY (broadcaster_login, guild_id, twitch_level)
+	);
 	`)
 	if err != nil {
 		return err
@@ -1225,3 +1234,57 @@ func ClearDiscordWarnings(guildID, userID string) (int64, error) {
 	}
 	return res.RowsAffected()
 }
+
+// DiscordRoleMapping maps a Twitch permission level to a Discord role for a
+// specific (broadcaster, guild) pair.
+type DiscordRoleMapping struct {
+	BroadcasterLogin string
+	GuildID          string
+	TwitchLevel      string // "everyone", "vip", "moderator", "owner"
+	DiscordRoleID    string
+	DiscordRoleName  string
+}
+
+// GetDiscordRoleMappings returns all role mappings for a (broadcaster, guild).
+func GetDiscordRoleMappings(broadcasterLogin, guildID string) ([]DiscordRoleMapping, error) {
+	if db == nil {
+		return nil, fmt.Errorf("db not initialized")
+	}
+	broadcasterLogin = strings.ToLower(strings.TrimSpace(broadcasterLogin))
+	rows, err := db.QueryContext(context.Background(), `
+		SELECT broadcaster_login, guild_id, twitch_level, discord_role_id, discord_role_name
+		FROM discord_role_mappings
+		WHERE broadcaster_login = $1 AND guild_id = $2
+	`, broadcasterLogin, guildID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []DiscordRoleMapping
+	for rows.Next() {
+		var m DiscordRoleMapping
+		if err := rows.Scan(&m.BroadcasterLogin, &m.GuildID, &m.TwitchLevel, &m.DiscordRoleID, &m.DiscordRoleName); err != nil {
+			return nil, err
+		}
+		out = append(out, m)
+	}
+	return out, nil
+}
+
+// SaveDiscordRoleMapping upserts a single role mapping.
+func SaveDiscordRoleMapping(m DiscordRoleMapping) error {
+	if db == nil {
+		return fmt.Errorf("db not initialized")
+	}
+	m.BroadcasterLogin = strings.ToLower(strings.TrimSpace(m.BroadcasterLogin))
+	_, err := db.ExecContext(context.Background(), `
+		INSERT INTO discord_role_mappings (broadcaster_login, guild_id, twitch_level, discord_role_id, discord_role_name, updated_at)
+		VALUES ($1, $2, $3, $4, $5, NOW())
+		ON CONFLICT (broadcaster_login, guild_id, twitch_level) DO UPDATE SET
+			discord_role_id   = EXCLUDED.discord_role_id,
+			discord_role_name = EXCLUDED.discord_role_name,
+			updated_at        = NOW()
+	`, m.BroadcasterLogin, m.GuildID, m.TwitchLevel, m.DiscordRoleID, m.DiscordRoleName)
+	return err
+}
+
