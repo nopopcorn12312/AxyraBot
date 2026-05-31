@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import AxyraBotPFP from "../images/AxyraBotPFP.png";
+import ManagingChannelBadge from "../components/ManagingChannelBadge";
 import { usePersistentSectionState } from "../hooks/usePersistentSectionState";
 
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://your-backend.onrender.com";
@@ -31,6 +32,8 @@ export default function DashboardPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [login, setLogin] = useState<string | null>(null);
+  const [activeChannel, setActiveChannel] = useState<string | null>(null);
+  const [editorChannels, setEditorChannels] = useState<string[]>([]);
   const [streamTitle, setStreamTitle] = useState("");
   const [streamCategory, setStreamCategory] = useState("");
   const [categorySuggestions, setCategorySuggestions] = useState<{id: string; name: string; box_art_url: string}[]>([]);
@@ -87,14 +90,36 @@ export default function DashboardPage() {
     if (typeof window === "undefined") return;
     const storedLogin = window.localStorage.getItem("axyra.login");
     const storedAvatar = window.localStorage.getItem("axyra.avatar");
+    const storedActive = window.localStorage.getItem("axyra.activeChannel");
     if (storedLogin) {
       setIsLoggedIn(true);
       setLogin(storedLogin);
+      setActiveChannel(storedActive || storedLogin);
     }
     if (storedAvatar) {
       setAvatarUrl(storedAvatar);
     }
   }, []);
+
+  // Fetch channels where the logged-in user has Editor role
+  useEffect(() => {
+    if (!login) return;
+    (async () => {
+      try {
+        const res = await fetch(`${backendUrl}/roles/editor-channels?login=${encodeURIComponent(login)}`);
+        if (!res.ok) return;
+        const data: { channels?: string[] } = await res.json();
+        setEditorChannels(data.channels ?? []);
+      } catch { /* ignore */ }
+    })();
+  }, [login]);
+
+  const handleChannelSwitch = (channel: string) => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("axyra.activeChannel", channel);
+    }
+    setActiveChannel(channel);
+  };
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -108,12 +133,12 @@ export default function DashboardPage() {
   }, [menuOpen]);
 
   useEffect(() => {
-    if (!login) return;
+    if (!activeChannel) return;
     setLoadingStream(true);
     setStatusMessage(null);
     fetch(
       `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080"}/stream/info?login=${encodeURIComponent(
-        login
+        activeChannel
       )}`,
     )
       .then(async (res) => {
@@ -131,13 +156,14 @@ export default function DashboardPage() {
         setStatusMessage("Could not load stream info.");
       })
       .finally(() => setLoadingStream(false));
-  }, [login]);
+  }, [activeChannel]);
 
   // Load recent activity for the logged-in channel and auto-refresh on an interval.
   useEffect(() => {
-    if (!login) return;
+    if (!activeChannel) return;
 
     let cancelled = false;
+    hasLoadedActivityRef.current = false;
 
     const fetchActivity = () => {
       const isInitial = !hasLoadedActivityRef.current;
@@ -146,7 +172,7 @@ export default function DashboardPage() {
         setActivityError(null);
       }
       fetch(
-        `${backendUrl}/audit/logs?login=${encodeURIComponent(login)}&limit=20`,
+        `${backendUrl}/audit/logs?login=${encodeURIComponent(activeChannel)}&limit=20`,
       )
         .then(async (res) => {
           if (!res.ok) {
@@ -189,31 +215,34 @@ export default function DashboardPage() {
       cancelled = true;
       window.clearInterval(intervalId);
     };
-  }, [login]);
+  }, [activeChannel]);
 
   // Determine whether the current channel is already joined
   useEffect(() => {
-    if (!login) return;
+    if (!activeChannel) return;
     fetch(`${backendUrl}/channels`)
       .then((res) => res.json())
       .then((data) => {
         const chans: string[] = data.channels || [];
-        const lower = login.toLowerCase();
+        const lower = activeChannel.toLowerCase();
         setJoined(chans.some((c) => c.toLowerCase() === lower));
       })
       .catch((err) => {
         console.error(err);
       });
-  }, [login]);
+  }, [activeChannel]);
 
   const handleLogout = () => {
     if (typeof window !== "undefined") {
       window.localStorage.removeItem("axyra.login");
       window.localStorage.removeItem("axyra.avatar");
+      window.localStorage.removeItem("axyra.activeChannel");
     }
     setIsLoggedIn(false);
     setAvatarUrl(null);
     setLogin(null);
+    setActiveChannel(null);
+    setEditorChannels([]);
     setMenuOpen(false);
   };
   const redirectTarget = frontendUrl || "https://axyrabot.com";
@@ -222,7 +251,7 @@ export default function DashboardPage() {
   const primaryLabel = isLoggedIn ? "Dashboard" : "Login with Twitch";
 
   const handleJoinChannel = async () => {
-    if (!login) return;
+    if (!activeChannel) return;
     setJoining(true);
     setStatusMessage(null);
     try {
@@ -230,7 +259,7 @@ export default function DashboardPage() {
       const res = await fetch(`${backendUrl}${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ login }),
+        body: JSON.stringify({ login: activeChannel }),
       });
       if (!res.ok) {
         throw new Error("Failed to update bot connection");
@@ -246,7 +275,7 @@ export default function DashboardPage() {
   };
 
   const handleConfirmChanges = async () => {
-    if (!login) return;
+    if (!activeChannel) return;
     setSavingStream(true);
     setStatusMessage(null);
     setChangesConfirmed(false);
@@ -255,7 +284,7 @@ export default function DashboardPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          login,
+          login: activeChannel,
           title: streamTitle,
           category: streamCategory,
         }),
@@ -305,6 +334,7 @@ export default function DashboardPage() {
           </a>
           {isLoggedIn && (
             <>
+              <ManagingChannelBadge />
               <Link
                 href="/import"
                 className="inline-flex items-center gap-1 rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1.5 text-xs font-medium text-slate-100 hover:bg-slate-800 hover:border-slate-500 transition"
@@ -555,18 +585,53 @@ export default function DashboardPage() {
           </nav>
         </div>
 
-        <div className="flex-1 flex flex-col lg:flex-row gap-6 text-slate-50 min-h-0">
+        <div className="flex-1 flex flex-col gap-3 text-slate-50 min-h-0">
+          {/* Channel switcher — shown when user is an editor on other channels */}
+          {login && (editorChannels.length > 0) && (
+            <div className="flex items-center gap-2 px-1">
+              <span className="text-xs text-slate-400 font-medium">Managing:</span>
+              <div className="flex items-center gap-1 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => handleChannelSwitch(login)}
+                  className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+                    activeChannel === login
+                      ? "bg-accent text-white shadow-[0_0_12px_rgba(129,140,248,0.5)]"
+                      : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                  }`}
+                >
+                  {login} <span className="opacity-60">(you)</span>
+                </button>
+                {editorChannels.map((ch) => (
+                  <button
+                    key={ch}
+                    type="button"
+                    onClick={() => handleChannelSwitch(ch)}
+                    className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+                      activeChannel === ch
+                        ? "bg-accent text-white shadow-[0_0_12px_rgba(129,140,248,0.5)]"
+                        : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                    }`}
+                  >
+                    {ch}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="flex-1 flex flex-col lg:flex-row gap-6 min-h-0">
           <div className="flex-1 lg:basis-2/3 rounded-2xl border border-slate-800 bg-slate-900/80 p-6 flex flex-col min-h-0">
             <div className="flex items-center justify-between mb-3">
               <h1 className="text-2xl font-semibold">Recent Activity</h1>
               <span className="text-xs text-slate-400">Latest changes from Twitch &amp; AxyraBot</span>
             </div>
-            {!login && (
+            {!activeChannel && (
               <p className="text-sm text-slate-400">
                 Connect with Twitch to see recent activity for your channel.
               </p>
             )}
-            {login && (
+            {activeChannel && (
               <div className="flex-1 flex flex-col overflow-y-auto pr-1">
                 {loadingActivity && (
                   <p className="text-sm text-slate-400">Loading activity…</p>
@@ -715,7 +780,7 @@ export default function DashboardPage() {
               <div className="flex gap-2">
                 <button
                   onClick={handleJoinChannel}
-                  disabled={!login || joining}
+                  disabled={!activeChannel || joining}
                   className={`flex-1 inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-semibold text-white shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition ${
                     joined
                       ? "bg-red-500 hover:bg-red-400 shadow-red-500/40"
@@ -732,7 +797,7 @@ export default function DashboardPage() {
                 </button>
                 <button
                   onClick={handleConfirmChanges}
-                  disabled={!login || savingStream}
+                  disabled={!activeChannel || savingStream}
                   className={`flex-1 inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-semibold shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition ${
                     changesConfirmed
                       ? "bg-emerald-500 text-white shadow-emerald-500/40 hover:bg-emerald-400"
@@ -748,7 +813,8 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
-        </div>
+          </div>{/* end inner flex row */}
+        </div>{/* end outer column */}
       </div>
     </main>
   );

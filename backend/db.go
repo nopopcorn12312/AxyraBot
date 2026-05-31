@@ -992,3 +992,30 @@ func DeleteUserRole(broadcasterLogin string, id int64) error {
 	_, err := db.Exec(`DELETE FROM user_roles WHERE broadcaster_login=$1 AND id=$2`, broadcasterLogin, id)
 	return err
 }
+
+// ListEditorChannels returns all broadcaster logins where the given username
+// has been assigned the "Editor" role.
+func ListEditorChannels(username string) ([]string, error) {
+	if db == nil {
+		return nil, nil
+	}
+	username = strings.ToLower(strings.TrimSpace(username))
+	rows, err := db.Query(`
+	SELECT broadcaster_login FROM user_roles
+	WHERE username = $1 AND role = 'Editor'
+	ORDER BY broadcaster_login;
+	`, username)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var s string
+		if err := rows.Scan(&s); err != nil {
+			return nil, err
+		}
+		out = append(out, s)
+	}
+	return out, nil
+}

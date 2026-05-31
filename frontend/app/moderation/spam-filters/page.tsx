@@ -7,6 +7,7 @@ import { usePersistentSectionState } from "../../hooks/usePersistentSectionState
 import { useEffect, useRef, useState } from "react";
 
 import AxyraLogo from "../../images/AxyraBotPFP.png";
+import ManagingChannelBadge from "../../components/ManagingChannelBadge";
 
 const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL || "";
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://your-backend.onrender.com";
@@ -103,6 +104,7 @@ export default function SpamFiltersPage() {
           <a href={primaryHref} className="hidden">{primaryLabel}</a>
           {isLoggedIn && (
             <>
+              <ManagingChannelBadge />
               <Link
                 href="/import"
                 className="inline-flex items-center gap-1 rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1.5 text-xs font-medium text-slate-100 hover:bg-slate-800 hover:border-slate-500 transition"

@@ -32,6 +32,8 @@ func startHTTPServer(clientID, clientSecret string) {
 	mux.HandleFunc("/moderation/blocked-terms/delete", withCORS(handleBlockedTermsDelete))
 	mux.HandleFunc("/roles", withCORS(handleRoles))
 	mux.HandleFunc("/roles/delete", withCORS(handleRolesDelete))
+	mux.HandleFunc("/roles/editor-channels", withCORS(handleEditorChannels))
+	mux.HandleFunc("/user/avatar", withCORS(handleUserAvatar(clientID, clientSecret)))
 	mux.HandleFunc("/modules/settings", withCORS(handleModuleSettings))
 	mux.HandleFunc("/birthdays/list", withCORS(handleBirthdaysList))
 	mux.HandleFunc("/birthdays/settings", withCORS(handleBirthdaysSettings))
@@ -1514,6 +1516,83 @@ func ensureValidUserToken(login string) (string, string, error) {
 }
 
 // --- Blocked Terms ------------------------------------------------------------
+
+// handleEditorChannels returns all broadcaster channels where the given user
+// has been assigned the "Editor" role.
+func handleEditorChannels(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	if err := EnsureRolesTable(); err != nil {
+		log.Println("roles table ensure failed:", err)
+		http.Error(w, "db error", http.StatusInternalServerError)
+		return
+	}
+	login := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("login")))
+	if login == "" {
+		http.Error(w, "missing login", http.StatusBadRequest)
+		return
+	}
+	channels, err := ListEditorChannels(login)
+	if err != nil {
+		log.Println("list editor channels:", err)
+		http.Error(w, "db error", http.StatusInternalServerError)
+		return
+	}
+	if channels == nil {
+		channels = []string{}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{"channels": channels})
+}
+
+// handleUserAvatar returns the Twitch profile picture URL for a given login name.
+// It uses an app access token so no user-specific credentials are needed.
+func handleUserAvatar(clientID, clientSecret string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		login := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("login")))
+		if login == "" {
+			http.Error(w, "missing login", http.StatusBadRequest)
+			return
+		}
+		appToken, err := getAppAccessToken(clientID, clientSecret)
+		if err != nil {
+			log.Println("handleUserAvatar: get app token:", err)
+			http.Error(w, "token error", http.StatusInternalServerError)
+			return
+		}
+		req, err := http.NewRequest("GET", "https://api.twitch.tv/helix/users?login="+login, nil)
+		if err != nil {
+			http.Error(w, "request error", http.StatusInternalServerError)
+			return
+		}
+		req.Header.Set("Client-ID", clientID)
+		req.Header.Set("Authorization", "Bearer "+appToken)
+		client := &http.Client{Timeout: 5 * time.Second}
+		resp, err := client.Do(req)
+		if err != nil || resp.StatusCode != http.StatusOK {
+			http.Error(w, "twitch api error", http.StatusBadGateway)
+			return
+		}
+		defer resp.Body.Close()
+		var res struct {
+			Data []struct {
+				ProfileImageURL string `json:"profile_image_url"`
+			} `json:"data"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&res); err != nil || len(res.Data) == 0 {
+			http.Error(w, "user not found", http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"avatar_url": res.Data[0].ProfileImageURL})
+	}
+}
 
 // handleRoles handles GET (list) and POST (add/update) for user role assignments.
 func handleRoles(w http.ResponseWriter, r *http.Request) {

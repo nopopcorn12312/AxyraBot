@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import AxyraBotPFP from "../images/AxyraBotPFP.png";
+import ManagingChannelBadge from "../components/ManagingChannelBadge";
 import { usePersistentSectionState } from "../hooks/usePersistentSectionState";
 
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://your-backend.onrender.com";
@@ -488,7 +489,8 @@ export default function BirthdaysPage() {
     const storedAvatar = window.localStorage.getItem("axyra.avatar");
     if (storedLogin) {
       setIsLoggedIn(true);
-      setLogin(storedLogin.toLowerCase());
+      const activeChannel = window.localStorage.getItem("axyra.activeChannel");
+      setLogin((activeChannel || storedLogin).toLowerCase());
     }
     if (storedAvatar) {
       setAvatarUrl(storedAvatar);
@@ -705,6 +707,7 @@ export default function BirthdaysPage() {
           </a>
           {isLoggedIn && (
             <>
+              <ManagingChannelBadge />
               <Link
                 href="/import"
                 className="inline-flex items-center gap-1 rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1.5 text-xs font-medium text-slate-100 hover:bg-slate-800 hover:border-slate-500 transition"
