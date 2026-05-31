@@ -42,6 +42,9 @@ func startHTTPServer(clientID, clientSecret string) {
 	mux.HandleFunc("/birthdays/list", withCORS(handleBirthdaysList))
 	mux.HandleFunc("/birthdays/settings", withCORS(handleBirthdaysSettings))
 	mux.HandleFunc("/birthdays/command-messages", withCORS(handleBirthdayCommandMessages))
+	mux.HandleFunc("/discord/settings", withCORS(handleDiscordSettings))
+	mux.HandleFunc("/discord/guilds", withCORS(handleDiscordGuilds))
+	mux.HandleFunc("/discord/channels", withCORS(handleDiscordChannels))
 
 	// Optional Nightbot OAuth integration for importing commands without
 	// copy/paste. These handlers are only registered when all required
@@ -1727,6 +1730,107 @@ func handleRolesDelete(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, "ok")
+}
+
+// handleDiscordGuilds returns the list of Discord servers the bot is currently
+// in. No authentication is required — this just exposes server names/IDs.
+func handleDiscordGuilds(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	guilds := GetBotGuilds()
+	if guilds == nil {
+		guilds = []BotGuild{}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{"guilds": guilds})
+}
+
+// handleDiscordChannels returns all text channels in a Discord guild the bot
+// is in. Requires guild_id query param.
+func handleDiscordChannels(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	guildID := strings.TrimSpace(r.URL.Query().Get("guild_id"))
+	if guildID == "" {
+		http.Error(w, "missing guild_id", http.StatusBadRequest)
+		return
+	}
+	channels, err := GetGuildTextChannels(guildID)
+	if err != nil {
+		log.Println("get guild channels:", err)
+		http.Error(w, "failed to fetch channels", http.StatusInternalServerError)
+		return
+	}
+	if channels == nil {
+		channels = []GuildChannel{}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{"channels": channels})
+}
+
+// handleDiscordSettings handles GET and POST for per-broadcaster Discord
+// channel configuration.
+func handleDiscordSettings(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		login := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("login")))
+		if login == "" {
+			http.Error(w, "missing login", http.StatusBadRequest)
+			return
+		}
+		settings, err := GetDiscordSettings(login)
+		if err != nil {
+			log.Println("get discord settings:", err)
+			http.Error(w, "db error", http.StatusInternalServerError)
+			return
+		}
+		if settings == nil {
+			settings = &DiscordSettings{BroadcasterLogin: login}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{
+			"guild_id":        settings.GuildID,
+			"live_channel_id": settings.LiveChannelID,
+			"mod_channel_id":  settings.ModChannelID,
+			"bday_channel_id": settings.BdayChannelID,
+		})
+	case http.MethodPost:
+		var body struct {
+			Login         string `json:"login"`
+			GuildID       string `json:"guild_id"`
+			LiveChannelID string `json:"live_channel_id"`
+			ModChannelID  string `json:"mod_channel_id"`
+			BdayChannelID string `json:"bday_channel_id"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "bad json", http.StatusBadRequest)
+			return
+		}
+		login := strings.ToLower(strings.TrimSpace(body.Login))
+		if login == "" {
+			http.Error(w, "missing login", http.StatusBadRequest)
+			return
+		}
+		if err := SaveDiscordSettings(DiscordSettings{
+			BroadcasterLogin: login,
+			GuildID:          strings.TrimSpace(body.GuildID),
+			LiveChannelID:    strings.TrimSpace(body.LiveChannelID),
+			ModChannelID:     strings.TrimSpace(body.ModChannelID),
+			BdayChannelID:    strings.TrimSpace(body.BdayChannelID),
+		}); err != nil {
+			log.Println("save discord settings:", err)
+			http.Error(w, "db error", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "ok")
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
 }
 
 // handleBlockedTerms handles GET (list) and POST (add/update) for blocked terms.

@@ -689,6 +689,14 @@ func EnsureSchema() error {
 	 broadcaster_login TEXT PRIMARY KEY,
 	 timezone TEXT
 	);
+	CREATE TABLE IF NOT EXISTS discord_settings (
+	 broadcaster_login TEXT PRIMARY KEY,
+	 guild_id           TEXT NOT NULL DEFAULT '',
+	 live_channel_id    TEXT NOT NULL DEFAULT '',
+	 mod_channel_id     TEXT NOT NULL DEFAULT '',
+	 bday_channel_id    TEXT NOT NULL DEFAULT '',
+	 updated_at         TIMESTAMPTZ NOT NULL DEFAULT now()
+	);
 	`)
 	if err != nil {
 		return err
@@ -1023,3 +1031,74 @@ func ListEditorChannels(username string) ([]string, error) {
 	}
 	return out, nil
 }
+
+// DiscordSettings holds per-broadcaster Discord configuration.
+type DiscordSettings struct {
+	BroadcasterLogin string
+	GuildID          string
+	LiveChannelID    string
+	ModChannelID     string
+	BdayChannelID    string
+}
+
+// GetDiscordSettings returns the Discord settings for a broadcaster, or nil
+// if no row exists yet.
+func GetDiscordSettings(broadcasterLogin string) (*DiscordSettings, error) {
+	if db == nil {
+		return nil, fmt.Errorf("db not initialized")
+	}
+	broadcasterLogin = strings.ToLower(strings.TrimSpace(broadcasterLogin))
+	row := db.QueryRowContext(context.Background(), `
+		SELECT broadcaster_login, guild_id, live_channel_id, mod_channel_id, bday_channel_id
+		FROM discord_settings WHERE broadcaster_login = $1
+	`, broadcasterLogin)
+	var s DiscordSettings
+	if err := row.Scan(&s.BroadcasterLogin, &s.GuildID, &s.LiveChannelID, &s.ModChannelID, &s.BdayChannelID); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &s, nil
+}
+
+// GetDiscordSettingsByGuild looks up Discord settings by guild ID, used to
+// resolve a guild's linked Twitch channel for slash commands.
+func GetDiscordSettingsByGuild(guildID string) (*DiscordSettings, error) {
+	if db == nil {
+		return nil, fmt.Errorf("db not initialized")
+	}
+	guildID = strings.TrimSpace(guildID)
+	row := db.QueryRowContext(context.Background(), `
+		SELECT broadcaster_login, guild_id, live_channel_id, mod_channel_id, bday_channel_id
+		FROM discord_settings WHERE guild_id = $1
+	`, guildID)
+	var s DiscordSettings
+	if err := row.Scan(&s.BroadcasterLogin, &s.GuildID, &s.LiveChannelID, &s.ModChannelID, &s.BdayChannelID); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &s, nil
+}
+
+// SaveDiscordSettings upserts Discord settings for a broadcaster.
+func SaveDiscordSettings(s DiscordSettings) error {
+	if db == nil {
+		return fmt.Errorf("db not initialized")
+	}
+	s.BroadcasterLogin = strings.ToLower(strings.TrimSpace(s.BroadcasterLogin))
+	_, err := db.ExecContext(context.Background(), `
+		INSERT INTO discord_settings (broadcaster_login, guild_id, live_channel_id, mod_channel_id, bday_channel_id, updated_at)
+		VALUES ($1, $2, $3, $4, $5, NOW())
+		ON CONFLICT (broadcaster_login) DO UPDATE SET
+			guild_id        = EXCLUDED.guild_id,
+			live_channel_id = EXCLUDED.live_channel_id,
+			mod_channel_id  = EXCLUDED.mod_channel_id,
+			bday_channel_id = EXCLUDED.bday_channel_id,
+			updated_at      = NOW()
+	`, s.BroadcasterLogin, s.GuildID, s.LiveChannelID, s.ModChannelID, s.BdayChannelID)
+	return err
+}
+

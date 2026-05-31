@@ -156,6 +156,9 @@ func main() {
 	// Start token refresher (only active if refresh token present in tokens.json)
 	go tokenRefresher(tokensPath, clientID, clientSecret)
 
+	// Initialize Discord bot (no-op if DISCORD_BOT_TOKEN is unset)
+	InitDiscord()
+
 	// Initialize DB (if configured)
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL != "" {
@@ -359,6 +362,8 @@ func startEventSubWS() {
 													if err := sendHelixChatMessage(ch, msg); err != nil {
 														log.Println("failed to send stream.online live message:", err)
 													}
+													// Notify Discord
+													PostDiscordLiveNotification(ch, title, game)
 													// Record stream.online in audit log as a Twitch-side event.
 													if err := InsertAuditLog(ch, "twitch", "stream_online", fmt.Sprintf("Stream went live: %s | %s", title, game)); err != nil {
 														log.Println("failed to insert audit log for stream.online:", err)
@@ -926,6 +931,9 @@ func handleChatMessageEvent(channelLogin, chatterLogin, chatterID, messageID, me
 				})
 				if err := sendHelixChatMessage(channelLogin, text); err != nil {
 					log.Println("failed to send !birthday response:", err)
+				}
+				if len(today) > 0 {
+					PostDiscordBirthdayAnnouncement(channelLogin, strings.Join(today, ", "))
 				}
 				return
 			}
