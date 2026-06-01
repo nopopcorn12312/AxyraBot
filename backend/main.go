@@ -1757,15 +1757,9 @@ func timeoutUser(channelLogin, targetLogin string, seconds int, reason string) e
 		return fmt.Errorf("TWITCH_CLIENT_ID not set")
 	}
 
-	access, err := GetUserAccessToken(channelLogin)
+	broadcasterID, access, err := ensureValidUserToken(channelLogin)
 	if err != nil || access == "" {
-		return fmt.Errorf("no user token for channel %s: %w", channelLogin, err)
-	}
-
-	// broadcaster id from token
-	broadcasterID, err := getUserIDFromToken(access)
-	if err != nil {
-		return fmt.Errorf("getUserIDFromToken failed: %w", err)
+		return fmt.Errorf("no valid token for channel %s: %w", channelLogin, err)
 	}
 
 	// resolve target user id
@@ -1836,14 +1830,9 @@ func deleteHelixMessage(channelLogin, messageID string) error {
 	if clientID == "" {
 		return fmt.Errorf("TWITCH_CLIENT_ID not set")
 	}
-	access, err := GetUserAccessToken(channelLogin)
+	broadcasterID, access, err := ensureValidUserToken(channelLogin)
 	if err != nil || access == "" {
-		return fmt.Errorf("no user token for channel %s: %w", channelLogin, err)
-	}
-	// Resolve broadcaster ID directly from the token (same pattern as timeoutUser/banUser).
-	broadcasterID, err := getUserIDFromToken(access)
-	if err != nil {
-		return fmt.Errorf("getUserIDFromToken failed for delete: %w", err)
+		return fmt.Errorf("no valid token for channel %s: %w", channelLogin, err)
 	}
 	if broadcasterID == "" {
 		return fmt.Errorf("empty broadcaster ID for channel %s", channelLogin)
@@ -1881,13 +1870,9 @@ func banUser(channelLogin, targetLogin, reason string) error {
 	if clientID == "" {
 		return fmt.Errorf("TWITCH_CLIENT_ID not set")
 	}
-	access, err := GetUserAccessToken(channelLogin)
+	broadcasterID, access, err := ensureValidUserToken(channelLogin)
 	if err != nil || access == "" {
-		return fmt.Errorf("no user token for channel %s: %w", channelLogin, err)
-	}
-	broadcasterID, err := getUserIDFromToken(access)
-	if err != nil {
-		return fmt.Errorf("getUserIDFromToken failed: %w", err)
+		return fmt.Errorf("no valid token for channel %s: %w", channelLogin, err)
 	}
 	// resolve target user id
 	usersReq, err := http.NewRequest("GET", "https://api.twitch.tv/helix/users?login="+url.QueryEscape(targetLogin), nil)
