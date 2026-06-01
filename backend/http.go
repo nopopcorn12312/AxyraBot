@@ -829,76 +829,46 @@ func handleAuthStart(clientID string) http.HandlerFunc {
 		// deliberately excluded here; those are handled by the separate bot
 		// token you generated earlier.
 		scopes := strings.Join([]string{
-			// Channel / stream management
-			"channel:manage:ads",
+			// Channel management
 			"channel:manage:broadcast",
-			"channel:manage:extensions",
-			"channel:manage:moderators",
-			"channel:manage:polls",
-			"channel:manage:predictions",
-			"channel:manage:raids",
+			"channel:edit:commercial",
 			"channel:manage:redemptions",
-			"channel:manage:videos",
-			"channel:manage:vips",
+			"channel:manage:moderators",
 
-			// Channel read / analytics
+			// Channel read
 			"channel:read:ads",
 			"channel:read:charity",
-			"channel:read:editors",
-			"channel:read:goals",
 			"channel:read:hype_train",
 			"channel:read:polls",
 			"channel:read:predictions",
-			"channel:read:redemptions",
 			"channel:read:subscriptions",
 			"channel:read:vips",
-			"analytics:read:extensions",
-			"analytics:read:games",
-			"bits:read",
-			"channel:moderate",
 
-			// Moderation / VIP / warnings
-			"moderation:read",
-			"moderator:manage:announcements",
-			"moderator:manage:automod",
-			"moderator:manage:automod_settings",
-			"moderator:manage:banned_users",
-			"moderator:manage:blocked_terms",
-			"moderator:manage:chat_messages",
-			"moderator:manage:chat_settings",
-			"moderator:manage:shield_mode",
-			"moderator:manage:shoutouts",
-			"moderator:manage:unban_requests",
-			"moderator:manage:warnings",
-			"moderator:read:blocked_terms",
-			"moderator:read:chat_settings",
-			"moderator:read:followers",
-			"moderator:read:automod_settings",
-			"moderator:read:shield_mode",
-			"moderator:read:unban_requests",
-			"moderator:read:suspicious_users",
-			"moderator:read:warnings",
-			"moderator:read:moderators",
-			"moderator:read:vips",
-			"moderator:read:banned_users",
-			"moderator:read:chat_messages",
-
-			// Channel points / polls / predictions / goals / charity
-			"channel:read:redemptions",
-			"channel:manage:redemptions",
-			"channel:read:polls",
-			"channel:manage:polls",
-			"channel:read:predictions",
-			"channel:manage:predictions",
-			"channel:read:goals",
-			"channel:read:charity",
-
-			// User/account-level (broadcaster account)
-			"user:read:broadcast",
+			// User
 			"user:read:email",
 			"user:read:follows",
 
-			// Allows the bot to join this broadcaster's channel as a bot user.
+			// Moderation
+			"channel:moderate",
+			"moderation:read",
+
+			// Moderator read
+			"moderator:read:banned_users",
+			"moderator:read:blocked_terms",
+			"moderator:read:chat_messages",
+			"moderator:read:chat_settings",
+			"moderator:read:chatters",
+			"moderator:read:followers",
+			"moderator:read:moderators",
+			"moderator:read:suspicious_users",
+			"moderator:read:unban_requests",
+			"moderator:read:vips",
+			"moderator:read:warnings",
+
+			// Moderator manage
+			"moderator:manage:automod",
+
+			// Bot
 			"channel:bot",
 		}, " ")
 		u := url.URL{
