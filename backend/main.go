@@ -531,17 +531,12 @@ func handleChatMessageEvent(channelLogin, chatterLogin, chatterID, messageID, me
 				if strings.Contains(lowerMsg, strings.ToLower(bt.Term)) {
 					log.Printf("[BLOCKED TERM] channel=%s user=%s term=%q action=%s messageID=%q", channelLogin, chatterLogin, bt.Term, bt.Action, messageID)
 					switch bt.Action {
-					case "delete":
-						if err := deleteHelixMessage(channelLogin, messageID); err != nil {
-							log.Println("blocked term delete message error:", err, "— falling back to 1s timeout")
-							// Fallback: a 1-second timeout clears the message from chat when
-							// delete is rejected (e.g. Twitch protects verified bot messages).
-							if terr := timeoutUser(channelLogin, chatterLogin, 1, fmt.Sprintf("Blocked term: %s", bt.Term)); terr != nil {
-								log.Println("blocked term delete fallback timeout error:", terr)
-							}
-						} else {
-							go PostDiscordModAlert(channelLogin, "AxyraBot's Moderation Settings", chatterLogin, "delete", fmt.Sprintf("Blocked term: %s", bt.Term))
-						}
+				case "delete":
+					if err := deleteHelixMessage(channelLogin, messageID); err != nil {
+						log.Println("blocked term delete message error:", err)
+					} else {
+						go PostDiscordModAlert(channelLogin, "AxyraBot's Moderation Settings", chatterLogin, "delete", fmt.Sprintf("Blocked term: %s", bt.Term))
+					}
 					case "timeout":
 						secs := bt.TimeoutSeconds
 						if secs <= 0 {
@@ -636,10 +631,7 @@ func handleChatMessageEvent(channelLogin, chatterLogin, chatterID, messageID, me
 				switch triggeredFilter.Action {
 				case "delete":
 					if err := deleteHelixMessage(channelLogin, messageID); err != nil {
-						log.Println("spam filter delete message error:", err, "— falling back to 1s timeout")
-						if terr := timeoutUser(channelLogin, chatterLogin, 1, fmt.Sprintf("Spam filter: %s", triggerReason)); terr != nil {
-							log.Println("spam filter delete fallback timeout error:", terr)
-						}
+						log.Println("spam filter delete message error:", err)
 					} else {
 						go PostDiscordModAlert(channelLogin, "AxyraBot's Moderation Settings", chatterLogin, "delete", fmt.Sprintf("Spam filter: %s", triggerReason))
 					}

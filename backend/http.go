@@ -870,6 +870,9 @@ func handleAuthStart(clientID string) http.HandlerFunc {
 
 			// Moderator manage
 			"moderator:manage:automod",
+			"moderator:manage:banned_users",
+			"moderator:manage:chat_messages",
+			"moderator:manage:chat_settings",
 
 			// Bot
 			"channel:bot",
