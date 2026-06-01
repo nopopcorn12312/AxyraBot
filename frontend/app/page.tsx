@@ -306,60 +306,12 @@ export default function HomePage() {
           {/* Left: dashboard UI mockup */}
           <div className="relative">
             <div className="absolute -inset-4 rounded-3xl bg-accent/5 blur-3xl" />
-            <div className="relative rounded-2xl border border-slate-700/60 bg-slate-900/80 overflow-hidden shadow-2xl shadow-black/60">
-              <div className="bg-slate-950/80 px-4 py-3 flex items-center gap-3 border-b border-slate-800">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-2.5 h-2.5 rounded-full bg-red-500/60" />
-                  <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/60" />
-                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/60" />
-                </div>
-                <div className="flex items-center gap-2 text-xs text-slate-400">
-                  <Image src={AxyraBotPFP} alt="AxyraBot" width={14} height={14} className="rounded" />
-                  AxyraBot Dashboard
-                </div>
-              </div>
-              <div className="flex text-xs">
-                {/* Sidebar */}
-                <div className="w-28 shrink-0 border-r border-slate-800 bg-slate-950/60 p-3 space-y-1">
-                  {["Overview","Moderation","Commands","Automations","Logs","Analytics","Servers","Settings"].map((item, i) => (
-                    <div key={item} className={`px-2 py-1.5 rounded text-[11px] ${i === 0 ? "bg-accent/20 text-accent font-semibold" : "text-slate-500"}`}>{item}</div>
-                  ))}
-                </div>
-                {/* Main */}
-                <div className="flex-1 p-4 space-y-3">
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { label: "Messages Blocked", val: "128,456", change: "+5.1%", up: true  },
-                      { label: "Users Timed Out",  val: "2,345",   change: "+4.1%", up: true  },
-                      { label: "Bans Issued",      val: "567",     change: "+2.2%", up: false },
-                    ].map((s) => (
-                      <div key={s.label} className="rounded-lg border border-slate-800 bg-slate-950/60 p-2">
-                        <div className="text-[10px] text-slate-500 mb-1">{s.label}</div>
-                        <div className="text-sm font-black text-white">{s.val}</div>
-                        <div className={`text-[10px] ${s.up ? "text-emerald-400" : "text-red-400"}`}>{s.change}</div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-3">
-                      <div className="text-[11px] font-semibold text-slate-300 mb-2">Recent Events</div>
-                      <div className="space-y-1.5">
-                        {["User123 timed out · Spam links","BadUser banned · Hate speech","SomeUser timed out · Suspicious URLs","Bot detected · Blocked 43 msgs"].map((e) => (
-                          <div key={e} className="text-[10px] text-slate-500 truncate">{e}</div>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-3">
-                      <div className="text-[11px] font-semibold text-slate-300 mb-2">Messages Over Time</div>
-                      <div className="h-16 flex items-end gap-0.5">
-                        {[30,45,35,60,40,70,55,80,65,90,75,95].map((h, i) => (
-                          <div key={i} className="flex-1 rounded-sm bg-accent/40" style={{ height: `${h}%` }} />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+            <div className="relative rounded-2xl border border-slate-700/60 overflow-hidden shadow-2xl shadow-black/60">
+              <img
+                src="/AxyraBotDashboard.png"
+                alt="AxyraBot Dashboard"
+                className="w-full h-auto block"
+              />
             </div>
           </div>
           {/* Right: text */}
