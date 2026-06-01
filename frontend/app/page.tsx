@@ -103,13 +103,6 @@ export default function HomePage() {
     setMenuOpen(false);
   };
 
-  const handleScrollToDetails = () => {
-    if (typeof document === "undefined") return;
-    const target = document.getElementById("axyra-details");
-    if (target) {
-      target.scrollIntoView({ behavior: "smooth" });
-    }
-  };
   // After Twitch auth, send users back to the homepage so we can update
   // local state and show the Dashboard buttons/avatar.
   const redirectTarget = frontendUrl ? `${frontendUrl}` : "";
@@ -118,395 +111,458 @@ export default function HomePage() {
     : `${backendUrl}/auth/start`;
 
   const primaryHref = isLoggedIn ? "/dashboard" : connectUrl;
-  const primaryLabel = isLoggedIn ? "Dashboard" : "Login with Twitch";
+  const primaryLabel = isLoggedIn ? "Dashboard" : "Connect Twitch";
 
   return (
     <div className="min-h-screen bg-background text-slate-100">
 
       {/* ── NAV ── */}
-      <header
-        className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 ${
-          isScrolled ? "bg-background/80 backdrop-blur-md border-b border-slate-800/60" : ""
-        }`}
-      >
-        <div className="max-w-6xl mx-auto flex h-16 items-center px-6 gap-6">
-          <div className="flex items-center gap-3 flex-1">
-            <Image src={AxyraBotPFP} alt="AxyraBot" width={36} height={36} className="rounded-xl" />
-            <span className="text-lg font-bold tracking-tight">
-              <span className="text-accent">Axyra</span>
-              <span className="text-white">Bot</span>
-            </span>
+      <header className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 ${isScrolled ? "bg-background/90 backdrop-blur-md border-b border-slate-800/60" : ""}`}>
+        <div className="max-w-7xl mx-auto flex h-16 items-center px-6 gap-6">
+          <div className="flex items-center gap-2.5 flex-shrink-0">
+            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-accent/20 border border-accent/40">
+              <Image src={AxyraBotPFP} alt="AxyraBot" width={20} height={20} className="rounded" />
+            </div>
+            <span className="text-base font-bold tracking-tight text-white">AxyraBot</span>
           </div>
-          <nav className="hidden md:flex items-center gap-8 text-sm text-slate-400">
+          <nav className="hidden md:flex items-center gap-7 text-sm text-slate-400 flex-1 justify-center">
             <a href="#features" className="hover:text-white transition">Features</a>
-            <a href="#getstarted" className="hover:text-white transition">Get Started</a>
-            <a href="#faq" className="hover:text-white transition">FAQ</a>
+            <a href="/dashboard" className="hover:text-white transition">Dashboard</a>
+            <a href="/commands" className="hover:text-white transition">Commands</a>
+            <a href="#faq" className="hover:text-white transition">Docs</a>
+            <a href="#faq" className="hover:text-white transition">Support</a>
           </nav>
-          <div ref={menuRef} className="relative flex items-center justify-end flex-1 gap-3">
-            <a
-              href={primaryHref}
-              className="inline-flex items-center justify-center rounded-full bg-accent px-5 py-2 text-sm font-semibold text-slate-900 shadow-lg shadow-sky-400/30 transition hover:bg-sky-300"
-            >
-              {primaryLabel}
-            </a>
-            {isLoggedIn && avatarUrl && (
-              <button type="button" onClick={() => setMenuOpen((o) => !o)} className="focus:outline-none">
-                <Image src={avatarUrl} alt="Profile" width={34} height={34} className="rounded-full" />
-              </button>
-            )}
-            {isLoggedIn && menuOpen && (
-              <div className="absolute right-0 top-full mt-2 w-36 rounded-lg border border-slate-700 bg-slate-900/95 py-2 shadow-lg">
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="w-full px-4 py-2 text-sm text-left text-slate-200 hover:bg-slate-800"
-                >
-                  Log out
-                </button>
-              </div>
+          <div ref={menuRef} className="relative flex items-center gap-3 flex-shrink-0">
+            {isLoggedIn ? (
+              <>
+                <a href="/dashboard" className="text-sm text-slate-300 hover:text-white transition px-4 py-2">Dashboard</a>
+                {avatarUrl && (
+                  <button type="button" onClick={() => setMenuOpen((o) => !o)} className="focus:outline-none">
+                    <Image src={avatarUrl} alt="Profile" width={32} height={32} className="rounded-full" />
+                  </button>
+                )}
+                {menuOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-36 rounded-lg border border-slate-700 bg-slate-900/95 py-2 shadow-lg">
+                    <button type="button" onClick={handleLogout} className="w-full px-4 py-2 text-sm text-left text-slate-200 hover:bg-slate-800">Log out</button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <a href={connectUrl} className="text-sm text-slate-300 hover:text-white transition px-4 py-2">Log in</a>
+                <a href={connectUrl} className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-slate-900 shadow-lg shadow-sky-400/20 transition hover:bg-sky-300">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"/></svg>
+                  Connect Twitch
+                </a>
+              </>
             )}
           </div>
         </div>
       </header>
 
       {/* ── HERO ── */}
-      <section className="relative pt-32 pb-24 px-6 overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(56,189,248,0.13),transparent)]" />
-        <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-14 items-center relative z-10">
-          {/* Left: headline + CTA */}
+      <section className="relative min-h-screen flex items-center pt-16 overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_60%_at_70%_40%,rgba(139,92,246,0.15),transparent)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_40%_at_20%_60%,rgba(56,189,248,0.08),transparent)]" />
+        <div className="max-w-7xl mx-auto px-6 w-full grid lg:grid-cols-2 gap-12 items-center py-20 relative z-10">
+          {/* Left */}
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900/60 px-3 py-1 text-xs text-slate-300 mb-6">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-              AxyraBot is online
+            <div className="inline-block text-xs font-semibold tracking-widest text-accent/80 uppercase mb-4">
+              The Complete Moderation Solution
             </div>
-            <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-white leading-tight mb-5">
-              Simplify chat moderation and engage your audience on stream.
+            <h1 className="text-5xl sm:text-6xl font-black tracking-tight text-white leading-[1.05] mb-6">
+              Powerful Moderation<br />
+              for <span className="text-accent">Twitch</span> &amp; <span className="text-violet-400">Discord</span>
             </h1>
-            <p className="text-slate-400 text-base mb-8 max-w-lg leading-relaxed">
-              AxyraBot connects to your channel in seconds — custom commands, smart event reactions,
-              and full moderation tools, all from a clean dashboard.
+            <p className="text-slate-400 text-lg mb-8 max-w-lg leading-relaxed">
+              Protect your community, automate moderation, and keep your chat safe 24/7 with AxyraBot.
             </p>
-            <div className="flex flex-col sm:flex-row items-start gap-3">
-              <a
-                href={primaryHref}
-                className="inline-flex items-center justify-center rounded-full bg-accent px-7 py-3 text-sm font-bold text-slate-900 shadow-lg shadow-sky-400/30 transition hover:bg-sky-300"
-              >
-                {primaryLabel}
+            <div className="flex flex-wrap gap-3 mb-10">
+              <a href="https://discord.com" className="inline-flex items-center gap-2 rounded-lg bg-[#5865f2] hover:bg-[#4752c4] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-violet-500/30 transition">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057.1 18.08.113 18.1.132 18.116a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
+                Add to Discord
               </a>
-              <p className="text-xs text-slate-500 self-center">Free — no credit card required.</p>
+              <a href={connectUrl} className="inline-flex items-center gap-2 rounded-lg border border-slate-600 bg-slate-800/60 hover:bg-slate-700/60 px-5 py-3 text-sm font-bold text-white transition">
+                <svg className="w-4 h-4 text-violet-400" viewBox="0 0 24 24" fill="currentColor"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"/></svg>
+                Connect Twitch
+              </a>
+            </div>
+            {/* Social proof */}
+            <div className="flex items-center gap-3">
+              <div className="flex -space-x-2">
+                {[0,1,2,3,4].map((i) => (
+                  <div key={i} className="w-8 h-8 rounded-full border-2 border-background bg-slate-700" />
+                ))}
+              </div>
+              <div>
+                <div className="flex items-center gap-1 text-yellow-400 text-xs">
+                  ★★★★★ <span className="text-white font-semibold ml-1">4.9/5</span>
+                </div>
+                <p className="text-xs text-slate-400">Trusted by 10,000+ communities</p>
+              </div>
             </div>
           </div>
 
-          {/* Right: live chat preview */}
-          <div className="relative">
-            <div className="absolute -inset-4 rounded-3xl bg-sky-500/10 blur-2xl" />
-            <div className="relative rounded-2xl border border-slate-700 bg-slate-900/90 overflow-hidden shadow-2xl shadow-black/60">
-              <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-800 bg-slate-950/60">
-                <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                <span className="text-xs text-slate-400 font-medium">Live Chat</span>
+          {/* Right: Chat UI mockups */}
+          <div className="relative flex items-center justify-center lg:justify-end pb-12">
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_70%_at_60%_50%,rgba(139,92,246,0.2),transparent)]" />
+            <div className="relative w-full max-w-md">
+              {/* Twitch chat mockup */}
+              <div className="rounded-xl border border-slate-700/60 bg-slate-900/90 shadow-2xl shadow-black/60 overflow-hidden">
+                <div className="flex items-center gap-2 px-4 py-2.5 border-b border-slate-800 bg-slate-950/60">
+                  <svg className="w-4 h-4 text-violet-400" viewBox="0 0 24 24" fill="currentColor"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"/></svg>
+                  <span className="text-xs font-semibold text-slate-300">TWITCH CHAT</span>
+                </div>
+                <div className="px-4 py-3 space-y-3 text-xs">
+                  {[
+                    { user: "StreamElements", color: "text-sky-400",    msg: "Check out my socials! linktr.ee/xyz",              mod: false },
+                    { user: "AxyraBot",        color: "text-accent",     msg: "@user, links are not allowed!",                   mod: true  },
+                    { user: "BadUser123",      color: "text-red-400",    msg: "Buy followers here! bit.ly/spam",                 mod: false },
+                    { user: "AxyraBot",        color: "text-accent",     msg: "@BadUser123 has been timed out for 600 seconds.", mod: true  },
+                  ].map((line, i) => (
+                    <div key={i} className="flex gap-2 items-start">
+                      <span className={`shrink-0 font-semibold ${line.color}`}>{line.user}:</span>
+                      <span className={line.mod ? "text-slate-300 italic" : "text-slate-400"}>{line.msg}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div className="px-4 py-4 space-y-3 text-xs">
-                {[
-                  { user: "StreamFan22",  color: "text-sky-400",              msg: "Welcome to the stream!" },
-                  { user: "TwitchViewer", color: "text-violet-400",           msg: "!hello" },
-                  { user: "AxyraBot",     color: "text-accent font-semibold", msg: "Hey TwitchViewer! Welcome! PogChamp" },
-                  { user: "ModUser",      color: "text-emerald-400",          msg: "!uptime" },
-                  { user: "AxyraBot",     color: "text-accent font-semibold", msg: "The stream has been live for 1h 23m!" },
-                  { user: "NewFollower",  color: "text-pink-400",             msg: "just followed! 🎉" },
-                  { user: "AxyraBot",     color: "text-accent font-semibold", msg: "Thanks for the follow, NewFollower! 💜" },
-                ].map((line, i) => (
-                  <div key={i} className="flex gap-2">
-                    <span className={`shrink-0 ${line.color}`}>{line.user}:</span>
-                    <span className="text-slate-300">{line.msg}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="px-4 py-3 border-t border-slate-800 bg-slate-950/40 flex items-center gap-2">
-                <div className="flex-1 rounded-lg bg-slate-800 px-3 py-2 text-xs text-slate-500">Send a message</div>
-                <div className="rounded-lg bg-accent px-3 py-2 text-xs font-semibold text-slate-900">Chat</div>
+              {/* Discord server mockup — overlaps bottom-right */}
+              <div className="absolute -bottom-10 -right-6 w-64 rounded-xl border border-slate-700/60 bg-slate-900/95 shadow-2xl shadow-black/60 overflow-hidden">
+                <div className="flex items-center gap-2 px-4 py-2.5 border-b border-slate-800 bg-[#5865f2]/20">
+                  <svg className="w-4 h-4 text-[#5865f2]" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057.1 18.08.113 18.1.132 18.116a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
+                  <span className="text-xs font-semibold text-slate-300">DISCORD SERVER</span>
+                </div>
+                <div className="px-4 py-3 space-y-2 text-xs">
+                  {[
+                    { user: "Member",   color: "text-slate-400", msg: "Just joined the server!" },
+                    { user: "AxyraBot", color: "text-accent",    msg: "Welcome @Member! Please read #rules and have a great time!" },
+                    { user: "AxyraBot", color: "text-accent",    msg: "@Spammer was banned." },
+                  ].map((line, i) => (
+                    <div key={i} className="flex gap-1.5 items-start">
+                      <span className={`shrink-0 font-semibold ${line.color}`}>{line.user}:</span>
+                      <span className="text-slate-400">{line.msg}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── FEATURE ROW 1: engagement (mockup left, text right) ── */}
-      <section id="features" className="py-20 px-6 bg-slate-950/50 border-y border-slate-800/60">
-        <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-14 items-center">
-          {/* Left: command list UI mockup */}
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/80 divide-y divide-slate-800 shadow-xl overflow-hidden">
+      {/* ── STATS BAR ── */}
+      <section className="border-y border-slate-800/60 bg-slate-900/40 backdrop-blur-sm">
+        <div className="max-w-7xl mx-auto px-6 py-8 grid grid-cols-2 lg:grid-cols-4 gap-8">
+          {[
+            { icon: "👥", stat: "10,000+", label: "Communities"        },
+            { icon: "🛡️", stat: "2.5M+",   label: "Members Protected"  },
+            { icon: "💬", stat: "150M+",   label: "Messages Moderated" },
+            { icon: "⚡", stat: "99.9%",   label: "Uptime"             },
+          ].map((s) => (
+            <div key={s.label} className="flex items-center gap-4">
+              <span className="text-2xl">{s.icon}</span>
+              <div>
+                <div className="text-2xl font-black text-white">{s.stat}</div>
+                <div className="text-sm text-slate-400">{s.label}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── FEATURES GRID ── */}
+      <section id="features" className="py-24 px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-14">
+            <div className="text-xs font-semibold tracking-widest text-accent/70 uppercase mb-3">Everything You Need</div>
+            <h2 className="text-4xl font-black text-white">Powerful Features. Total Control.</h2>
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {[
-              { cmd: "!hello",          desc: "Greet chat",                   on: true  },
-              { cmd: "!uptime",         desc: "Stream duration",              on: true  },
-              { cmd: "!followage",      desc: "How long you've followed",     on: true  },
-              { cmd: "!game <category>",desc: "Change game (mods only)",      on: false },
-              { cmd: "!title <title>",  desc: "Change stream title (mods)",   on: true  },
-            ].map((row) => (
-              <div key={row.cmd} className="flex items-center justify-between px-4 py-3 text-xs">
-                <div>
-                  <div className="font-mono text-sky-300">{row.cmd}</div>
-                  <div className="text-slate-500 mt-0.5">{row.desc}</div>
+              { icon: "🛡️", color: "text-sky-400",     bg: "bg-sky-400/10 border-sky-400/20",       title: "Auto Moderation",     desc: "Advanced filters detect spam, scams, hate speech, and more in real-time."        },
+              { icon: "🔗", color: "text-violet-400",  bg: "bg-violet-400/10 border-violet-400/20", title: "Link Protection",     desc: "Automatically block harmful links, invites, and suspicious URLs."               },
+              { icon: "💬", color: "text-emerald-400", bg: "bg-emerald-400/10 border-emerald-400/20",title: "Custom Commands",     desc: "Create unlimited custom commands for Twitch & Discord."                        },
+              { icon: "📊", color: "text-blue-400",    bg: "bg-blue-400/10 border-blue-400/20",     title: "Detailed Logs",       desc: "View moderation logs and user history with advanced filters."                   },
+              { icon: "🤖", color: "text-pink-400",    bg: "bg-pink-400/10 border-pink-400/20",     title: "Raid Protection",     desc: "Automatically detect and prevent raids & bot attacks."                         },
+              { icon: "⚙️", color: "text-orange-400",  bg: "bg-orange-400/10 border-orange-400/20", title: "Highly Customizable", desc: "Fine-tune every setting to match your community's needs."                      },
+            ].map((f) => (
+              <div key={f.title} className="rounded-xl border border-slate-800 bg-slate-900/60 p-5 hover:border-slate-700 hover:bg-slate-900 transition">
+                <div className={`inline-flex items-center justify-center w-10 h-10 rounded-lg border text-xl mb-4 ${f.bg}`}>
+                  {f.icon}
                 </div>
-                <div
-                  className={`h-5 w-9 rounded-full flex items-center px-0.5 transition-colors ${
-                    row.on ? "bg-accent/80 justify-end" : "bg-slate-700 justify-start"
-                  }`}
-                >
-                  <div className="h-4 w-4 rounded-full bg-white shadow" />
-                </div>
+                <h3 className={`text-sm font-bold mb-2 ${f.color}`}>{f.title}</h3>
+                <p className="text-xs text-slate-400 leading-relaxed">{f.desc}</p>
               </div>
             ))}
           </div>
-          {/* Right: text */}
-          <div>
-            <h2 className="text-3xl font-bold text-white mb-4">Build engagement with your viewers</h2>
-            <p className="text-slate-400 mb-6 leading-relaxed">
-              Turn chat into community with custom commands, event reactions, chat quotes, and more.
-              AxyraBot handles the repetitive stuff so you can focus on your audience.
-            </p>
-            <ul className="space-y-3 text-sm text-slate-300">
-              {[
-                "Custom chat commands with role permissions",
-                "Instant responses to follows, raids, and more",
-                "Birthday integrations and loyalty hooks",
-                "Broadcaster & moderator controls",
-              ].map((item) => (
-                <li key={item} className="flex items-start gap-2">
-                  <span className="mt-0.5 h-4 w-4 rounded-full bg-accent/20 text-accent flex items-center justify-center text-[10px] shrink-0">✓</span>
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </section>
-
-      {/* ── FEATURE ROW 2: always online (graphic left, text right) ── */}
-      <section className="py-20 px-6">
-        <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-14 items-center">
-          <div className="flex items-center justify-center">
-            <div className="relative flex items-center justify-center w-48 h-48">
-              <div className="absolute inset-0 rounded-full bg-sky-500/10 blur-2xl" />
-              <div className="relative flex flex-col items-center justify-center w-36 h-36 rounded-full border-2 border-accent/40 bg-slate-900/80 shadow-xl">
-                <span className="text-4xl">☁️</span>
-                <span className="mt-2 text-xs font-semibold text-accent">24 / 7</span>
-              </div>
-            </div>
-          </div>
-          <div>
-            <h2 className="text-3xl font-bold text-white mb-4">Cloud-based and 24/7</h2>
-            <p className="text-slate-400 mb-4 leading-relaxed">
-              AxyraBot never logs off. It runs completely in the cloud, meaning you don&apos;t have
-              to keep a tab open or install any software. Your CPU stays free for gaming and
-              streaming.
-            </p>
-            <p className="text-slate-500 text-sm">
-              Powered by Render — always available, even when you&apos;re offline.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* ── FEATURE ROW 3: moderation (text left, graphic right) ── */}
-      <section className="py-20 px-6 bg-slate-950/50 border-y border-slate-800/60">
-        <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-14 items-center">
-          <div>
-            <h2 className="text-3xl font-bold text-white mb-4">Moderate chat to protect your channel</h2>
-            <p className="text-slate-400 mb-6 leading-relaxed">
-              Keep your community safe with filter options including caps, links, spam, blocked terms,
-              and more. Set it up once and let AxyraBot handle the rest.
-            </p>
-            <ul className="space-y-3 text-sm text-slate-300">
-              {[
-                "Blocked terms & phrase filters",
-                "Spam and caps detection",
-                "AutoMod integration",
-                "Per-role permission levels",
-              ].map((item) => (
-                <li key={item} className="flex items-start gap-2">
-                  <span className="mt-0.5 h-4 w-4 rounded-full bg-accent/20 text-accent flex items-center justify-center text-[10px] shrink-0">✓</span>
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div className="flex items-center justify-center">
-            <div className="relative text-center">
-              <div className="absolute -inset-6 rounded-full bg-red-500/5 blur-3xl" />
-              <div className="relative text-7xl font-black tracking-tighter leading-none select-none">
-                <span className="text-red-400">#</span>
-                <span className="text-slate-500">!</span>
-                <span className="text-accent">&amp;</span>
-                <span className="text-violet-400">%</span>
-              </div>
-              <p className="mt-3 text-xs text-slate-500">blocked by AxyraBot</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── FEATURE ROW 4: dashboard (mockup left, text right) ── */}
-      <section className="py-20 px-6">
-        <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-14 items-center">
-          <div className="relative rounded-2xl border border-slate-800 bg-slate-900/80 p-5 shadow-xl shadow-black/40 overflow-hidden">
-            <div className="absolute inset-x-8 -top-10 h-20 rounded-full bg-sky-500/15 blur-2xl" />
-            <div className="relative space-y-3 text-xs">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                <span className="text-slate-300 font-medium">Dashboard</span>
-              </div>
-              {[
-                { label: "Stream Title", value: "Chill coding stream 🎮",        accent: false },
-                { label: "Category",     value: "Software & Game Development",   accent: false },
-                { label: "Bot Status",   value: "Connected",                     accent: true  },
-              ].map((row) => (
-                <div key={row.label} className="rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2 flex items-center justify-between">
-                  <span className="text-slate-500">{row.label}</span>
-                  <span className={row.accent ? "text-emerald-400 font-semibold" : "text-slate-300"}>{row.value}</span>
-                </div>
-              ))}
-              <div className="pt-1 grid grid-cols-3 gap-2">
-                {["Commands", "Moderation", "Birthdays"].map((tab) => (
-                  <div key={tab} className="rounded-lg border border-slate-800 bg-slate-950/40 px-2 py-1.5 text-center text-[11px] text-slate-500">
-                    {tab}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-          <div>
-            <h2 className="text-3xl font-bold text-white mb-4">Your bot, your dashboard</h2>
-            <p className="text-slate-400 mb-6 leading-relaxed">
-              Manage stream titles, categories, custom commands, moderation settings, and more — all
-              from a clean web dashboard. No need to type anything in chat during your stream.
-            </p>
-            <a
-              href={primaryHref}
-              className="inline-flex items-center gap-1.5 text-sm font-semibold text-accent hover:text-sky-300 transition"
-            >
-              Explore the dashboard →
+          <div className="text-center mt-10">
+            <a href="/dashboard" className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-800/60 hover:bg-slate-700/60 px-6 py-2.5 text-sm font-semibold text-slate-200 transition">
+              View All Features →
             </a>
           </div>
         </div>
       </section>
 
-      {/* ── EXPLORE BANNER ── */}
-      <section className="px-6 py-4">
-        <div className="max-w-6xl mx-auto rounded-2xl border border-accent/30 bg-gradient-to-r from-sky-500/10 to-slate-900/60 px-8 py-8 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div>
-            <h3 className="text-lg font-bold text-white">Explore more features</h3>
-            <p className="text-sm text-slate-400 mt-1">Discover Discord integration, birthday alerts, roles, modules, and more.</p>
+      {/* ── DASHBOARD SECTION ── */}
+      <section className="py-24 px-6 bg-slate-950/50 border-y border-slate-800/60">
+        <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-16 items-center">
+          {/* Left: dashboard UI mockup */}
+          <div className="relative">
+            <div className="absolute -inset-4 rounded-3xl bg-accent/5 blur-3xl" />
+            <div className="relative rounded-2xl border border-slate-700/60 bg-slate-900/80 overflow-hidden shadow-2xl shadow-black/60">
+              <div className="bg-slate-950/80 px-4 py-3 flex items-center gap-3 border-b border-slate-800">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-red-500/60" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/60" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/60" />
+                </div>
+                <div className="flex items-center gap-2 text-xs text-slate-400">
+                  <Image src={AxyraBotPFP} alt="AxyraBot" width={14} height={14} className="rounded" />
+                  AxyraBot Dashboard
+                </div>
+              </div>
+              <div className="flex text-xs">
+                {/* Sidebar */}
+                <div className="w-28 shrink-0 border-r border-slate-800 bg-slate-950/60 p-3 space-y-1">
+                  {["Overview","Moderation","Commands","Automations","Logs","Analytics","Servers","Settings"].map((item, i) => (
+                    <div key={item} className={`px-2 py-1.5 rounded text-[11px] ${i === 0 ? "bg-accent/20 text-accent font-semibold" : "text-slate-500"}`}>{item}</div>
+                  ))}
+                </div>
+                {/* Main */}
+                <div className="flex-1 p-4 space-y-3">
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { label: "Messages Blocked", val: "128,456", change: "+5.1%", up: true  },
+                      { label: "Users Timed Out",  val: "2,345",   change: "+4.1%", up: true  },
+                      { label: "Bans Issued",      val: "567",     change: "+2.2%", up: false },
+                    ].map((s) => (
+                      <div key={s.label} className="rounded-lg border border-slate-800 bg-slate-950/60 p-2">
+                        <div className="text-[10px] text-slate-500 mb-1">{s.label}</div>
+                        <div className="text-sm font-black text-white">{s.val}</div>
+                        <div className={`text-[10px] ${s.up ? "text-emerald-400" : "text-red-400"}`}>{s.change}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-3">
+                      <div className="text-[11px] font-semibold text-slate-300 mb-2">Recent Events</div>
+                      <div className="space-y-1.5">
+                        {["User123 timed out · Spam links","BadUser banned · Hate speech","SomeUser timed out · Suspicious URLs","Bot detected · Blocked 43 msgs"].map((e) => (
+                          <div key={e} className="text-[10px] text-slate-500 truncate">{e}</div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-3">
+                      <div className="text-[11px] font-semibold text-slate-300 mb-2">Messages Over Time</div>
+                      <div className="h-16 flex items-end gap-0.5">
+                        {[30,45,35,60,40,70,55,80,65,90,75,95].map((h, i) => (
+                          <div key={i} className="flex-1 rounded-sm bg-accent/40" style={{ height: `${h}%` }} />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-          <a
-            href="/dashboard"
-            className="shrink-0 inline-flex items-center justify-center rounded-full bg-accent px-6 py-2.5 text-sm font-bold text-slate-900 shadow-lg shadow-sky-400/30 transition hover:bg-sky-300"
-          >
-            Explore features
-          </a>
+          {/* Right: text */}
+          <div>
+            <div className="text-xs font-semibold tracking-widest text-accent/70 uppercase mb-3">Unified Dashboard</div>
+            <h2 className="text-4xl font-black text-white mb-5">Manage Everything<br />in One Place</h2>
+            <p className="text-slate-400 mb-7 leading-relaxed">
+              Our powerful dashboard gives you complete control over your Twitch and Discord moderation.
+            </p>
+            <ul className="space-y-3 mb-8">
+              {["Real-time activity monitoring","Manage settings in seconds","Advanced analytics & insights","Cross-platform synchronization"].map((item) => (
+                <li key={item} className="flex items-center gap-3 text-sm text-slate-300">
+                  <span className="flex items-center justify-center w-5 h-5 rounded-full bg-accent/20 text-accent text-[10px] shrink-0">✓</span>
+                  {item}
+                </li>
+              ))}
+            </ul>
+            <a href="/dashboard" className="inline-flex items-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-bold text-slate-900 shadow-lg shadow-sky-400/20 transition hover:bg-sky-300">
+              Explore Dashboard →
+            </a>
+          </div>
         </div>
       </section>
 
-      {/* ── GET STARTED GRID ── */}
-      <section id="getstarted" className="py-20 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-white mb-3">Get started with AxyraBot</h2>
+      {/* ── AUTOMATION ── */}
+      <section className="py-24 px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-14">
+            <div className="text-xs font-semibold tracking-widest text-accent/70 uppercase mb-3">Smart Automation</div>
+            <h2 className="text-4xl font-black text-white mb-4">Automate. Protect. Relax.</h2>
             <p className="text-slate-400 max-w-lg mx-auto text-sm">
-              A few things you can do right away after connecting your channel.
+              Create powerful automated workflows without writing a single line of code.
             </p>
           </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="flex flex-col lg:flex-row items-stretch gap-4">
             {[
-              {
-                icon: "💬",
-                title: "How to add custom commands",
-                desc: "Create triggers that respond instantly in chat. Set permission levels so only mods or the broadcaster can use certain commands.",
-              },
-              {
-                icon: "🛡️",
-                title: "Setting up moderation",
-                desc: "Configure blocked terms, spam filters, and AutoMod so your chat stays clean without constant manual action.",
-              },
-              {
-                icon: "🎂",
-                title: "Enabling birthday alerts",
-                desc: "Let viewers register their birthdays and have AxyraBot celebrate them automatically in chat.",
-              },
-              {
-                icon: "💜",
-                title: "Discord integration",
-                desc: "Connect your Discord server to get Twitch event notifications and role sync for subscribers and VIPs.",
-              },
-              {
-                icon: "🎭",
-                title: "Managing roles & editors",
-                desc: "Grant editor access to trusted mods so they can manage bot settings without needing full account access.",
-              },
-              {
-                icon: "⚙️",
-                title: "Modules & settings",
-                desc: "Toggle optional features on or off to keep your setup lean. Only enable what you actually need.",
-              },
-            ].map((card) => (
-              <div
-                key={card.title}
-                className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 hover:border-slate-700 hover:bg-slate-900 transition"
-              >
-                <div className="mb-3 flex items-center justify-center w-12 h-12 rounded-xl bg-slate-800 text-2xl">
-                  {card.icon}
+              { trigger: "IF someone posts a scam link",   color: "border-red-500/30 bg-red-500/5",       accent: "text-red-400",    icons: ["🗑️","⏱️","🔔"], steps: ["Delete message","Timeout user for 60s","Alert moderators"]           },
+              { trigger: "IF a new member joins Discord",  color: "border-accent/30 bg-accent/5",         accent: "text-accent",     icons: ["🎭","💬","📋"], steps: ["Assign welcome role","Send welcome message","Log member join"]        },
+              { trigger: "IF chat becomes too fast",       color: "border-violet-500/30 bg-violet-500/5", accent: "text-violet-400", icons: ["🐌","🔔","📢"], steps: ["Enable slow mode","Notify moderators","Post announcement"]            },
+            ].map((flow, idx) => (
+              <div key={idx} className="flex-1 flex items-center gap-3">
+                <div className={`flex-1 rounded-xl border p-5 h-full ${flow.color}`}>
+                  <div className={`text-xs font-bold mb-4 ${flow.accent}`}>{flow.trigger}</div>
+                  <div className="space-y-2">
+                    {flow.steps.map((step, i) => (
+                      <div key={i} className="flex items-center gap-2 text-xs text-slate-300">
+                        <span>{flow.icons[i]}</span>
+                        <span>{step}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <h3 className="text-sm font-bold text-slate-100 mb-2">{card.title}</h3>
-                <p className="text-xs text-slate-400 leading-relaxed">{card.desc}</p>
+                {idx < 2 && <div className="hidden lg:flex items-center justify-center text-slate-500 text-xl shrink-0">→</div>}
               </div>
+            ))}
+          </div>
+          <div className="text-center mt-10">
+            <a href="/modules" className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-800/60 hover:bg-slate-700/60 px-6 py-2.5 text-sm font-semibold text-slate-200 transition">
+              Explore Automations
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* ── TESTIMONIALS ── */}
+      <section className="py-24 px-6 bg-slate-950/50 border-y border-slate-800/60">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-14">
+            <div className="text-xs font-semibold tracking-widest text-accent/70 uppercase mb-3">Loved by Communities</div>
+            <h2 className="text-4xl font-black text-white">Trusted by Streamers &amp; Moderators</h2>
+          </div>
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              { quote: "AxyraBot replaced three separate bots for our Twitch and Discord community. It's an all-in-one solution!", name: "ShroudTV",    role: "Partnered Twitch Streamer"  },
+              { quote: "The moderation system caught spam attacks before our team even noticed. Absolutely incredible.",             name: "LunaMystic",  role: "Discord Community Owner"    },
+              { quote: "Setup took less than five minutes. The dashboard is super intuitive and powerful.",                          name: "DexterLive",  role: "Content Creator"            },
+            ].map((t) => (
+              <div key={t.name} className="rounded-xl border border-slate-800 bg-slate-900/60 p-6 flex flex-col justify-between gap-6">
+                <div>
+                  <div className="text-3xl text-accent/40 font-serif mb-3">&ldquo;</div>
+                  <p className="text-sm text-slate-300 leading-relaxed">{t.quote}</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  {/* Avatar placeholder — replace with real image later */}
+                  <div className="w-10 h-10 rounded-full bg-slate-700 border border-slate-600 shrink-0" />
+                  <div>
+                    <div className="text-sm font-bold text-white">— {t.name}</div>
+                    <div className="text-xs text-slate-500">{t.role}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-center gap-2 mt-8">
+            {[0,1,2,3,4].map((i) => (
+              <div key={i} className={`h-2 rounded-full transition-all ${i === 0 ? "w-6 bg-accent" : "w-2 bg-slate-700"}`} />
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── FAQ ── */}
-      <section id="faq" className="py-20 px-6 bg-slate-950/50 border-t border-slate-800/60">
-        <div className="max-w-2xl mx-auto">
-          <h2 className="text-3xl font-bold text-white text-center mb-12">Frequently asked questions</h2>
-          <FAQItem
-            question="Is AxyraBot free?"
-            answer="Yes, AxyraBot is completely free to use. Connect your Twitch account, authorize the bot, and you're ready to go — no credit card required."
-          />
-          <FAQItem
-            question="What platforms does AxyraBot support?"
-            answer="AxyraBot is currently built for Twitch. Discord integration is supported for notifications and role syncing on your server."
-          />
-          <FAQItem
-            question="Do I need to keep a tab open to keep AxyraBot running?"
-            answer="No. AxyraBot runs in the cloud 24/7, so it stays connected to your channel even when you close the browser or turn off your PC."
-          />
-          <FAQItem
-            question="Where can I learn more about how to use AxyraBot?"
-            answer="Check out the API Documentation page or connect your account and explore the dashboard — everything is labelled and easy to navigate."
-          />
-          <FAQItem
-            question="Can I give a mod control over bot settings?"
-            answer="Yes. You can grant editor access to any Twitch user from the Roles page, letting them manage commands and settings on your behalf."
-          />
+      {/* ── PRICING ── */}
+      <section className="py-24 px-6">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-14">
+            <div className="text-xs font-semibold tracking-widest text-accent/70 uppercase mb-3">Simple Pricing</div>
+            <h2 className="text-4xl font-black text-white">Choose the Plan That Fits You</h2>
+          </div>
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Free */}
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-7">
+              <div className="text-lg font-bold text-white mb-1">Free</div>
+              <div className="text-xs text-slate-400 mb-6">Perfect for growing communities</div>
+              <div className="flex items-end gap-1 mb-7">
+                <span className="text-5xl font-black text-white">$0</span>
+                <span className="text-slate-400 mb-1">/month</span>
+              </div>
+              <ul className="space-y-3 mb-8">
+                {["Core Auto Moderation","Custom Commands","Basic Dashboard","Community Support"].map((f) => (
+                  <li key={f} className="flex items-center gap-2 text-sm text-slate-300">
+                    <span className="text-accent text-xs">✓</span> {f}
+                  </li>
+                ))}
+              </ul>
+              <a href={connectUrl} className="block w-full text-center rounded-lg border border-slate-600 bg-slate-800 hover:bg-slate-700 px-5 py-2.5 text-sm font-semibold text-slate-200 transition">
+                Get Started Free
+              </a>
+            </div>
+            {/* Premium */}
+            <div className="relative rounded-2xl border border-accent/40 bg-gradient-to-b from-accent/10 to-slate-900/60 p-7 shadow-lg shadow-sky-500/10">
+              <div className="absolute top-4 right-4 rounded-full bg-accent px-3 py-1 text-[11px] font-bold text-slate-900">MOST POPULAR</div>
+              <div className="text-lg font-bold text-white mb-1">Premium</div>
+              <div className="text-xs text-slate-400 mb-6">For serious streamers &amp; servers</div>
+              <div className="flex items-end gap-1 mb-7">
+                <span className="text-5xl font-black text-white">$4.99</span>
+                <span className="text-slate-400 mb-1">/month</span>
+              </div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-3 mb-8">
+                {["Everything in Free","Advanced Auto Moderation","Analytics & Insights","Unlimited Commands","Automation Workflows","Priority Support","Early Access to Features"].map((f) => (
+                  <div key={f} className="flex items-start gap-2 text-sm text-slate-300">
+                    <span className="text-accent text-xs mt-0.5 shrink-0">✓</span> {f}
+                  </div>
+                ))}
+              </div>
+              <a href={connectUrl} className="block w-full text-center rounded-lg bg-accent hover:bg-sky-300 px-5 py-2.5 text-sm font-bold text-slate-900 transition shadow-lg shadow-sky-400/20">
+                Upgrade to Premium
+              </a>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* ── FOOTER CTA ── */}
-      <section className="relative overflow-hidden px-6 py-28 bg-background border-t border-slate-800/60">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_60%_at_50%_100%,rgba(56,189,248,0.08),transparent)]" />
-        <div className="relative max-w-xl mx-auto text-center">
-          <p className="text-4xl sm:text-5xl font-black text-white mb-8 leading-tight">— go live in minutes!</p>
-          <a
-            href={primaryHref}
-            className="inline-flex items-center justify-center rounded-full bg-accent px-8 py-3.5 text-base font-bold text-slate-900 shadow-xl shadow-sky-400/30 transition hover:bg-sky-300"
-          >
-            {primaryLabel}
-          </a>
+      {/* ── FAQ ── */}
+      <section id="faq" className="py-24 px-6 bg-slate-950/50 border-t border-slate-800/60">
+        <div className="max-w-5xl mx-auto">
+          <h2 className="text-4xl font-black text-white text-center mb-14">Frequently Asked Questions</h2>
+          <div className="grid md:grid-cols-2 gap-x-16">
+            <div>
+              <FAQItem question="Is AxyraBot free?" answer="Yes, AxyraBot has a fully featured free tier. Connect your Twitch account, authorize the bot, and you're ready to go — no credit card required." />
+              <FAQItem question="Does it work on both Twitch and Discord?" answer="Yes. AxyraBot supports both platforms. You can moderate Twitch chat and your Discord server from the same unified dashboard." />
+              <FAQItem question="How long does setup take?" answer="Most users are up and running in under five minutes. Just connect your Twitch account, add the bot to your Discord, and configure your settings." />
+            </div>
+            <div>
+              <FAQItem question="Do I need coding experience?" answer="No coding required. Everything is managed through a clean point-and-click dashboard designed for streamers and community managers." />
+              <FAQItem question="Is my data safe?" answer="Yes. We take security seriously. Your credentials are never stored in plain text and we only request the minimum permissions needed to operate." />
+              <FAQItem question="Where can I get support?" answer="You can reach us through our Discord support server or browse the API documentation for technical details." />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── FOOTER CTA BAR ── */}
+      <section className="bg-accent/10 border-y border-accent/20 px-6 py-5">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-accent/20 border border-accent/30">
+              <Image src={AxyraBotPFP} alt="AxyraBot" width={20} height={20} className="rounded" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-white">Ready to Protect Your Community?</p>
+              <p className="text-xs text-slate-400">Join 10,000+ communities already using AxyraBot.</p>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <a href="https://discord.com" className="inline-flex items-center gap-2 rounded-lg bg-[#5865f2] hover:bg-[#4752c4] px-4 py-2 text-sm font-bold text-white transition">
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057.1 18.08.113 18.1.132 18.116a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
+              Add to Discord
+            </a>
+            <a href={connectUrl} className="inline-flex items-center gap-2 rounded-lg border border-slate-600 bg-slate-800 hover:bg-slate-700 px-4 py-2 text-sm font-bold text-white transition">
+              <svg className="w-4 h-4 text-violet-400" viewBox="0 0 24 24" fill="currentColor"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"/></svg>
+              Connect Twitch
+            </a>
+          </div>
         </div>
       </section>
 
       {/* ── FOOTER ── */}
       <footer className="border-t border-slate-800 bg-background px-6 py-10">
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-8 mb-8">
             <div className="flex items-center gap-3">
               <Image src={AxyraBotPFP} alt="AxyraBot" width={32} height={32} className="rounded-xl" />
