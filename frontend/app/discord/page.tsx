@@ -195,6 +195,7 @@ export default function DiscordSettingsPage() {
   const [isEditor, setIsEditor] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [channelLogin, setChannelLogin] = useState<string | null>(null);
+  const [viewerLogin, setViewerLogin] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mainSectionOpen, setMainSectionOpen] = usePersistentSectionState("axyra.sidebar.mainSectionOpen", true);
@@ -241,7 +242,12 @@ export default function DiscordSettingsPage() {
   const [cmdSettings, setCmdSettings] = useState<Record<string, string>>({});
   const [pendingCmdSettings, setPendingCmdSettings] = useState<Record<string, string>>({});
   const [savingCmdSettings, setSavingCmdSettings] = useState(false);
-  type NotifType = "live" | "mod" | "birthday";
+  // Guild managers state (only used when !isEditor)
+  const [guildManagers, setGuildManagers] = useState<string[]>([]);
+  const [loadingManagers, setLoadingManagers] = useState(false);
+  const [addManagerInput, setAddManagerInput] = useState("");
+  const [addingManager, setAddingManager] = useState(false);
+  const [removingManager, setRemovingManager] = useState<string | null>(null);
   type Templates = Record<NotifType, string>;
   const defaultTemplates: Templates = {
     live:     "🔴 **$(channel) is now live!**\n🎮 $(game)\n📺 $(title)\nhttps://twitch.tv/$(channel)",
@@ -281,6 +287,7 @@ export default function DiscordSettingsPage() {
       setIsLoggedIn(true);
       const activeChannel = window.localStorage.getItem("axyra.activeChannel");
       if (activeChannel && activeChannel.toLowerCase() !== storedLogin.toLowerCase()) setIsEditor(true);
+      setViewerLogin(storedLogin.toLowerCase());
       setChannelLogin((activeChannel || storedLogin).toLowerCase());
     }
     if (storedAvatar) setAvatarUrl(storedAvatar);
@@ -323,15 +330,18 @@ export default function DiscordSettingsPage() {
       .finally(() => setLoadingSettings(false));
   }, [channelLogin, selectedGuildId]);
 
-  // Fetch guilds the bot is in
+  // Fetch guilds the bot is in — filter server-side when viewing as an editor
   useEffect(() => {
     setLoadingGuilds(true);
-    fetch(`${backendUrl}/discord/guilds`)
+    const params = new URLSearchParams();
+    if (viewerLogin) params.set("viewer_login", viewerLogin);
+    if (channelLogin) params.set("channel_login", channelLogin);
+    fetch(`${backendUrl}/discord/guilds?${params}`)
       .then((r) => (r.ok ? r.json() : { guilds: [] }))
       .then((data) => setGuilds(data.guilds ?? []))
       .catch(() => setGuilds([]))
       .finally(() => setLoadingGuilds(false));
-  }, []);
+  }, [viewerLogin, channelLogin]);
 
   // Fetch channels when selected guild changes
   useEffect(() => {
@@ -417,6 +427,20 @@ export default function DiscordSettingsPage() {
       .catch(() => {})
       .finally(() => setLoadingModules(false));
   }, [selectedGuildId]);
+
+  // Load guild managers when selected guild changes (owners only)
+  useEffect(() => {
+    if (!selectedGuildId || isEditor) {
+      setGuildManagers([]);
+      return;
+    }
+    setLoadingManagers(true);
+    fetch(`${backendUrl}/discord/guild-managers?guild_id=${encodeURIComponent(selectedGuildId)}`)
+      .then((r) => (r.ok ? r.json() : { managers: [] }))
+      .then((data) => setGuildManagers(data.managers ?? []))
+      .catch(() => setGuildManagers([]))
+      .finally(() => setLoadingManagers(false));
+  }, [selectedGuildId, isEditor]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -559,7 +583,39 @@ export default function DiscordSettingsPage() {
     }
   };
 
-  const handleSaveTemplate = async () => {    if (!channelLogin || !editingNotif) return;
+  const handleAddManager = async () => {
+    const login = addManagerInput.trim().toLowerCase();
+    if (!login || !selectedGuildId) return;
+    setAddingManager(true);
+    try {
+      const res = await fetch(`${backendUrl}/discord/guild-managers`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ guild_id: selectedGuildId, login }),
+      });
+      if (res.ok) {
+        setGuildManagers((prev) => prev.includes(login) ? prev : [...prev, login]);
+        setAddManagerInput("");
+      }
+    } catch { /* silent */ }
+    finally { setAddingManager(false); }
+  };
+
+  const handleRemoveManager = async (login: string) => {
+    if (!selectedGuildId) return;
+    setRemovingManager(login);
+    try {
+      const res = await fetch(`${backendUrl}/discord/guild-managers`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ guild_id: selectedGuildId, login }),
+      });
+      if (res.ok) setGuildManagers((prev) => prev.filter((m) => m !== login));
+    } catch { /* silent */ }
+    finally { setRemovingManager(null); }
+  };
+
+  const handleSaveTemplate = async () => {
     setSavingTemplate(true);
     setTemplateSaveError(null);
     setTemplateSaveSuccess(false);
@@ -1088,6 +1144,74 @@ export default function DiscordSettingsPage() {
                     </div>
                   )}
                 </div>
+                )}
+
+                {/* ── Guild Access (channel owners only) ── */}
+                {selectedGuildId && !isEditor && (
+                  <div className="border-t border-slate-800 pt-5 flex flex-col gap-4">
+                    <div className="flex flex-col gap-1">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Guild Access</p>
+                      <p className="text-xs text-slate-500">
+                        Control which Twitch editors can view and manage this server&apos;s bot settings. Editors not listed here will not see this server at all.
+                      </p>
+                    </div>
+
+                    {loadingManagers ? (
+                      <div className="flex items-center gap-3 py-1">
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-600 border-t-accent" />
+                        <span className="text-sm text-slate-500">Loading…</span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-3">
+                        {guildManagers.length === 0 ? (
+                          <p className="text-xs text-slate-500 italic">No editors have been granted access to this server yet.</p>
+                        ) : (
+                          <div className="flex flex-wrap gap-2">
+                            {guildManagers.map((m) => (
+                              <div key={m} className="flex items-center gap-1.5 rounded-full border border-slate-700 bg-slate-950/60 px-3 py-1 text-xs text-slate-200">
+                                <span>{m}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveManager(m)}
+                                  disabled={removingManager === m}
+                                  className="ml-0.5 text-slate-500 hover:text-red-400 transition disabled:opacity-40"
+                                  aria-label={`Remove ${m}`}
+                                >
+                                  {removingManager === m ? (
+                                    <span className="inline-block h-3 w-3 animate-spin rounded-full border border-slate-500 border-t-slate-200" />
+                                  ) : (
+                                    <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+                                      <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+                                    </svg>
+                                  )}
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Add manager input */}
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={addManagerInput}
+                            onChange={(e) => setAddManagerInput(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === "Enter") handleAddManager(); }}
+                            placeholder="Twitch username"
+                            className="rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-1.5 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-accent/60 w-48"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleAddManager}
+                            disabled={addingManager || !addManagerInput.trim()}
+                            className="rounded-lg bg-accent px-4 py-1.5 text-sm font-medium text-white hover:bg-accent/90 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            {addingManager ? "Adding…" : "Add"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )}
 
               </div>

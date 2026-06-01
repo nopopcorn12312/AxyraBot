@@ -837,6 +837,12 @@ func EnsureSchema() error {
 	 channel_id TEXT NOT NULL,
 	 PRIMARY KEY (guild_id, channel_id)
 	);
+	CREATE TABLE IF NOT EXISTS discord_guild_managers (
+	 guild_id     TEXT NOT NULL,
+	 twitch_login TEXT NOT NULL,
+	 added_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+	 PRIMARY KEY (guild_id, twitch_login)
+	);
 	`)
 	if err != nil {
 		return err
@@ -1527,6 +1533,71 @@ func SetDiscordCommandSetting(guildID, cmdKey, value string) error {
 		ON CONFLICT (guild_id, cmd_key) DO UPDATE SET value = EXCLUDED.value
 	`, guildID, cmdKey, value)
 	return err
+}
+
+// ─── Discord Guild Managers ──────────────────────────────────────────────────
+
+// AddDiscordGuildManager grants a Twitch user dashboard access to a guild.
+func AddDiscordGuildManager(guildID, twitchLogin string) error {
+	if db == nil {
+		return fmt.Errorf("db not initialized")
+	}
+	_, err := db.Exec(`
+		INSERT INTO discord_guild_managers (guild_id, twitch_login)
+		VALUES ($1, $2)
+		ON CONFLICT DO NOTHING
+	`, guildID, strings.ToLower(twitchLogin))
+	return err
+}
+
+// RemoveDiscordGuildManager revokes a Twitch user's dashboard access to a guild.
+func RemoveDiscordGuildManager(guildID, twitchLogin string) error {
+	if db == nil {
+		return fmt.Errorf("db not initialized")
+	}
+	_, err := db.Exec(`DELETE FROM discord_guild_managers WHERE guild_id=$1 AND twitch_login=$2`,
+		guildID, strings.ToLower(twitchLogin))
+	return err
+}
+
+// GetDiscordGuildManagers returns all Twitch logins granted access to a guild.
+func GetDiscordGuildManagers(guildID string) ([]string, error) {
+	if db == nil {
+		return nil, fmt.Errorf("db not initialized")
+	}
+	rows, err := db.Query(`SELECT twitch_login FROM discord_guild_managers WHERE guild_id=$1 ORDER BY added_at`, guildID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var logins []string
+	for rows.Next() {
+		var l string
+		if err := rows.Scan(&l); err == nil {
+			logins = append(logins, l)
+		}
+	}
+	return logins, nil
+}
+
+// GetGuildsForManager returns the guild IDs that a Twitch user is a manager of.
+func GetGuildsForManager(twitchLogin string) ([]string, error) {
+	if db == nil {
+		return nil, fmt.Errorf("db not initialized")
+	}
+	rows, err := db.Query(`SELECT guild_id FROM discord_guild_managers WHERE twitch_login=$1`, strings.ToLower(twitchLogin))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err == nil {
+			ids = append(ids, id)
+		}
+	}
+	return ids, nil
 }
 
 // ─── Discord Mod Cases ────────────────────────────────────────────────────────

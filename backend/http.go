@@ -50,6 +50,7 @@ func startHTTPServer(clientID, clientSecret string) {
 	mux.HandleFunc("/discord/notification-templates", withCORS(handleDiscordNotificationTemplates))
 	mux.HandleFunc("/discord/guild-modules", withCORS(handleDiscordGuildModules))
 	mux.HandleFunc("/discord/command-settings", withCORS(handleDiscordCommandSettings))
+	mux.HandleFunc("/discord/guild-managers", withCORS(handleDiscordGuildManagers))
 
 	// Optional Nightbot OAuth integration for importing commands without
 	// copy/paste. These handlers are only registered when all required
@@ -1738,18 +1739,123 @@ func handleRolesDelete(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleDiscordGuilds returns the list of Discord servers the bot is currently
-// in. No authentication is required — this just exposes server names/IDs.
+// in. When viewer_login and channel_login differ (an editor viewing someone
+// else's channel), only guilds the viewer is explicitly listed as a manager
+// of are returned.
 func handleDiscordGuilds(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-	guilds := GetBotGuilds()
-	if guilds == nil {
-		guilds = []BotGuild{}
+	viewerLogin := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("viewer_login")))
+	channelLogin := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("channel_login")))
+
+	allGuilds := GetBotGuilds()
+	if allGuilds == nil {
+		allGuilds = []BotGuild{}
+	}
+
+	// If the viewer is the channel owner (or no context provided), return everything.
+	if viewerLogin == "" || channelLogin == "" || viewerLogin == channelLogin {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{"guilds": allGuilds})
+		return
+	}
+
+	// Viewer is an editor — filter to guilds they are explicitly authorised for.
+	authorisedIDs, err := GetGuildsForManager(viewerLogin)
+	if err != nil {
+		log.Println("get guilds for manager:", err)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{"guilds": []BotGuild{}})
+		return
+	}
+	allowed := make(map[string]bool, len(authorisedIDs))
+	for _, id := range authorisedIDs {
+		allowed[id] = true
+	}
+	var filtered []BotGuild
+	for _, g := range allGuilds {
+		if allowed[g.ID] {
+			filtered = append(filtered, g)
+		}
+	}
+	if filtered == nil {
+		filtered = []BotGuild{}
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]any{"guilds": guilds})
+	json.NewEncoder(w).Encode(map[string]any{"guilds": filtered})
+}
+
+// handleDiscordGuildManagers manages per-guild dashboard access for Twitch editors.
+// GET    ?guild_id=   → {"managers":["login1","login2"]}
+// POST   {guild_id, login}  → grants access
+// DELETE {guild_id, login}  → revokes access
+func handleDiscordGuildManagers(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		guildID := strings.TrimSpace(r.URL.Query().Get("guild_id"))
+		if guildID == "" {
+			http.Error(w, "missing guild_id", http.StatusBadRequest)
+			return
+		}
+		managers, err := GetDiscordGuildManagers(guildID)
+		if err != nil {
+			log.Println("get discord guild managers:", err)
+			http.Error(w, "db error", http.StatusInternalServerError)
+			return
+		}
+		if managers == nil {
+			managers = []string{}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{"managers": managers})
+
+	case http.MethodPost:
+		var body struct {
+			GuildID string `json:"guild_id"`
+			Login   string `json:"login"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "bad json", http.StatusBadRequest)
+			return
+		}
+		if body.GuildID == "" || body.Login == "" {
+			http.Error(w, "missing guild_id or login", http.StatusBadRequest)
+			return
+		}
+		if err := AddDiscordGuildManager(body.GuildID, body.Login); err != nil {
+			log.Println("add discord guild manager:", err)
+			http.Error(w, "db error", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "ok")
+
+	case http.MethodDelete:
+		var body struct {
+			GuildID string `json:"guild_id"`
+			Login   string `json:"login"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "bad json", http.StatusBadRequest)
+			return
+		}
+		if body.GuildID == "" || body.Login == "" {
+			http.Error(w, "missing guild_id or login", http.StatusBadRequest)
+			return
+		}
+		if err := RemoveDiscordGuildManager(body.GuildID, body.Login); err != nil {
+			log.Println("remove discord guild manager:", err)
+			http.Error(w, "db error", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "ok")
+
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
 }
 
 // handleDiscordChannels returns all text channels in a Discord guild the bot
