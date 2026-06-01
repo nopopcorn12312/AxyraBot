@@ -731,6 +731,12 @@ func EnsureSchema() error {
 	 enabled  BOOLEAN NOT NULL DEFAULT TRUE,
 	 PRIMARY KEY (guild_id, module)
 	);
+	CREATE TABLE IF NOT EXISTS discord_command_settings (
+	 guild_id TEXT NOT NULL,
+	 cmd_key  TEXT NOT NULL,
+	 value    TEXT NOT NULL DEFAULT '',
+	 PRIMARY KEY (guild_id, cmd_key)
+	);
 	CREATE TABLE IF NOT EXISTS discord_mod_cases (
 	 id          BIGSERIAL,
 	 guild_id    TEXT NOT NULL,
@@ -1485,6 +1491,42 @@ func GetDiscordGuildModules(guildID string) (map[string]bool, error) {
 		out[module] = enabled
 	}
 	return out, nil
+}
+
+// ─── Discord Command Settings ─────────────────────────────────────────────────
+
+// GetDiscordCommandSettings returns all command config values for a guild as a map of key→value.
+func GetDiscordCommandSettings(guildID string) (map[string]string, error) {
+	out := map[string]string{}
+	if db == nil {
+		return out, nil
+	}
+	rows, err := db.Query(`SELECT cmd_key, value FROM discord_command_settings WHERE guild_id=$1`, guildID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var k, v string
+		if err := rows.Scan(&k, &v); err != nil {
+			return nil, err
+		}
+		out[k] = v
+	}
+	return out, nil
+}
+
+// SetDiscordCommandSetting upserts a single command config value for a guild.
+func SetDiscordCommandSetting(guildID, cmdKey, value string) error {
+	if db == nil {
+		return fmt.Errorf("db not initialized")
+	}
+	_, err := db.Exec(`
+		INSERT INTO discord_command_settings (guild_id, cmd_key, value)
+		VALUES ($1, $2, $3)
+		ON CONFLICT (guild_id, cmd_key) DO UPDATE SET value = EXCLUDED.value
+	`, guildID, cmdKey, value)
+	return err
 }
 
 // ─── Discord Mod Cases ────────────────────────────────────────────────────────

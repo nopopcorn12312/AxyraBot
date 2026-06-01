@@ -15,7 +15,21 @@ const discordClientId = process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID ?? "";
 type Guild = { id: string; name: string; icon: string };
 type Channel = { id: string; name: string };
 
-type ModuleCommand = { name: string; description: string };
+type ModuleCommand = {
+  name: string;
+  description: string;
+  settings?: {
+    key: string;
+    label: string;
+    description?: string;
+    type: "toggle" | "number" | "text" | "select";
+    placeholder?: string;
+    defaultValue?: string;
+    min?: number;
+    max?: number;
+    options?: { label: string; value: string }[];
+  }[];
+};
 type ModuleConfig = { key: string; icon: string; label: string; description: string; commands: ModuleCommand[] };
 
 const discordModuleConfig: ModuleConfig[] = [
@@ -25,23 +39,47 @@ const discordModuleConfig: ModuleConfig[] = [
     label: "Moderation",
     description: "Comprehensive moderation toolkit: bans, kicks, timeouts, warnings, purge, lockdown, and full case logging.",
     commands: [
-      { name: "ban", description: "Permanently ban a member from the server." },
-      { name: "kick", description: "Kick a member from the server." },
-      { name: "timeout", description: "Temporarily mute a member." },
+      { name: "ban", description: "Permanently ban a member from the server.", settings: [
+        { key: "ban.dm_on_ban", label: "DM member before banning", description: "Send the member a DM with the reason before executing the ban.", type: "toggle", defaultValue: "false" },
+        { key: "ban.delete_days", label: "Delete message history (days)", description: "Number of days of messages to delete (0–7).", type: "number", min: 0, max: 7, defaultValue: "0", placeholder: "0" },
+      ]},
+      { name: "kick", description: "Kick a member from the server.", settings: [
+        { key: "kick.dm_on_kick", label: "DM member before kicking", description: "Send the member a DM with the reason before kicking.", type: "toggle", defaultValue: "false" },
+      ]},
+      { name: "timeout", description: "Temporarily mute a member.", settings: [
+        { key: "timeout.default_duration", label: "Default duration", description: "Pre-filled duration when no value is provided.", type: "select", defaultValue: "10m", options: [
+          { label: "60 seconds", value: "60s" },
+          { label: "5 minutes", value: "5m" },
+          { label: "10 minutes", value: "10m" },
+          { label: "30 minutes", value: "30m" },
+          { label: "1 hour", value: "1h" },
+          { label: "6 hours", value: "6h" },
+          { label: "24 hours", value: "24h" },
+          { label: "1 week", value: "1w" },
+        ]},
+      ]},
       { name: "untimeout", description: "Remove a timeout from a member." },
-      { name: "warn", description: "Issue a warning to a member." },
+      { name: "warn", description: "Issue a warning to a member.", settings: [
+        { key: "warn.dm_on_warn", label: "DM member when warned", description: "Send the member a DM notifying them of the warning.", type: "toggle", defaultValue: "true" },
+      ]},
       { name: "warnings", description: "View all warnings for a member." },
       { name: "clearwarnings", description: "Clear all warnings for a member." },
       { name: "delwarn", description: "Delete a specific warning by case ID." },
-      { name: "purge", description: "Bulk delete messages from a channel." },
+      { name: "purge", description: "Bulk delete messages from a channel.", settings: [
+        { key: "purge.default_count", label: "Default message count", description: "How many messages to delete when no count is specified.", type: "number", min: 1, max: 100, defaultValue: "10", placeholder: "10" },
+      ]},
       { name: "lock", description: "Lock a channel from sending messages." },
       { name: "unlock", description: "Unlock a previously locked channel." },
-      { name: "slowmode", description: "Set slowmode delay on a channel." },
+      { name: "slowmode", description: "Set slowmode delay on a channel.", settings: [
+        { key: "slowmode.default_delay", label: "Default delay (seconds)", description: "Default slowmode delay in seconds (0 to disable).", type: "number", min: 0, max: 21600, defaultValue: "5", placeholder: "5" },
+      ]},
       { name: "softban", description: "Ban then immediately unban to delete message history." },
       { name: "deafen", description: "Server-deafen a member in voice channels." },
       { name: "undeafen", description: "Remove server deafen from a member." },
       { name: "lockdown", description: "Lock or unlock all channels in the server at once." },
-      { name: "temprole", description: "Assign a role to a member for a limited time." },
+      { name: "temprole", description: "Assign a role to a member for a limited time.", settings: [
+        { key: "temprole.default_duration", label: "Default duration", description: "Default duration when none is specified (e.g. 1h, 7d).", type: "text", defaultValue: "1h", placeholder: "e.g. 1h, 7d" },
+      ]},
       { name: "rolepersist", description: "Toggle a role that automatically re-applies when the member rejoins." },
       { name: "modlogs", description: "View the full moderation history for a member." },
       { name: "modstats", description: "View moderator action statistics." },
@@ -60,7 +98,9 @@ const discordModuleConfig: ModuleConfig[] = [
     label: "Manager",
     description: "Server management utilities: announcements, role management, nickname changes, emote upload, and bot configuration.",
     commands: [
-      { name: "announce", description: "Send a message as the bot to a target channel." },
+      { name: "announce", description: "Send a message as the bot to a target channel.", settings: [
+        { key: "announce.require_mod", label: "Require moderator role", description: "Only allow members with a configured moderator role to use this command.", type: "toggle", defaultValue: "true" },
+      ]},
       { name: "role", description: "Toggle a role on or off for a member." },
       { name: "addrole", description: "Create a new server role." },
       { name: "delrole", description: "Delete an existing server role." },
@@ -112,7 +152,9 @@ const discordModuleConfig: ModuleConfig[] = [
     label: "Fun",
     description: "Entertainment commands: polls, dice rolls, animal pictures, trivia, color preview, and external lookups.",
     commands: [
-      { name: "poll", description: "Start a reaction-based poll." },
+      { name: "poll", description: "Start a reaction-based poll.", settings: [
+        { key: "poll.default_duration", label: "Default duration (hours)", description: "How many hours a poll stays open if no duration is given.", type: "number", min: 1, max: 72, defaultValue: "24", placeholder: "24" },
+      ]},
       { name: "flip", description: "Flip a coin — heads or tails." },
       { name: "roll", description: "Roll dice (e.g. 2d6)." },
       { name: "rps", description: "Play rock, paper, scissors against the bot." },
@@ -194,6 +236,11 @@ export default function DiscordSettingsPage() {
   const [loadingModules, setLoadingModules] = useState(false);
   const [savingModule, setSavingModule] = useState<string | null>(null);
   const [expandedModule, setExpandedModule] = useState<string | null>(null);
+  // Module config modal
+  const [openModuleKey, setOpenModuleKey] = useState<string | null>(null);
+  const [cmdSettings, setCmdSettings] = useState<Record<string, string>>({});
+  const [pendingCmdSettings, setPendingCmdSettings] = useState<Record<string, string>>({});
+  const [savingCmdSettings, setSavingCmdSettings] = useState(false);
   type NotifType = "live" | "mod" | "birthday";
   type Templates = Record<NotifType, string>;
   const defaultTemplates: Templates = {
@@ -349,13 +396,23 @@ export default function DiscordSettingsPage() {
   useEffect(() => {
     if (!selectedGuildId) {
       setGuildModules({});
+      setCmdSettings({});
+      setPendingCmdSettings({});
       return;
     }
     setLoadingModules(true);
-    fetch(`${backendUrl}/discord/guild-modules?guild_id=${encodeURIComponent(selectedGuildId)}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (data?.modules) setGuildModules(data.modules);
+    Promise.all([
+      fetch(`${backendUrl}/discord/guild-modules?guild_id=${encodeURIComponent(selectedGuildId)}`)
+        .then((r) => (r.ok ? r.json() : null)),
+      fetch(`${backendUrl}/discord/command-settings?guild_id=${encodeURIComponent(selectedGuildId)}`)
+        .then((r) => (r.ok ? r.json() : null)),
+    ])
+      .then(([modData, settingsData]) => {
+        if (modData?.modules) setGuildModules(modData.modules);
+        if (settingsData?.settings) {
+          setCmdSettings(settingsData.settings);
+          setPendingCmdSettings(settingsData.settings);
+        }
       })
       .catch(() => {})
       .finally(() => setLoadingModules(false));
@@ -459,6 +516,46 @@ export default function DiscordSettingsPage() {
       setGuildModules((prev) => ({ ...prev, [moduleName]: !next }));
     } finally {
       setSavingModule(null);
+    }
+  };
+
+  const handleCmdToggle = async (cmdName: string, next: boolean) => {
+    if (!selectedGuildId) return;
+    const key = `cmd:${cmdName}`;
+    setGuildModules((prev) => ({ ...prev, [key]: next }));
+    try {
+      const res = await fetch(`${backendUrl}/discord/guild-modules`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ guild_id: selectedGuildId, module: key, enabled: next }),
+      });
+      if (!res.ok) setGuildModules((prev) => ({ ...prev, [key]: !next }));
+    } catch {
+      setGuildModules((prev) => ({ ...prev, [key]: !next }));
+    }
+  };
+
+  const handleSaveCmdSettings = async () => {
+    if (!selectedGuildId) return;
+    setSavingCmdSettings(true);
+    try {
+      const dirty = Object.entries(pendingCmdSettings).filter(
+        ([k, v]) => v !== (cmdSettings[k] ?? "")
+      );
+      await Promise.all(
+        dirty.map(([k, v]) =>
+          fetch(`${backendUrl}/discord/command-settings`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ guild_id: selectedGuildId, key: k, value: v }),
+          })
+        )
+      );
+      setCmdSettings((prev) => ({ ...prev, ...Object.fromEntries(dirty) }));
+    } catch {
+      // silent fail — user can retry
+    } finally {
+      setSavingCmdSettings(false);
     }
   };
 
@@ -932,7 +1029,7 @@ export default function DiscordSettingsPage() {
                 <div className="border-t border-slate-800 pt-5 flex flex-col gap-4">
                   <div className="flex flex-col gap-1">
                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Bot Modules</p>
-                    <p className="text-xs text-slate-500">Enable or disable groups of slash commands for this server. Disabled modules hide all commands in that group from use.</p>
+                    <p className="text-xs text-slate-500">Click a module to configure individual commands and settings. Toggle the switch to enable or disable the entire module.</p>
                   </div>
 
                   {loadingModules ? (
@@ -941,75 +1038,51 @@ export default function DiscordSettingsPage() {
                       <span className="text-sm text-slate-500">Loading modules…</span>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                       {discordModuleConfig.map((mod) => {
                         const enabled = guildModules[mod.key] !== false;
-                        const isExpanded = expandedModule === mod.key;
                         const isSaving = savingModule === mod.key;
+                        const enabledCmds = mod.commands.filter((c) => guildModules[`cmd:${c.name}`] !== false).length;
                         return (
-                          <div
+                          <button
                             key={mod.key}
-                            className={`flex flex-col rounded-xl border transition ${
+                            type="button"
+                            onClick={() => { setOpenModuleKey(mod.key); setPendingCmdSettings({ ...cmdSettings }); }}
+                            className={`group flex flex-col rounded-xl border text-left transition hover:border-accent/40 hover:bg-slate-800/40 ${
                               enabled
                                 ? "border-slate-700/60 bg-slate-950/40"
                                 : "border-slate-800/60 bg-slate-900/30 opacity-60"
                             }`}
                           >
-                            {/* Module header */}
                             <div className="flex items-start gap-3 p-4">
                               <span className="text-xl mt-0.5 shrink-0">{mod.icon}</span>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center justify-between gap-2">
-                                  <span className="text-sm font-semibold text-slate-100">{mod.label}</span>
-                                  <button
-                                    type="button"
-                                    onClick={() => !isSaving && handleModuleToggle(mod.key, !enabled)}
-                                    disabled={isSaving}
-                                    className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${
+                                  <span className="text-sm font-semibold text-slate-100 group-hover:text-white">{mod.label}</span>
+                                  {/* Module-level toggle — stop propagation so clicking it doesn't open the modal */}
+                                  <span
+                                    role="button"
+                                    tabIndex={0}
+                                    aria-label={enabled ? "Disable module" : "Enable module"}
+                                    onClick={(e) => { e.stopPropagation(); if (!isSaving) handleModuleToggle(mod.key, !enabled); }}
+                                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.stopPropagation(); if (!isSaving) handleModuleToggle(mod.key, !enabled); } }}
+                                    className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors cursor-pointer ${
                                       enabled ? "bg-emerald-500" : "bg-slate-600"
-                                    } ${isSaving ? "opacity-50" : ""}`}
+                                    } ${isSaving ? "opacity-50 pointer-events-none" : ""}`}
                                   >
-                                    <span
-                                      className={`inline-block h-4 w-4 transform rounded-full bg-slate-950 shadow transition-transform ${
-                                        enabled ? "translate-x-4" : "translate-x-1"
-                                      }`}
-                                    />
-                                  </button>
+                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-slate-950 shadow transition-transform ${enabled ? "translate-x-4" : "translate-x-1"}`} />
+                                  </span>
                                 </div>
-                                <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{mod.description}</p>
+                                <p className="text-xs text-slate-500 mt-0.5 leading-relaxed line-clamp-2">{mod.description}</p>
                               </div>
                             </div>
-
-                            {/* Commands list toggle */}
-                            <button
-                              type="button"
-                              onClick={() => setExpandedModule(isExpanded ? null : mod.key)}
-                              className="flex items-center justify-between border-t border-slate-800/60 px-4 py-2 text-xs text-slate-500 hover:text-slate-300 hover:bg-slate-800/30 transition rounded-b-xl"
-                            >
-                              <span>{mod.commands.length} command{mod.commands.length !== 1 ? "s" : ""}</span>
-                              <svg
-                                viewBox="0 0 20 20"
-                                fill="currentColor"
-                                className={`h-3.5 w-3.5 transition-transform ${isExpanded ? "rotate-180" : ""}`}
-                              >
-                                <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                            <div className="flex items-center justify-between border-t border-slate-800/60 px-4 py-2 text-xs text-slate-500 group-hover:text-slate-400 transition">
+                              <span>{enabledCmds} / {mod.commands.length} commands active</span>
+                              <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 opacity-50 group-hover:opacity-100 transition">
+                                <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
                               </svg>
-                            </button>
-
-                            {/* Expanded commands list */}
-                            {isExpanded && (
-                              <div className="border-t border-slate-800/60 px-4 py-3 flex flex-col gap-1.5">
-                                {mod.commands.map((cmd) => (
-                                  <div key={cmd.name} className="flex items-start gap-2.5">
-                                    <code className="shrink-0 rounded bg-slate-800 px-1.5 py-0.5 text-xs font-mono text-accent">
-                                      /{cmd.name}
-                                    </code>
-                                    <span className="text-xs text-slate-500 leading-relaxed">{cmd.description}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
+                            </div>
+                          </button>
                         );
                       })}
                     </div>
@@ -1024,6 +1097,158 @@ export default function DiscordSettingsPage() {
         </div>
       </div>
     </main>
+
+    {/* ── Module config modal ── */}
+    {openModuleKey && (() => {
+      const mod = discordModuleConfig.find((m) => m.key === openModuleKey)!;
+      const modEnabled = guildModules[mod.key] !== false;
+      const isSavingMod = savingModule === mod.key;
+      const hasDirty = mod.commands.some((c) =>
+        (c.settings ?? []).some((s) => (pendingCmdSettings[s.key] ?? "") !== (cmdSettings[s.key] ?? ""))
+      );
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" onClick={() => setOpenModuleKey(null)}>
+          <div className="w-full max-w-2xl max-h-[85vh] rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 shrink-0">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">{mod.icon}</span>
+                <div>
+                  <p className="text-sm font-semibold text-slate-100">{mod.label} Module</p>
+                  <p className="text-xs text-slate-500">{mod.commands.length} commands · click a command to toggle it on or off</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                {/* Module-level toggle */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-400">{modEnabled ? "Enabled" : "Disabled"}</span>
+                  <button
+                    type="button"
+                    onClick={() => !isSavingMod && handleModuleToggle(mod.key, !modEnabled)}
+                    disabled={isSavingMod}
+                    className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${modEnabled ? "bg-emerald-500" : "bg-slate-600"} ${isSavingMod ? "opacity-50" : ""}`}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-slate-950 shadow transition-transform ${modEnabled ? "translate-x-4" : "translate-x-1"}`} />
+                  </button>
+                </div>
+                <button type="button" onClick={() => setOpenModuleKey(null)} className="rounded-lg p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition">
+                  <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4"><path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" /></svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Command list — scrollable */}
+            <div className="flex-1 overflow-y-auto divide-y divide-slate-800/60">
+              {mod.commands.map((cmd) => {
+                const cmdKey = `cmd:${cmd.name}`;
+                const cmdEnabled = guildModules[cmdKey] !== false;
+                const hasSettings = (cmd.settings?.length ?? 0) > 0;
+                return (
+                  <div key={cmd.name} className={`px-6 py-4 flex flex-col gap-3 transition ${cmdEnabled ? "" : "opacity-50"}`}>
+                    {/* Command row */}
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-start gap-3 min-w-0">
+                        <code className="shrink-0 mt-0.5 rounded bg-slate-800 px-2 py-0.5 text-xs font-mono text-accent">/{cmd.name}</code>
+                        <span className="text-sm text-slate-300 leading-relaxed">{cmd.description}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleCmdToggle(cmd.name, !cmdEnabled)}
+                        className={`relative shrink-0 mt-0.5 inline-flex h-5 w-9 items-center rounded-full transition-colors ${cmdEnabled ? "bg-emerald-500" : "bg-slate-600"}`}
+                      >
+                        <span className={`inline-block h-4 w-4 transform rounded-full bg-slate-950 shadow transition-transform ${cmdEnabled ? "translate-x-4" : "translate-x-1"}`} />
+                      </button>
+                    </div>
+
+                    {/* Per-command settings (only shown when command is enabled) */}
+                    {hasSettings && cmdEnabled && (
+                      <div className="ml-0 flex flex-col gap-3 pl-4 border-l border-slate-700/50">
+                        {(cmd.settings ?? []).map((field) => {
+                          const currentVal = pendingCmdSettings[field.key] ?? field.defaultValue ?? "";
+                          const isToggle = field.type === "toggle";
+                          const isTrueVal = currentVal === "true";
+                          return (
+                            <div key={field.key} className="flex flex-col gap-1">
+                              <div className="flex items-center justify-between gap-4">
+                                <div className="flex flex-col gap-0.5">
+                                  <span className="text-xs font-medium text-slate-300">{field.label}</span>
+                                  {field.description && <span className="text-xs text-slate-500">{field.description}</span>}
+                                </div>
+                                {isToggle && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setPendingCmdSettings((prev) => ({ ...prev, [field.key]: isTrueVal ? "false" : "true" }))}
+                                    className={`relative shrink-0 inline-flex h-5 w-9 items-center rounded-full transition-colors ${isTrueVal ? "bg-emerald-500" : "bg-slate-600"}`}
+                                  >
+                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-slate-950 shadow transition-transform ${isTrueVal ? "translate-x-4" : "translate-x-1"}`} />
+                                  </button>
+                                )}
+                              </div>
+                              {field.type === "number" && (
+                                <input
+                                  type="number"
+                                  min={field.min}
+                                  max={field.max}
+                                  value={currentVal}
+                                  placeholder={field.placeholder}
+                                  onChange={(e) => setPendingCmdSettings((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                                  className="w-40 rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-accent/60"
+                                />
+                              )}
+                              {field.type === "text" && (
+                                <input
+                                  type="text"
+                                  value={currentVal}
+                                  placeholder={field.placeholder}
+                                  onChange={(e) => setPendingCmdSettings((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                                  className="w-full max-w-xs rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-accent/60"
+                                />
+                              )}
+                              {field.type === "select" && (
+                                <select
+                                  value={currentVal}
+                                  onChange={(e) => setPendingCmdSettings((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                                  className="w-48 rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-accent/60"
+                                >
+                                  {(field.options ?? []).map((opt) => (
+                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                  ))}
+                                </select>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Modal footer */}
+            <div className="flex items-center justify-between gap-4 px-6 py-4 border-t border-slate-800 bg-slate-950/40 shrink-0">
+              <p className="text-xs text-slate-500">Command toggles save instantly. Click Save for settings changes.</p>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={() => setOpenModuleKey(null)} className="rounded-lg border border-slate-700 px-4 py-1.5 text-sm text-slate-300 hover:bg-slate-800 transition">
+                  Close
+                </button>
+                {hasDirty && (
+                  <button
+                    type="button"
+                    onClick={handleSaveCmdSettings}
+                    disabled={savingCmdSettings}
+                    className="rounded-lg bg-accent px-4 py-1.5 text-sm font-medium text-white hover:bg-accent/90 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {savingCmdSettings ? "Saving…" : "Save Settings"}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    })()}
 
     {/* ── Notification template edit modal ── */}
     {editingNotif && (

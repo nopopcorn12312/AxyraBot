@@ -49,6 +49,7 @@ func startHTTPServer(clientID, clientSecret string) {
 	mux.HandleFunc("/discord/role-mappings", withCORS(handleDiscordRoleMappings))
 	mux.HandleFunc("/discord/notification-templates", withCORS(handleDiscordNotificationTemplates))
 	mux.HandleFunc("/discord/guild-modules", withCORS(handleDiscordGuildModules))
+	mux.HandleFunc("/discord/command-settings", withCORS(handleDiscordCommandSettings))
 
 	// Optional Nightbot OAuth integration for importing commands without
 	// copy/paste. These handlers are only registered when all required
@@ -2035,6 +2036,52 @@ func handleDiscordGuildModules(w http.ResponseWriter, r *http.Request) {
 		}
 		if err := SetDiscordGuildModuleEnabled(guildID, module, body.Enabled); err != nil {
 			log.Println("set discord guild module:", err)
+			http.Error(w, "db error", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "ok")
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
+}
+
+// handleDiscordCommandSettings handles GET and POST for per-guild per-command
+// string configuration values (e.g. default durations, message templates).
+func handleDiscordCommandSettings(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		guildID := strings.TrimSpace(r.URL.Query().Get("guild_id"))
+		if guildID == "" {
+			http.Error(w, "missing guild_id", http.StatusBadRequest)
+			return
+		}
+		settings, err := GetDiscordCommandSettings(guildID)
+		if err != nil {
+			log.Println("get discord command settings:", err)
+			http.Error(w, "db error", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{"settings": settings})
+	case http.MethodPost:
+		var body struct {
+			GuildID string `json:"guild_id"`
+			Key     string `json:"key"`
+			Value   string `json:"value"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "bad json", http.StatusBadRequest)
+			return
+		}
+		guildID := strings.TrimSpace(body.GuildID)
+		key := strings.TrimSpace(body.Key)
+		if guildID == "" || key == "" {
+			http.Error(w, "missing guild_id or key", http.StatusBadRequest)
+			return
+		}
+		if err := SetDiscordCommandSetting(guildID, key, body.Value); err != nil {
+			log.Println("set discord command setting:", err)
 			http.Error(w, "db error", http.StatusInternalServerError)
 			return
 		}
