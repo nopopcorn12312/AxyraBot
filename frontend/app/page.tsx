@@ -433,44 +433,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── TESTIMONIALS ── */}
-      <section className="py-24 px-6 bg-slate-950/50 border-y border-slate-800/60">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-14">
-            <div className="text-xs font-semibold tracking-widest text-accent/70 uppercase mb-3">Loved by Communities</div>
-            <h2 className="text-4xl font-black text-white">Trusted by Streamers &amp; Moderators</h2>
-          </div>
-          <div className="grid md:grid-cols-3 gap-6">
-            {[
-              { quote: "AxyraBot replaced three separate bots for our Twitch and Discord community. It's an all-in-one solution!", name: "ShroudTV",    role: "Partnered Twitch Streamer"  },
-              { quote: "The moderation system caught spam attacks before our team even noticed. Absolutely incredible.",             name: "LunaMystic",  role: "Discord Community Owner"    },
-              { quote: "Setup took less than five minutes. The dashboard is super intuitive and powerful.",                          name: "DexterLive",  role: "Content Creator"            },
-            ].map((t) => (
-              <div key={t.name} className="rounded-xl border border-slate-800 bg-slate-900/60 p-6 flex flex-col justify-between gap-6">
-                <div>
-                  <div className="text-3xl text-accent/40 font-serif mb-3">&ldquo;</div>
-                  <p className="text-sm text-slate-300 leading-relaxed">{t.quote}</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  {/* Avatar placeholder — replace with real image later */}
-                  <div className="w-10 h-10 rounded-full bg-slate-700 border border-slate-600 shrink-0" />
-                  <div>
-                    <div className="text-sm font-bold text-white">— {t.name}</div>
-                    <div className="text-xs text-slate-500">{t.role}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="flex justify-center gap-2 mt-8">
-            {[0,1,2,3,4].map((i) => (
-              <div key={i} className={`h-2 rounded-full transition-all ${i === 0 ? "w-6 bg-accent" : "w-2 bg-slate-700"}`} />
-            ))}
-          </div>
-        </div>
-      </section>
-
-
       {/* ── FAQ ── */}
       <section id="faq" className="py-24 px-6 bg-slate-950/50 border-t border-slate-800/60">
         <div className="max-w-5xl mx-auto">
