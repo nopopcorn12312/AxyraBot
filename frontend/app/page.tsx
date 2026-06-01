@@ -302,8 +302,8 @@ export default function HomePage() {
 
       {/* ── DASHBOARD SECTION ── */}
       <section className="py-24 px-6 bg-slate-950/50 border-y border-slate-800/60">
-        <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-16 items-center">
-          {/* Left: dashboard UI mockup */}
+        <div className="max-w-6xl mx-auto flex flex-col gap-12">
+          {/* Image — full width */}
           <div className="relative">
             <div className="absolute -inset-4 rounded-3xl bg-accent/5 blur-3xl" />
             <div className="relative rounded-2xl border border-slate-700/60 overflow-hidden shadow-2xl shadow-black/60">
@@ -314,24 +314,28 @@ export default function HomePage() {
               />
             </div>
           </div>
-          {/* Right: text */}
-          <div>
-            <div className="text-xs font-semibold tracking-widest text-accent/70 uppercase mb-3">Unified Dashboard</div>
-            <h2 className="text-4xl font-black text-white mb-5">Manage Everything<br />in One Place</h2>
-            <p className="text-slate-400 mb-7 leading-relaxed">
-              Our powerful dashboard gives you complete control over your Twitch and Discord moderation.
-            </p>
-            <ul className="space-y-3 mb-8">
-              {["Real-time activity monitoring","Manage settings in seconds","Advanced analytics & insights","Cross-platform synchronization"].map((item) => (
-                <li key={item} className="flex items-center gap-3 text-sm text-slate-300">
-                  <span className="flex items-center justify-center w-5 h-5 rounded-full bg-accent/20 text-accent text-[10px] shrink-0">✓</span>
-                  {item}
-                </li>
-              ))}
-            </ul>
-            <a href="/dashboard" className="inline-flex items-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-bold text-slate-900 shadow-lg shadow-sky-400/20 transition hover:bg-sky-300">
-              Explore Dashboard →
-            </a>
+          {/* Text below */}
+          <div className="flex flex-col lg:flex-row lg:items-center gap-10">
+            <div className="flex-1">
+              <div className="text-xs font-semibold tracking-widest text-accent/70 uppercase mb-3">Unified Dashboard</div>
+              <h2 className="text-4xl font-black text-white mb-5">Manage Everything<br />in One Place</h2>
+              <p className="text-slate-400 leading-relaxed">
+                Our powerful dashboard gives you complete control over your Twitch and Discord moderation.
+              </p>
+            </div>
+            <div className="flex-1">
+              <ul className="space-y-3 mb-8">
+                {["Real-time activity monitoring","Manage settings in seconds","Cross-platform synchronization"].map((item) => (
+                  <li key={item} className="flex items-center gap-3 text-sm text-slate-300">
+                    <span className="flex items-center justify-center w-5 h-5 rounded-full bg-accent/20 text-accent text-[10px] shrink-0">✓</span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <a href="/dashboard" className="inline-flex items-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-bold text-slate-900 shadow-lg shadow-sky-400/20 transition hover:bg-sky-300">
+                Explore Dashboard →
+              </a>
+            </div>
           </div>
         </div>
       </section>
