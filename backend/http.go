@@ -34,6 +34,8 @@ func startHTTPServer(clientID, clientSecret string) {
 	mux.HandleFunc("/commands/import", withCORS(handleCustomCommandsImport))
 	mux.HandleFunc("/moderation/blocked-terms", withCORS(handleBlockedTerms))
 	mux.HandleFunc("/moderation/blocked-terms/delete", withCORS(handleBlockedTermsDelete))
+	mux.HandleFunc("/moderation/spam-filters", withCORS(handleSpamFilters))
+	mux.HandleFunc("/moderation/spam-filters/delete", withCORS(handleSpamFiltersDelete))
 	mux.HandleFunc("/roles", withCORS(handleRoles))
 	mux.HandleFunc("/roles/delete", withCORS(handleRolesDelete))
 	mux.HandleFunc("/roles/editor-channels", withCORS(handleEditorChannels))
@@ -2381,4 +2383,109 @@ func handleEventSubWebhook(w http.ResponseWriter, r *http.Request) {
 	default:
 		w.WriteHeader(http.StatusNoContent)
 	}
+}
+
+// handleSpamFilters handles GET (list) and POST (add) for spam filters.
+func handleSpamFilters(w http.ResponseWriter, r *http.Request) {
+	if err := EnsureSpamFiltersTable(); err != nil {
+		log.Println("spam filters table ensure failed:", err)
+		http.Error(w, "db error", http.StatusInternalServerError)
+		return
+	}
+	switch r.Method {
+	case http.MethodGet:
+		login := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("login")))
+		if login == "" {
+			http.Error(w, "missing login", http.StatusBadRequest)
+			return
+		}
+		filters, err := ListSpamFilters(login)
+		if err != nil {
+			log.Println("list spam filters:", err)
+			http.Error(w, "db error", http.StatusInternalServerError)
+			return
+		}
+		type row struct {
+			ID             int64  `json:"id"`
+			Type           string `json:"type"`
+			Action         string `json:"action"`
+			TimeoutSeconds int    `json:"timeout_seconds"`
+		}
+		out := make([]row, len(filters))
+		for i, f := range filters {
+			out[i] = row{ID: f.ID, Type: f.Type, Action: f.Action, TimeoutSeconds: f.TimeoutSeconds}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{"filters": out})
+	case http.MethodPost:
+		var body struct {
+			Login          string `json:"login"`
+			Type           string `json:"type"`
+			Action         string `json:"action"`
+			TimeoutSeconds int    `json:"timeout_seconds"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "bad json", http.StatusBadRequest)
+			return
+		}
+		login := strings.ToLower(strings.TrimSpace(body.Login))
+		filterType := strings.ToLower(strings.TrimSpace(body.Type))
+		action := strings.TrimSpace(body.Action)
+		if login == "" || filterType == "" {
+			http.Error(w, "missing login or type", http.StatusBadRequest)
+			return
+		}
+		validTypes := map[string]bool{"caps": true, "link": true, "length": true, "emotes": true}
+		if !validTypes[filterType] {
+			http.Error(w, "invalid filter type", http.StatusBadRequest)
+			return
+		}
+		if action == "" {
+			action = "delete"
+		}
+		id, err := AddSpamFilter(login, filterType, action, body.TimeoutSeconds)
+		if err != nil {
+			log.Println("add spam filter:", err)
+			http.Error(w, "db error", http.StatusInternalServerError)
+			return
+		}
+		if err := InsertAuditLog(login, "bot", "spam_filter_add", fmt.Sprintf("Added spam filter: %s (%s)", filterType, action)); err != nil {
+			log.Println("audit log spam filter add:", err)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{"id": id})
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
+}
+
+// handleSpamFiltersDelete deletes a spam filter by ID.
+func handleSpamFiltersDelete(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	var body struct {
+		Login string `json:"login"`
+		ID    int64  `json:"id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "bad json", http.StatusBadRequest)
+		return
+	}
+	login := strings.ToLower(strings.TrimSpace(body.Login))
+	if login == "" || body.ID == 0 {
+		http.Error(w, "missing login or id", http.StatusBadRequest)
+		return
+	}
+	if err := DeleteSpamFilter(login, body.ID); err != nil {
+		log.Println("delete spam filter:", err)
+		http.Error(w, "db error", http.StatusInternalServerError)
+		return
+	}
+	if err := InsertAuditLog(login, "bot", "spam_filter_delete", fmt.Sprintf("Deleted spam filter id %d", body.ID)); err != nil {
+		log.Println("audit log spam filter delete:", err)
+	}
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprint(w, "ok")
 }

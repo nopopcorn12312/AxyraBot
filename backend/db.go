@@ -2436,3 +2436,94 @@ func DeleteDiscordWarningByID(guildID string, id int64) error {
 	return err
 }
 
+// ── Spam Filters ──────────────────────────────────────────────────────────────
+
+// SpamFilter represents an auto-moderation spam filter rule for a channel.
+type SpamFilter struct {
+	ID               int64
+	BroadcasterLogin string
+	Type             string // "caps", "link", "length", "emotes"
+	Action           string // "timeout", "delete", "ban"
+	TimeoutSeconds   int
+	CreatedAt        time.Time
+}
+
+// EnsureSpamFiltersTable creates the spam_filters table if it does not exist.
+func EnsureSpamFiltersTable() error {
+	if db == nil {
+		return nil
+	}
+	_, err := db.Exec(`
+	CREATE TABLE IF NOT EXISTS spam_filters (
+		id                BIGSERIAL PRIMARY KEY,
+		broadcaster_login TEXT        NOT NULL,
+		type              TEXT        NOT NULL,
+		action            TEXT        NOT NULL DEFAULT 'delete',
+		timeout_seconds   INT         NOT NULL DEFAULT 60,
+		created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+		UNIQUE (broadcaster_login, type)
+	);`)
+	return err
+}
+
+// AddSpamFilter inserts or replaces a spam filter for a broadcaster.
+func AddSpamFilter(broadcasterLogin, filterType, action string, timeoutSeconds int) (int64, error) {
+	if db == nil {
+		return 0, fmt.Errorf("db not initialized")
+	}
+	broadcasterLogin = strings.ToLower(strings.TrimSpace(broadcasterLogin))
+	filterType = strings.ToLower(strings.TrimSpace(filterType))
+	action = strings.ToLower(strings.TrimSpace(action))
+	if timeoutSeconds <= 0 {
+		timeoutSeconds = 60
+	}
+	var id int64
+	row := db.QueryRow(`
+	INSERT INTO spam_filters (broadcaster_login, type, action, timeout_seconds)
+	VALUES ($1, $2, $3, $4)
+	ON CONFLICT (broadcaster_login, type) DO UPDATE
+	SET action = EXCLUDED.action, timeout_seconds = EXCLUDED.timeout_seconds
+	RETURNING id;
+	`, broadcasterLogin, filterType, action, timeoutSeconds)
+	if err := row.Scan(&id); err != nil {
+		return 0, err
+	}
+	return id, nil
+}
+
+// ListSpamFilters returns all spam filters for a broadcaster ordered by type.
+func ListSpamFilters(broadcasterLogin string) ([]SpamFilter, error) {
+	res := []SpamFilter{}
+	if db == nil {
+		return res, nil
+	}
+	broadcasterLogin = strings.ToLower(strings.TrimSpace(broadcasterLogin))
+	rows, err := db.Query(`
+	SELECT id, broadcaster_login, type, action, timeout_seconds, created_at
+	FROM spam_filters
+	WHERE broadcaster_login = $1
+	ORDER BY type;
+	`, broadcasterLogin)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var f SpamFilter
+		if err := rows.Scan(&f.ID, &f.BroadcasterLogin, &f.Type, &f.Action, &f.TimeoutSeconds, &f.CreatedAt); err != nil {
+			return nil, err
+		}
+		res = append(res, f)
+	}
+	return res, nil
+}
+
+// DeleteSpamFilter removes a spam filter by ID for a broadcaster.
+func DeleteSpamFilter(broadcasterLogin string, id int64) error {
+	if db == nil {
+		return nil
+	}
+	broadcasterLogin = strings.ToLower(strings.TrimSpace(broadcasterLogin))
+	_, err := db.Exec(`DELETE FROM spam_filters WHERE broadcaster_login=$1 AND id=$2`, broadcasterLogin, id)
+	return err
+}

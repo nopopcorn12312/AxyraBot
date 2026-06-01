@@ -562,6 +562,106 @@ func handleChatMessageEvent(channelLogin, chatterLogin, chatterID, messageID, me
 	}
 	// ─────────────────────────────────────────────────────────────────────────
 
+	// ── Spam filter enforcement ───────────────────────────────────────────────
+	if db != nil && strings.ToLower(chatterLogin) != strings.ToLower(channelLogin) {
+		filters, err := ListSpamFilters(channelLogin)
+		if err != nil {
+			log.Println("spam filters load error:", err)
+		} else if len(filters) > 0 {
+			var triggeredFilter *SpamFilter
+			var triggerReason string
+			for i := range filters {
+				f := &filters[i]
+				switch f.Type {
+				case "caps":
+					// Trigger when ≥10 alpha chars and ≥70% are uppercase
+					var upper, total int
+					for _, ch := range message {
+						if ch >= 'A' && ch <= 'Z' {
+							upper++
+							total++
+						} else if ch >= 'a' && ch <= 'z' {
+							total++
+						}
+					}
+					if total >= 10 && upper*100/total >= 70 {
+						triggeredFilter = f
+						triggerReason = "excessive caps"
+					}
+				case "link":
+					// Trigger when any word looks like a URL
+					linkTLDs := []string{".com", ".net", ".org", ".gg", ".tv", ".io", ".me", ".co", ".ly", ".ru", ".de", ".uk", ".ca"}
+					lowerMsg := strings.ToLower(message)
+					for _, word := range strings.Fields(lowerMsg) {
+						if strings.Contains(word, "://") || strings.HasPrefix(word, "www.") {
+							triggeredFilter = f
+							triggerReason = "link detected"
+							break
+						}
+						for _, tld := range linkTLDs {
+							if strings.Contains(word, tld) && strings.Contains(word, ".") {
+								triggeredFilter = f
+								triggerReason = "link detected"
+								break
+							}
+						}
+						if triggeredFilter != nil {
+							break
+						}
+					}
+				case "length":
+					// Trigger when message exceeds 400 characters
+					if len([]rune(message)) > 400 {
+						triggeredFilter = f
+						triggerReason = "message too long"
+					}
+				case "emotes":
+					// Trigger when a single word is repeated 5+ times (emote spam)
+					wordCounts := map[string]int{}
+					for _, w := range strings.Fields(strings.ToLower(message)) {
+						wordCounts[w]++
+						if wordCounts[w] >= 5 {
+							triggeredFilter = f
+							triggerReason = "emote spam"
+							break
+						}
+					}
+				}
+				if triggeredFilter != nil {
+					break
+				}
+			}
+			if triggeredFilter != nil {
+				log.Printf("[SPAM FILTER] channel=%s user=%s filter=%s reason=%s action=%s", channelLogin, chatterLogin, triggeredFilter.Type, triggerReason, triggeredFilter.Action)
+				switch triggeredFilter.Action {
+				case "delete":
+					if err := deleteHelixMessage(channelLogin, messageID); err != nil {
+						log.Println("spam filter delete message error:", err, "— falling back to 1s timeout")
+						if terr := timeoutUser(channelLogin, chatterLogin, 1, fmt.Sprintf("Spam filter: %s", triggerReason)); terr != nil {
+							log.Println("spam filter delete fallback timeout error:", terr)
+						}
+					} else {
+						go PostDiscordModAlert(channelLogin, "AxyraBot's Moderation Settings", chatterLogin, "delete", fmt.Sprintf("Spam filter: %s", triggerReason))
+					}
+				case "timeout":
+					secs := triggeredFilter.TimeoutSeconds
+					if secs <= 0 {
+						secs = 60
+					}
+					if err := timeoutUser(channelLogin, chatterLogin, secs, fmt.Sprintf("Spam filter: %s", triggerReason)); err != nil {
+						log.Println("spam filter timeout error:", err)
+					}
+				case "ban":
+					if err := banUser(channelLogin, chatterLogin, fmt.Sprintf("Spam filter: %s", triggerReason)); err != nil {
+						log.Println("spam filter ban error:", err)
+					}
+				}
+				return // stop processing further after enforcement
+			}
+		}
+	}
+	// ─────────────────────────────────────────────────────────────────────────
+
 	// update approximate watch time based on chat activity, but only while live
 	if db != nil && isChannelLive(channelLogin) {
 		if err := UpdateWatchTime(channelLogin, strings.ToLower(chatterLogin), time.Now().UTC()); err != nil {
