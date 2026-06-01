@@ -35,7 +35,15 @@ func InitDiscord() {
 
 	discordSession.AddHandler(func(s *discordgo.Session, r *discordgo.Ready) {
 		log.Printf("[Discord] logged in as %s\n", r.User.Username)
-		registerSlashCommands(s, r.User.ID)
+	})
+	// GuildCreate fires for every guild on startup and whenever the bot joins a
+	// new server, so registering commands here gives instant propagation in all
+	// guilds with no env-var configuration needed.
+	discordSession.AddHandler(func(s *discordgo.Session, g *discordgo.GuildCreate) {
+		if s.State == nil || s.State.User == nil {
+			return
+		}
+		registerSlashCommands(s, s.State.User.ID, g.Guild.ID)
 	})
 	discordSession.AddHandler(discordInteractionHandler)
 	discordSession.AddHandler(discordMessageHandler)
@@ -51,9 +59,9 @@ func InitDiscord() {
 // registerSlashCommands registers global (or guild-scoped if DISCORD_DEV_GUILD_ID
 // is set) application commands. Guild commands update instantly; global commands
 // can take up to one hour to propagate across all servers.
-func registerSlashCommands(s *discordgo.Session, appID string) {
-	guildID := os.Getenv("DISCORD_DEV_GUILD_ID") // leave empty for global
-
+// registerSlashCommands registers all slash commands for guildID via a single
+// bulk-overwrite call (instant). Called from the GuildCreate handler.
+func registerSlashCommands(s *discordgo.Session, appID, guildID string) {
 	var (
 		permBan     int64 = discordgo.PermissionBanMembers
 		permKick    int64 = discordgo.PermissionKickMembers
@@ -663,12 +671,10 @@ func registerSlashCommands(s *discordgo.Session, appID string) {
 		},
 	}
 
-	for _, cmd := range commands {
-		if _, err := s.ApplicationCommandCreate(appID, guildID, cmd); err != nil {
-			log.Println("[Discord] failed to register slash command:", cmd.Name, err)
-		} else {
-			log.Println("[Discord] registered slash command:", cmd.Name)
-		}
+	if _, err := s.ApplicationCommandBulkOverwrite(appID, guildID, commands); err != nil {
+		log.Printf("[Discord] failed to register slash commands for guild %s: %v\n", guildID, err)
+	} else {
+		log.Printf("[Discord] registered %d slash commands for guild %s\n", len(commands), guildID)
 	}
 }
 

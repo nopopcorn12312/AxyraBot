@@ -30,3 +30,12 @@ services:
         value: "postgres://user:password@host:5432/dbname?sslmode=require"
       - key: FRONTEND_URL
         value: "https://axyrabot.com"
+      # Discord bot token — set the real value in the Render dashboard (Environment tab)
+      # Never commit the actual token to this file.
+      - key: DISCORD_BOT_TOKEN
+        sync: false
+      # Optional: set to your Discord server/guild ID for instant slash-command
+      # registration during development (omit for global registration, which can
+      # take up to 1 hour to propagate).
+      - key: DISCORD_DEV_GUILD_ID
+        sync: false
