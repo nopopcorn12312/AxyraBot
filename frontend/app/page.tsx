@@ -34,6 +34,7 @@ export default function HomePage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isDiscordConnected, setIsDiscordConnected] = useState(false);
+  const [channelCount, setChannelCount] = useState<number | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -69,6 +70,11 @@ export default function HomePage() {
     if (storedGuild) {
       setIsDiscordConnected(true);
     }
+
+    fetch(`${backendUrl}/channels`)
+      .then((r) => r.json())
+      .then((d) => setChannelCount((d.channels ?? []).length))
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -245,10 +251,10 @@ export default function HomePage() {
 
       {/* ── STATS BAR ── */}
       <section className="border-y border-slate-800/60 bg-slate-900/40 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto px-6 py-8 grid grid-cols-2 gap-8">
+        <div className="max-w-7xl mx-auto px-6 py-8 flex justify-center gap-16">
           {[
-            { icon: "👥", stat: "10,000+", label: "Communities" },
-            { icon: "⚡", stat: "99.9%",   label: "Uptime"      },
+            { icon: "👥", stat: channelCount !== null ? channelCount.toString() : "…", label: "Communities" },
+            { icon: "⚡", stat: "99.9%", label: "Uptime" },
           ].map((s) => (
             <div key={s.label} className="flex items-center gap-4">
               <span className="text-2xl">{s.icon}</span>
