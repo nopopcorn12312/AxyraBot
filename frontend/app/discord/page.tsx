@@ -919,8 +919,9 @@ export default function DiscordSettingsPage() {
                   )}
                 </div>
                 </div> {/* end flex items-center gap-3 */}
-              </div>
+              </div> {/* end content header */}
 
+              <div className="flex flex-col gap-5 p-6">
                 {/* ── Two-column layout when a guild is selected ── */}
                 {selectedGuildId ? (
                   <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-stretch">
