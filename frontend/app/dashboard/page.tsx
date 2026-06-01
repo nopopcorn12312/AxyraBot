@@ -27,10 +27,10 @@ function formatTimeAgo(isoString: string): string {
 }
 
 function Sparkline({ data, color, gradId }: { data: number[]; color: string; gradId: string }) {
-  if (!data.length) return <div className="h-10 w-full" />;
+  if (!data.length) return <div className="h-24 w-full" />;
   const max = Math.max(...data, 1);
   const w = 200;
-  const h = 40;
+  const h = 80;
   const pts = data.map((v, i) => [
     (i / Math.max(data.length - 1, 1)) * w,
     h - 4 - (v / max) * (h - 8),
@@ -38,7 +38,7 @@ function Sparkline({ data, color, gradId }: { data: number[]; color: string; gra
   const linePath = pts.map(([x, y], i) => `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
   const areaPath = `${linePath} L${w},${h} L0,${h} Z`;
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-10" preserveAspectRatio="none">
+    <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-24" preserveAspectRatio="none">
       <defs>
         <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={color} stopOpacity={0.35} />
@@ -811,11 +811,11 @@ export default function DashboardPage() {
           </div>
           {/* Chat Stats Charts */}
           {activeChannel && (
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400">Msg / min</h3>
-                  <span className="text-xl font-bold text-accent tabular-nums">
+            <div className="flex flex-col gap-3">
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-400">Messages / min</h3>
+                  <span className="text-2xl font-bold text-accent tabular-nums">
                     {chatStats ? chatStats.msgs_per_min : "—"}
                   </span>
                 </div>
@@ -825,10 +825,10 @@ export default function DashboardPage() {
                   gradId="grad-msgs"
                 />
               </div>
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400">Chatters</h3>
-                  <span className="text-xl font-bold text-violet-400 tabular-nums">
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-400">Unique Chatters</h3>
+                  <span className="text-2xl font-bold text-violet-400 tabular-nums">
                     {chatStats ? chatStats.unique_chatters : "—"}
                   </span>
                 </div>
