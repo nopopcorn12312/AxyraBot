@@ -1156,7 +1156,7 @@ func handleChatMessageEvent(channelLogin, chatterLogin, chatterID, messageID, me
 			return
 		}
 		base := getFrontendBaseURL()
-		link := fmt.Sprintf("%s/commands?view=custom&channel=%s", base, url.QueryEscape(channelLogin))
+		link := fmt.Sprintf("%s/commands/%s", base, url.PathEscape(channelLogin))
 		text := fmt.Sprintf("All of %s's custom commands can be found here %s", channelLogin, link)
 		if err := sendHelixChatMessage(channelLogin, text, messageID); err != nil {
 			log.Println("failed to send !commands response:", err)
