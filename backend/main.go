@@ -1837,26 +1837,50 @@ func deleteHelixMessage(channelLogin, messageID string) error {
 	if broadcasterID == "" {
 		return fmt.Errorf("empty broadcaster ID for channel %s", channelLogin)
 	}
-	endpoint := fmt.Sprintf(
-		"https://api.twitch.tv/helix/chat/messages?broadcaster_id=%s&moderator_id=%s&message_id=%s",
-		url.QueryEscape(broadcasterID), url.QueryEscape(broadcasterID), url.QueryEscape(messageID),
-	)
-	req, err := http.NewRequest("DELETE", endpoint, nil)
+
+	// Log token scopes to help diagnose permission issues.
+	if scopes, err := getUserTokenScopes(access); err == nil {
+		log.Printf("[DELETE MSG] token scopes for %s: %v", channelLogin, scopes)
+	}
+
+	doDelete := func() (int, []byte, error) {
+		endpoint := fmt.Sprintf(
+			"https://api.twitch.tv/helix/chat/messages?broadcaster_id=%s&moderator_id=%s&message_id=%s",
+			url.QueryEscape(broadcasterID), url.QueryEscape(broadcasterID), url.QueryEscape(messageID),
+		)
+		req, err := http.NewRequest("DELETE", endpoint, nil)
+		if err != nil {
+			return 0, nil, err
+		}
+		req.Header.Set("Client-ID", clientID)
+		req.Header.Set("Authorization", "Bearer "+access)
+		client := &http.Client{Timeout: 10 * time.Second}
+		res, err := client.Do(req)
+		if err != nil {
+			return 0, nil, err
+		}
+		defer res.Body.Close()
+		b, _ := io.ReadAll(res.Body)
+		return res.StatusCode, b, nil
+	}
+
+	code, b, err := doDelete()
 	if err != nil {
 		return err
 	}
-	req.Header.Set("Client-ID", clientID)
-	req.Header.Set("Authorization", "Bearer "+access)
-	client := &http.Client{Timeout: 10 * time.Second}
-	res, err := client.Do(req)
-	if err != nil {
-		return err
+	// Twitch can return 404 briefly after a message arrives via EventSub
+	// before its moderation index is updated. Retry once after a short delay.
+	if code == http.StatusNotFound {
+		log.Printf("[DELETE MSG] got 404 on first attempt for msgID=%s, retrying in 500ms", messageID)
+		time.Sleep(500 * time.Millisecond)
+		code, b, err = doDelete()
+		if err != nil {
+			return err
+		}
 	}
-	defer res.Body.Close()
-	b, _ := io.ReadAll(res.Body)
-	log.Printf("[DELETE MSG] broadcasterID=%s messageID=%s status=%s body=%s", broadcasterID, messageID, res.Status, string(b))
-	if res.StatusCode != http.StatusNoContent && res.StatusCode/100 != 2 {
-		return fmt.Errorf("helix delete message status %s: %s", res.Status, string(b))
+	log.Printf("[DELETE MSG] broadcasterID=%s messageID=%s status=%d body=%s", broadcasterID, messageID, code, string(b))
+	if code != http.StatusNoContent && code/100 != 2 {
+		return fmt.Errorf("helix delete message status %d: %s", code, string(b))
 	}
 	return nil
 }
@@ -3106,12 +3130,43 @@ func getUserIDFromToken(accessToken string) (string, error) {
 		return "", fmt.Errorf("validate status %s", resp.Status)
 	}
 	var v struct {
-		UserID string `json:"user_id"`
+		UserID string   `json:"user_id"`
+		Login  string   `json:"login"`
+		Scopes []string `json:"scopes"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&v); err != nil {
 		return "", err
 	}
 	return v.UserID, nil
+}
+
+// getUserTokenScopes returns the OAuth scopes granted to the given access token.
+func getUserTokenScopes(accessToken string) ([]string, error) {
+	if accessToken == "" {
+		return nil, fmt.Errorf("empty access token")
+	}
+	req, err := http.NewRequest("GET", "https://id.twitch.tv/oauth2/validate", nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "OAuth "+accessToken)
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("validate status %s", resp.Status)
+	}
+	var v struct {
+		Login  string   `json:"login"`
+		Scopes []string `json:"scopes"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&v); err != nil {
+		return nil, err
+	}
+	return v.Scopes, nil
 }
 
 // getUserProfileImageFetches the profile_image_url for the user associated with
