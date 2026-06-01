@@ -248,6 +248,7 @@ export default function DiscordSettingsPage() {
   const [addManagerInput, setAddManagerInput] = useState("");
   const [addingManager, setAddingManager] = useState(false);
   const [removingManager, setRemovingManager] = useState<string | null>(null);
+  type NotifType = "live" | "mod" | "birthday";
   type Templates = Record<NotifType, string>;
   const defaultTemplates: Templates = {
     live:     "🔴 **$(channel) is now live!**\n🎮 $(game)\n📺 $(title)\nhttps://twitch.tv/$(channel)",
