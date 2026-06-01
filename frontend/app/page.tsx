@@ -190,7 +190,7 @@ export default function HomePage() {
             </p>
             <div className="flex flex-wrap gap-3 mb-10">
               <a href={isDiscordConnected ? "/discord" : "https://discord.com"} className="inline-flex items-center gap-2 rounded-lg bg-[#5865f2] hover:bg-[#4752c4] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-violet-500/30 transition">
-                <img src="/DiscordLogo.png" alt="Discord" className="w-4 h-4 brightness-0 invert" />
+                <img src="/DiscordLogo.png" alt="Discord" className="w-5 h-5 brightness-0 invert" />
                 {isDiscordConnected ? "Discord Integration" : "Add to Discord"}
               </a>
               <a href={isLoggedIn ? "/dashboard" : connectUrl} className="inline-flex items-center gap-2 rounded-lg border border-slate-600 bg-slate-800/60 hover:bg-slate-700/60 px-5 py-3 text-sm font-bold text-white transition">
@@ -228,7 +228,7 @@ export default function HomePage() {
               {/* Discord server mockup — overlaps bottom-right */}
               <div className="absolute -bottom-10 -right-6 w-64 rounded-xl border border-slate-700/60 bg-slate-900/95 shadow-2xl shadow-black/60 overflow-hidden">
                 <div className="flex items-center gap-2 px-4 py-2.5 border-b border-slate-800 bg-[#5865f2]/20">
-                  <img src="/DiscordLogo.png" alt="Discord" className="w-4 h-4 brightness-0 invert" />
+                  <img src="/DiscordLogo.png" alt="Discord" className="w-5 h-5 brightness-0 invert" />
                   <span className="text-xs font-semibold text-slate-300">DISCORD SERVER</span>
                 </div>
                 <div className="px-4 py-3 space-y-2 text-xs">
@@ -413,7 +413,7 @@ export default function HomePage() {
           </div>
           <div className="flex gap-3">
             <a href={isDiscordConnected ? "/discord" : "https://discord.com"} className="inline-flex items-center gap-2 rounded-lg bg-[#5865f2] hover:bg-[#4752c4] px-4 py-2 text-sm font-bold text-white transition">
-              <img src="/DiscordLogo.png" alt="Discord" className="w-4 h-4 brightness-0 invert" />
+              <img src="/DiscordLogo.png" alt="Discord" className="w-5 h-5 brightness-0 invert" />
               {isDiscordConnected ? "Discord Integration" : "Add to Discord"}
             </a>
             <a href={isLoggedIn ? "/dashboard" : connectUrl} className="inline-flex items-center gap-2 rounded-lg border border-slate-600 bg-slate-800 hover:bg-slate-700 px-4 py-2 text-sm font-bold text-white transition">

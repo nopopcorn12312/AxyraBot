@@ -810,7 +810,7 @@ export default function DiscordSettingsPage() {
           {!loadingGuilds && guilds.length === 0 && (
             <div className="w-full flex flex-col rounded-2xl border border-slate-800 bg-slate-900/80 p-8 items-center gap-6 text-center">
               <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[#5865F2]/20 border border-[#5865F2]/40">
-                <img src="/DiscordLogo.png" alt="Discord" className="h-10 w-10 brightness-0 invert" />
+                <img src="/DiscordLogo.png" alt="Discord" className="h-12 w-12 brightness-0 invert" />
               </div>
               <div className="flex flex-col gap-2">
                 <h2 className="text-xl font-semibold text-slate-100">Connect your Discord server</h2>
@@ -824,7 +824,7 @@ export default function DiscordSettingsPage() {
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 rounded-lg bg-[#5865F2] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#4752c4] transition shadow-lg"
               >
-                <img src="/DiscordLogo.png" alt="Discord" className="h-4 w-4 brightness-0 invert" />
+                <img src="/DiscordLogo.png" alt="Discord" className="h-5 w-5 brightness-0 invert" />
                 Add to Discord
               </a>
             </div>
@@ -854,7 +854,7 @@ export default function DiscordSettingsPage() {
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 rounded-lg bg-[#5865F2] px-3 py-2 text-sm font-medium text-white hover:bg-[#4752c4] transition shadow-lg"
                   >
-                    <img src="/DiscordLogo.png" alt="Discord" className="h-4 w-4 shrink-0 brightness-0 invert" />
+                    <img src="/DiscordLogo.png" alt="Discord" className="h-5 w-5 shrink-0 brightness-0 invert" />
                     Add to Discord
                   </a>
 
