@@ -159,7 +159,7 @@ func getChatStats(channel string) (msgsPerMin float64, uniqueChatters int, histo
 
 	history = make([]chatHistoryBucket, 10)
 	for b := 0; b < 10; b++ {
-		bucketEnd := now.Add(time.Duration(-(9-b)) * time.Minute)
+		bucketEnd := now.Add(time.Duration(-(9 - b)) * time.Minute)
 		bucketStart := bucketEnd.Add(-time.Minute)
 		bucketSeen := map[string]struct{}{}
 		msgs := 0
