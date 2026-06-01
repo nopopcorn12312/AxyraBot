@@ -140,8 +140,8 @@ export default function HomePage() {
             <a href="#features" className="hover:text-white transition">Features</a>
             <a href="/dashboard" className="hover:text-white transition">Dashboard</a>
             <a href="/commands" className="hover:text-white transition">Commands</a>
-            <a href="#faq" className="hover:text-white transition">Docs</a>
-            <a href="#faq" className="hover:text-white transition">Support</a>
+            <a href="/api-docs" className="hover:text-white transition">Docs</a>
+            <a href="https://discord.gg/RmtMQaVxEU" target="_blank" rel="noopener noreferrer" className="hover:text-white transition">Support</a>
           </nav>
           <div ref={menuRef} className="relative flex items-center gap-3 flex-shrink-0">
             {isLoggedIn ? (
