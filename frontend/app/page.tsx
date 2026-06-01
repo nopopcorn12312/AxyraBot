@@ -193,19 +193,6 @@ export default function HomePage() {
               </a>
             </div>
             {/* Social proof */}
-            <div className="flex items-center gap-3">
-              <div className="flex -space-x-2">
-                {[0,1,2,3,4].map((i) => (
-                  <div key={i} className="w-8 h-8 rounded-full border-2 border-background bg-slate-700" />
-                ))}
-              </div>
-              <div>
-                <div className="flex items-center gap-1 text-yellow-400 text-xs">
-                  ★★★★★ <span className="text-white font-semibold ml-1">4.9/5</span>
-                </div>
-                <p className="text-xs text-slate-400">Trusted by 10,000+ communities</p>
-              </div>
-            </div>
           </div>
 
           {/* Right: Chat UI mockups */}
@@ -258,12 +245,10 @@ export default function HomePage() {
 
       {/* ── STATS BAR ── */}
       <section className="border-y border-slate-800/60 bg-slate-900/40 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto px-6 py-8 grid grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="max-w-7xl mx-auto px-6 py-8 grid grid-cols-2 gap-8">
           {[
-            { icon: "👥", stat: "10,000+", label: "Communities"        },
-            { icon: "🛡️", stat: "2.5M+",   label: "Members Protected"  },
-            { icon: "💬", stat: "150M+",   label: "Messages Moderated" },
-            { icon: "⚡", stat: "99.9%",   label: "Uptime"             },
+            { icon: "👥", stat: "10,000+", label: "Communities" },
+            { icon: "⚡", stat: "99.9%",   label: "Uptime"      },
           ].map((s) => (
             <div key={s.label} className="flex items-center gap-4">
               <span className="text-2xl">{s.icon}</span>
