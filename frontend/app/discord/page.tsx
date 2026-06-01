@@ -624,12 +624,12 @@ export default function DiscordSettingsPage() {
       const res = await fetch(`${backendUrl}/discord/notification-templates`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ login: channelLogin, templates: { [editingNotif]: editDraft } }),
+        body: JSON.stringify({ login: channelLogin, templates: { [editingNotif as string]: editDraft } }),
       });
       if (!res.ok) {
         setTemplateSaveError("Failed to save.");
       } else {
-        setTemplates((prev) => ({ ...prev, [editingNotif]: editDraft }));
+        setTemplates((prev) => ({ ...prev, [editingNotif as string]: editDraft }));
         setTemplateSaveSuccess(true);
         setTimeout(() => { setTemplateSaveSuccess(false); setEditingNotif(null); }, 1200);
       }
