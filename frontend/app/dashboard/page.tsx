@@ -26,6 +26,31 @@ function formatTimeAgo(isoString: string): string {
   return `${diffD}d ago`;
 }
 
+function Sparkline({ data, color, gradId }: { data: number[]; color: string; gradId: string }) {
+  if (!data.length) return <div className="h-10 w-full" />;
+  const max = Math.max(...data, 1);
+  const w = 200;
+  const h = 40;
+  const pts = data.map((v, i) => [
+    (i / Math.max(data.length - 1, 1)) * w,
+    h - 4 - (v / max) * (h - 8),
+  ] as [number, number]);
+  const linePath = pts.map(([x, y], i) => `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+  const areaPath = `${linePath} L${w},${h} L0,${h} Z`;
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-10" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity={0.35} />
+          <stop offset="100%" stopColor={color} stopOpacity={0} />
+        </linearGradient>
+      </defs>
+      <path d={areaPath} fill={`url(#${gradId})`} />
+      <path d={linePath} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export default function DashboardPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -70,6 +95,11 @@ export default function DashboardPage() {
   const menuRef = useRef<HTMLDivElement | null>(null);
   const hasLoadedActivityRef = useRef(false);
   const pathname = usePathname();
+  const [chatStats, setChatStats] = useState<{
+    msgs_per_min: number;
+    unique_chatters: number;
+    history: { label: string; msgs: number; chatters: number }[];
+  } | null>(null);
 
   // Close category dropdown when clicking outside
   useEffect(() => {
@@ -211,6 +241,21 @@ export default function DashboardPage() {
       cancelled = true;
       window.clearInterval(intervalId);
     };
+  }, [activeChannel]);
+
+  // Poll chat stats (messages per minute + unique chatters) every 30 s
+  useEffect(() => {
+    if (!activeChannel) return;
+    let cancelled = false;
+    const poll = () => {
+      fetch(`${backendUrl}/chat/stats?login=${encodeURIComponent(activeChannel)}`)
+        .then((r) => r.json())
+        .then((d) => { if (!cancelled) setChatStats(d); })
+        .catch(() => {});
+    };
+    poll();
+    const id = window.setInterval(poll, 30000);
+    return () => { cancelled = true; window.clearInterval(id); };
   }, [activeChannel]);
 
   // Determine whether the current channel is already joined
@@ -644,7 +689,8 @@ export default function DashboardPage() {
             )}
           </div>
 
-          <div className="w-full lg:basis-1/3 h-72 rounded-2xl border border-slate-800 bg-slate-900/80 p-6 flex flex-col justify-between">
+          <div className="w-full lg:basis-1/3 flex flex-col gap-3 min-h-0">
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-6 flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-semibold">Stream Details</h2>
@@ -763,6 +809,38 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
+          {/* Chat Stats Charts */}
+          {activeChannel && (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400">Msg / min</h3>
+                  <span className="text-xl font-bold text-accent tabular-nums">
+                    {chatStats ? chatStats.msgs_per_min : "—"}
+                  </span>
+                </div>
+                <Sparkline
+                  data={(chatStats?.history ?? []).map((b) => b.msgs)}
+                  color="#38bdf8"
+                  gradId="grad-msgs"
+                />
+              </div>
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400">Chatters</h3>
+                  <span className="text-xl font-bold text-violet-400 tabular-nums">
+                    {chatStats ? chatStats.unique_chatters : "—"}
+                  </span>
+                </div>
+                <Sparkline
+                  data={(chatStats?.history ?? []).map((b) => b.chatters)}
+                  color="#a78bfa"
+                  gradId="grad-chatters"
+                />
+              </div>
+            </div>
+          )}
+          </div>{/* end right column */}
           </div>{/* end inner flex row */}
         </div>{/* end outer column */}
       </div>

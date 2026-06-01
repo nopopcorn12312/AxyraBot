@@ -465,56 +465,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── PRICING ── */}
-      <section className="py-24 px-6">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-14">
-            <div className="text-xs font-semibold tracking-widest text-accent/70 uppercase mb-3">Simple Pricing</div>
-            <h2 className="text-4xl font-black text-white">Choose the Plan That Fits You</h2>
-          </div>
-          <div className="grid md:grid-cols-2 gap-6">
-            {/* Free */}
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-7">
-              <div className="text-lg font-bold text-white mb-1">Free</div>
-              <div className="text-xs text-slate-400 mb-6">Perfect for growing communities</div>
-              <div className="flex items-end gap-1 mb-7">
-                <span className="text-5xl font-black text-white">$0</span>
-                <span className="text-slate-400 mb-1">/month</span>
-              </div>
-              <ul className="space-y-3 mb-8">
-                {["Core Auto Moderation","Custom Commands","Basic Dashboard","Community Support"].map((f) => (
-                  <li key={f} className="flex items-center gap-2 text-sm text-slate-300">
-                    <span className="text-accent text-xs">✓</span> {f}
-                  </li>
-                ))}
-              </ul>
-              <a href={connectUrl} className="block w-full text-center rounded-lg border border-slate-600 bg-slate-800 hover:bg-slate-700 px-5 py-2.5 text-sm font-semibold text-slate-200 transition">
-                Get Started Free
-              </a>
-            </div>
-            {/* Premium */}
-            <div className="relative rounded-2xl border border-accent/40 bg-gradient-to-b from-accent/10 to-slate-900/60 p-7 shadow-lg shadow-sky-500/10">
-              <div className="absolute top-4 right-4 rounded-full bg-accent px-3 py-1 text-[11px] font-bold text-slate-900">MOST POPULAR</div>
-              <div className="text-lg font-bold text-white mb-1">Premium</div>
-              <div className="text-xs text-slate-400 mb-6">For serious streamers &amp; servers</div>
-              <div className="flex items-end gap-1 mb-7">
-                <span className="text-5xl font-black text-white">$4.99</span>
-                <span className="text-slate-400 mb-1">/month</span>
-              </div>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-3 mb-8">
-                {["Everything in Free","Advanced Auto Moderation","Analytics & Insights","Unlimited Commands","Automation Workflows","Priority Support","Early Access to Features"].map((f) => (
-                  <div key={f} className="flex items-start gap-2 text-sm text-slate-300">
-                    <span className="text-accent text-xs mt-0.5 shrink-0">✓</span> {f}
-                  </div>
-                ))}
-              </div>
-              <a href={connectUrl} className="block w-full text-center rounded-lg bg-accent hover:bg-sky-300 px-5 py-2.5 text-sm font-bold text-slate-900 transition shadow-lg shadow-sky-400/20">
-                Upgrade to Premium
-              </a>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* ── FAQ ── */}
       <section id="faq" className="py-24 px-6 bg-slate-950/50 border-t border-slate-800/60">
@@ -522,7 +472,7 @@ export default function HomePage() {
           <h2 className="text-4xl font-black text-white text-center mb-14">Frequently Asked Questions</h2>
           <div className="grid md:grid-cols-2 gap-x-16">
             <div>
-              <FAQItem question="Is AxyraBot free?" answer="Yes, AxyraBot has a fully featured free tier. Connect your Twitch account, authorize the bot, and you're ready to go — no credit card required." />
+              <FAQItem question="Is AxyraBot free?" answer="Yes, AxyraBot is completely free. Connect your Twitch account, authorize the bot, and you're ready to go — no credit card, no paid plans, ever." />
               <FAQItem question="Does it work on both Twitch and Discord?" answer="Yes. AxyraBot supports both platforms. You can moderate Twitch chat and your Discord server from the same unified dashboard." />
               <FAQItem question="How long does setup take?" answer="Most users are up and running in under five minutes. Just connect your Twitch account, add the bot to your Discord, and configure your settings." />
             </div>

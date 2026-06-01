@@ -66,6 +66,7 @@ func startHTTPServer(clientID, clientSecret string) {
 	}
 
 	mux.HandleFunc("/audit/logs", withCORS(handleAuditLogs))
+	mux.HandleFunc("/chat/stats", withCORS(handleChatStats))
 	mux.HandleFunc("/categories/search", withCORS(handleCategorySearch(clientID)))
 	mux.HandleFunc("/eventsub/callback", handleEventSubWebhook)
 	addr := ":8080"
@@ -1276,6 +1277,27 @@ func handleAuditLogs(w http.ResponseWriter, r *http.Request) {
 		Logs interface{} `json:"logs"`
 	}{Logs: out}); err != nil {
 		log.Println("encode audit logs:", err)
+	}
+}
+
+func handleChatStats(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	login := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("login")))
+	if login == "" {
+		http.Error(w, "missing login", http.StatusBadRequest)
+		return
+	}
+	msgsPerMin, uniqueChatters, history := getChatStats(login)
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
+		"msgs_per_min":    msgsPerMin,
+		"unique_chatters": uniqueChatters,
+		"history":         history,
+	}); err != nil {
+		log.Println("encode chat stats:", err)
 	}
 }
 

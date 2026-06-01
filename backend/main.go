@@ -40,6 +40,10 @@ var (
 	// cached live-status per channel to avoid hitting Helix on every message
 	liveStatusMu    sync.Mutex
 	liveStatusCache = map[string]liveStatusEntry{}
+
+	// per-channel rolling chat event ring for dashboard stats (last 10 min)
+	chatStatsMu sync.Mutex
+	chatEvents  = map[string][]chatEvent{}
 )
 
 // Default template for the live announcement module. This can be overridden
@@ -98,6 +102,80 @@ func renderBirthdayCommandMessage(channelLogin, commandName, defaultText string,
 type liveStatusEntry struct {
 	live      bool
 	checkedAt time.Time
+}
+
+type chatEvent struct {
+	t    time.Time
+	user string
+}
+
+type chatHistoryBucket struct {
+	Label    string `json:"label"`
+	Msgs     int    `json:"msgs"`
+	Chatters int    `json:"chatters"`
+}
+
+func recordChatEvent(channel, user string) {
+	chatStatsMu.Lock()
+	defer chatStatsMu.Unlock()
+	now := time.Now()
+	cutoff := now.Add(-10 * time.Minute)
+	events := chatEvents[channel]
+	i := 0
+	for i < len(events) && events[i].t.Before(cutoff) {
+		i++
+	}
+	events = append(events[i:], chatEvent{t: now, user: user})
+	chatEvents[channel] = events
+}
+
+func getChatStats(channel string) (msgsPerMin float64, uniqueChatters int, history []chatHistoryBucket) {
+	chatStatsMu.Lock()
+	defer chatStatsMu.Unlock()
+	now := time.Now()
+	cutoff := now.Add(-10 * time.Minute)
+	events := chatEvents[channel]
+	i := 0
+	for i < len(events) && events[i].t.Before(cutoff) {
+		i++
+	}
+	events = events[i:]
+	chatEvents[channel] = events
+
+	oneMinAgo := now.Add(-time.Minute)
+	msgsLastMin := 0
+	for _, e := range events {
+		if e.t.After(oneMinAgo) {
+			msgsLastMin++
+		}
+	}
+	msgsPerMin = float64(msgsLastMin)
+
+	seen := map[string]struct{}{}
+	for _, e := range events {
+		seen[e.user] = struct{}{}
+	}
+	uniqueChatters = len(seen)
+
+	history = make([]chatHistoryBucket, 10)
+	for b := 0; b < 10; b++ {
+		bucketEnd := now.Add(time.Duration(-(9-b)) * time.Minute)
+		bucketStart := bucketEnd.Add(-time.Minute)
+		bucketSeen := map[string]struct{}{}
+		msgs := 0
+		for _, e := range events {
+			if e.t.After(bucketStart) && !e.t.After(bucketEnd) {
+				msgs++
+				bucketSeen[e.user] = struct{}{}
+			}
+		}
+		history[b] = chatHistoryBucket{
+			Label:    bucketEnd.Format("15:04"),
+			Msgs:     msgs,
+			Chatters: len(bucketSeen),
+		}
+	}
+	return
 }
 
 func main() {
@@ -440,6 +518,7 @@ func isChatCommand(message, command string) bool {
 func handleChatMessageEvent(channelLogin, chatterLogin, chatterID, messageID, message string) {
 	channelLogin = strings.ToLower(channelLogin)
 	log.Printf("[CHAT] channel=%s user=%s msgID=%s msg=%q", channelLogin, chatterLogin, messageID, message)
+	recordChatEvent(channelLogin, chatterLogin)
 
 	// ── Blocked term enforcement ──────────────────────────────────────────────
 	if db != nil && strings.ToLower(chatterLogin) != strings.ToLower(channelLogin) {
