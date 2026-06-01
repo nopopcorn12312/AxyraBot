@@ -1840,31 +1840,14 @@ func deleteHelixMessage(channelLogin, messageID string) error {
 	if err != nil || access == "" {
 		return fmt.Errorf("no user token for channel %s: %w", channelLogin, err)
 	}
-	// resolve broadcaster ID by login name (more reliable than validate endpoint)
-	httpClient := &http.Client{Timeout: 10 * time.Second}
-	usersReq, err := http.NewRequest("GET", "https://api.twitch.tv/helix/users?login="+url.QueryEscape(channelLogin), nil)
+	// Resolve broadcaster ID directly from the token (same pattern as timeoutUser/banUser).
+	broadcasterID, err := getUserIDFromToken(access)
 	if err != nil {
-		return err
+		return fmt.Errorf("getUserIDFromToken failed for delete: %w", err)
 	}
-	usersReq.Header.Set("Client-ID", clientID)
-	usersReq.Header.Set("Authorization", "Bearer "+access)
-	usersResp, err := httpClient.Do(usersReq)
-	if err != nil {
-		return err
+	if broadcasterID == "" {
+		return fmt.Errorf("empty broadcaster ID for channel %s", channelLogin)
 	}
-	defer usersResp.Body.Close()
-	var usersRes struct {
-		Data []struct {
-			ID string `json:"id"`
-		} `json:"data"`
-	}
-	if err := json.NewDecoder(usersResp.Body).Decode(&usersRes); err != nil {
-		return err
-	}
-	if len(usersRes.Data) == 0 {
-		return fmt.Errorf("broadcaster not found: %s", channelLogin)
-	}
-	broadcasterID := usersRes.Data[0].ID
 	endpoint := fmt.Sprintf(
 		"https://api.twitch.tv/helix/chat/messages?broadcaster_id=%s&moderator_id=%s&message_id=%s",
 		url.QueryEscape(broadcasterID), url.QueryEscape(broadcasterID), url.QueryEscape(messageID),
