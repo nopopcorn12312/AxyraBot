@@ -293,11 +293,6 @@ func main() {
 			log.Println("failed listing subscriptions:", err)
 		}
 
-		// Remove duplicate webhook subscriptions that accumulate across restarts.
-		// Without this, every restart creates another subscription and the same
-		// chat message fires the callback N times, causing delete 404s.
-		deduplicateWebhookSubscriptions(token, clientID)
-
 		// attempt to register EventSub subscriptions for the configured channel
 		go registerEventSubSubscriptions(token, clientID, channel, tokensPath)
 	}
@@ -3557,9 +3552,24 @@ func registerEventSubSubscriptions(appToken, clientID, channel, tokensPath strin
 	// Using webhook + app token is what qualifies the bot for the "Chat Bots"
 	// section in the Users in Chat viewer list.
 	if webhookSecret != "" && callbackURL != "" && appToken != "" && botID != "" {
-		// Deduplicate first: previous runs leave behind stale subscriptions that
-		// cause the same message to be delivered (and deletion attempted) N times.
-		deduplicateWebhookSubscriptions(appToken, clientID)
+		// Delete ALL existing channel.chat.message webhook subscriptions first.
+		// Every restart would otherwise add another copy, causing the same message
+		// to be delivered N times and making every delete attempt after the first
+		// return 404 (message already gone). After pruning, create exactly one per
+		// channel so the state is always deterministic.
+		if existing, err := getEventSubSubscriptions(appToken, clientID); err != nil {
+			log.Println("[EventSub] failed to list subs before registration:", err)
+		} else {
+			for _, s := range existing {
+				if s.Type == "channel.chat.message" && s.Transport.Method == "webhook" {
+					log.Printf("[EventSub] deleting old webhook sub id=%s status=%s", s.ID, s.Status)
+					if err := deleteEventSubSubscription(appToken, clientID, s.ID); err != nil {
+						log.Printf("[EventSub] failed to delete sub %s: %v", s.ID, err)
+					}
+					time.Sleep(100 * time.Millisecond)
+				}
+			}
+		}
 		for _, ch := range channels {
 			broadcasterID, err := getUserID(ch, appToken, clientID)
 			if err != nil {
