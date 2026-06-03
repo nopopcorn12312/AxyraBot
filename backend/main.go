@@ -531,12 +531,12 @@ func handleChatMessageEvent(channelLogin, chatterLogin, chatterID, messageID, me
 				if strings.Contains(lowerMsg, strings.ToLower(bt.Term)) {
 					log.Printf("[BLOCKED TERM] channel=%s user=%s term=%q action=%s messageID=%q", channelLogin, chatterLogin, bt.Term, bt.Action, messageID)
 					switch bt.Action {
-				case "delete":
-					if err := deleteHelixMessage(channelLogin, messageID); err != nil {
-						log.Println("blocked term delete message error:", err)
-					} else {
-						go PostDiscordModAlert(channelLogin, "AxyraBot's Moderation Settings", chatterLogin, "delete", fmt.Sprintf("Blocked term: %s", bt.Term))
-					}
+					case "delete":
+						if err := deleteHelixMessage(channelLogin, messageID); err != nil {
+							log.Println("blocked term delete message error:", err)
+						} else {
+							go PostDiscordModAlert(channelLogin, "AxyraBot's Moderation Settings", chatterLogin, "delete", fmt.Sprintf("Blocked term: %s", bt.Term))
+						}
 					case "timeout":
 						secs := bt.TimeoutSeconds
 						if secs <= 0 {
@@ -1837,11 +1837,9 @@ func deleteHelixMessage(channelLogin, messageID string) error {
 	if broadcasterID == "" {
 		return fmt.Errorf("empty broadcaster ID for channel %s", channelLogin)
 	}
-
-	// Log token scopes to help diagnose permission issues.
-	if scopes, err := getUserTokenScopes(access); err == nil {
-		log.Printf("[DELETE MSG] token scopes for %s: %v", channelLogin, scopes)
-	}
+	// ensureValidUserToken already logged scopes via [TOKEN] prefix.
+	// Do NOT call validateTokenFull again here — that double-validate causes
+	// rate-limit failures on /oauth2/validate.
 
 	doDelete := func() (int, []byte, error) {
 		endpoint := fmt.Sprintf(
@@ -1869,10 +1867,10 @@ func deleteHelixMessage(channelLogin, messageID string) error {
 		return err
 	}
 	// Twitch can return 404 briefly after a message arrives via EventSub
-	// before its moderation index is updated. Retry once after a short delay.
+	// before its moderation index is updated. Retry once after a longer delay.
 	if code == http.StatusNotFound {
-		log.Printf("[DELETE MSG] got 404 on first attempt for msgID=%s, retrying in 500ms", messageID)
-		time.Sleep(500 * time.Millisecond)
+		log.Printf("[DELETE MSG] got 404 on first attempt for msgID=%s, retrying in 2s", messageID)
+		time.Sleep(2 * time.Second)
 		code, b, err = doDelete()
 		if err != nil {
 			return err
@@ -3107,6 +3105,38 @@ func getLoginFromToken(accessToken string) (string, error) {
 		return "", err
 	}
 	return v.Login, nil
+}
+
+// validateTokenFull calls /oauth2/validate once and returns both the user_id
+// and the granted scopes. Use this wherever you need both to avoid a second
+// round-trip.
+func validateTokenFull(accessToken string) (userID string, scopes []string, err error) {
+	if accessToken == "" {
+		return "", nil, fmt.Errorf("empty access token")
+	}
+	req, err := http.NewRequest("GET", "https://id.twitch.tv/oauth2/validate", nil)
+	if err != nil {
+		return "", nil, err
+	}
+	req.Header.Set("Authorization", "OAuth "+accessToken)
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return "", nil, fmt.Errorf("validate status %s", resp.Status)
+	}
+	var v struct {
+		UserID string   `json:"user_id"`
+		Login  string   `json:"login"`
+		Scopes []string `json:"scopes"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&v); err != nil {
+		return "", nil, err
+	}
+	return v.UserID, v.Scopes, nil
 }
 
 // getUserIDFromToken calls /validate and returns the user_id associated with

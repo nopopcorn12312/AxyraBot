@@ -1515,8 +1515,9 @@ func ensureValidUserToken(login string) (string, string, error) {
 		}
 		return "", "", err
 	}
-	userID, err := getUserIDFromToken(access)
+	userID, scopes, err := validateTokenFull(access)
 	if err == nil && userID != "" {
+		log.Printf("[TOKEN] %s scopes: %v", login, scopes)
 		return userID, access, nil
 	}
 
@@ -1552,13 +1553,14 @@ func ensureValidUserToken(login string) (string, string, error) {
 	if err := SaveUserTokens(login, tr.AccessToken, tr.RefreshToken); err != nil {
 		log.Println("failed to save refreshed user tokens:", err)
 	}
-	userID, err = getUserIDFromToken(tr.AccessToken)
+	userID, scopes, err = validateTokenFull(tr.AccessToken)
 	if err != nil || userID == "" {
 		if err == nil {
 			return "", "", fmt.Errorf("validate after refresh returned empty user id")
 		}
 		return "", "", err
 	}
+	log.Printf("[TOKEN] %s scopes after refresh: %v", login, scopes)
 	return userID, tr.AccessToken, nil
 }
 
