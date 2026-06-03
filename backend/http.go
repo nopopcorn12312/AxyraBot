@@ -177,6 +177,8 @@ func startHTTPServer(clientID, clientSecret string) {
 	mux.HandleFunc("/discord/guild-modules", withCORS(handleDiscordGuildModules))
 	mux.HandleFunc("/discord/command-settings", withCORS(handleDiscordCommandSettings))
 	mux.HandleFunc("/discord/guild-managers", withCORS(handleDiscordGuildManagers))
+	mux.HandleFunc("/discord/tickets/config", withCORS(handleDiscordTicketConfig))
+	mux.HandleFunc("/discord/tickets/send-panel", withCORS(handleDiscordSendTicketPanel))
 
 	// Optional Nightbot OAuth integration for importing commands without
 	// copy/paste. These handlers are only registered when all required
@@ -2085,6 +2087,21 @@ func handleDiscordChannels(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "missing guild_id", http.StatusBadRequest)
 		return
 	}
+	// all=true returns every channel type including categories (type=4)
+	if r.URL.Query().Get("all") == "true" {
+		channels, err := GetGuildAllChannels(guildID)
+		if err != nil {
+			log.Println("get guild all channels:", err)
+			http.Error(w, "failed to fetch channels", http.StatusInternalServerError)
+			return
+		}
+		if channels == nil {
+			channels = []GuildChannelWithType{}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{"channels": channels})
+		return
+	}
 	channels, err := GetGuildTextChannels(guildID)
 	if err != nil {
 		log.Println("get guild channels:", err)
@@ -2987,4 +3004,136 @@ func handleGiveawayRemoveEntry(w http.ResponseWriter, r *http.Request) {
 	delete(g.Entries, userLogin)
 	g.mu.Unlock()
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// ---------------------------------------------------------------------------
+// Discord Ticket HTTP handlers
+// ---------------------------------------------------------------------------
+
+// handleDiscordTicketConfig handles GET (fetch config) and POST (save config).
+func handleDiscordTicketConfig(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		guildID := strings.TrimSpace(r.URL.Query().Get("guild_id"))
+		if guildID == "" {
+			http.Error(w, "missing guild_id", http.StatusBadRequest)
+			return
+		}
+		cfg, err := GetTicketConfig(guildID)
+		if err != nil {
+			log.Println("get ticket config:", err)
+			http.Error(w, "db error", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{
+			"guild_id":          cfg.GuildID,
+			"panel_channel_id":  cfg.PanelChannelID,
+			"log_channel_id":    cfg.LogChannelID,
+			"category_id":       cfg.CategoryID,
+			"support_role_ids":  cfg.SupportRoleIDs,
+			"panel_message_id":  cfg.PanelMessageID,
+			"panel_title":       cfg.PanelTitle,
+			"panel_body":        cfg.PanelBody,
+			"button_label":      cfg.ButtonLabel,
+		})
+
+	case http.MethodPost:
+		var body struct {
+			GuildID        string   `json:"guild_id"`
+			PanelChannelID string   `json:"panel_channel_id"`
+			LogChannelID   string   `json:"log_channel_id"`
+			CategoryID     string   `json:"category_id"`
+			SupportRoleIDs []string `json:"support_role_ids"`
+			PanelTitle     string   `json:"panel_title"`
+			PanelBody      string   `json:"panel_body"`
+			ButtonLabel    string   `json:"button_label"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "bad json", http.StatusBadRequest)
+			return
+		}
+		if body.GuildID == "" {
+			http.Error(w, "missing guild_id", http.StatusBadRequest)
+			return
+		}
+		if body.SupportRoleIDs == nil {
+			body.SupportRoleIDs = []string{}
+		}
+		if body.PanelTitle == "" {
+			body.PanelTitle = "Support Tickets"
+		}
+		if body.PanelBody == "" {
+			body.PanelBody = "Click the button below to open a support ticket."
+		}
+		if body.ButtonLabel == "" {
+			body.ButtonLabel = "🎫 Open Ticket"
+		}
+		cfg := &DiscordTicketConfig{
+			GuildID:        body.GuildID,
+			PanelChannelID: body.PanelChannelID,
+			LogChannelID:   body.LogChannelID,
+			CategoryID:     body.CategoryID,
+			SupportRoleIDs: body.SupportRoleIDs,
+			PanelTitle:     body.PanelTitle,
+			PanelBody:      body.PanelBody,
+			ButtonLabel:    body.ButtonLabel,
+		}
+		// Preserve the existing panel_message_id (don't overwrite it from the form).
+		if existing, err := GetTicketConfig(body.GuildID); err == nil {
+			cfg.PanelMessageID = existing.PanelMessageID
+		}
+		if err := SaveTicketConfig(cfg); err != nil {
+			log.Println("save ticket config:", err)
+			http.Error(w, "db error", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "ok")
+
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
+}
+
+// handleDiscordSendTicketPanel sends the ticket panel embed+button to the
+// configured channel, or re-sends it if the channel/message changed.
+func handleDiscordSendTicketPanel(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	var body struct {
+		GuildID string `json:"guild_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "bad json", http.StatusBadRequest)
+		return
+	}
+	if body.GuildID == "" {
+		http.Error(w, "missing guild_id", http.StatusBadRequest)
+		return
+	}
+	if discordSession == nil {
+		http.Error(w, "discord bot not connected", http.StatusServiceUnavailable)
+		return
+	}
+	cfg, err := GetTicketConfig(body.GuildID)
+	if err != nil {
+		log.Println("send ticket panel: get config:", err)
+		http.Error(w, "db error", http.StatusInternalServerError)
+		return
+	}
+	if cfg.PanelChannelID == "" {
+		http.Error(w, "panel_channel_id not configured", http.StatusBadRequest)
+		return
+	}
+	msgID, err := sendTicketPanel(discordSession, cfg)
+	if err != nil {
+		log.Println("send ticket panel:", err)
+		http.Error(w, "failed to send panel: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{"panel_message_id": msgID})
 }

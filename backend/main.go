@@ -249,6 +249,9 @@ func main() {
 				if err := EnsureBlockedTermsTable(); err != nil {
 					log.Println("failed to ensure blocked_terms table:", err)
 				}
+				if err := EnsureTicketTables(); err != nil {
+					log.Println("failed to ensure ticket tables:", err)
+				}
 				// start postgres notifier for dynamic joins
 				if err := StartNotifier(dbURL); err != nil {
 					log.Println("failed to start notifier:", err)

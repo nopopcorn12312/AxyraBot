@@ -679,7 +679,18 @@ func registerSlashCommands(s *discordgo.Session, appID, guildID string) {
 }
 
 func discordInteractionHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	if i.Type != discordgo.InteractionApplicationCommand {
+	switch i.Type {
+	case discordgo.InteractionMessageComponent:
+		switch i.MessageComponentData().CustomID {
+		case "ticket_create":
+			handleTicketCreate(s, i)
+		case "ticket_close":
+			handleTicketClose(s, i)
+		}
+		return
+	case discordgo.InteractionApplicationCommand:
+		// handled below
+	default:
 		return
 	}
 	switch i.ApplicationCommandData().Name {
@@ -1459,6 +1470,30 @@ func GetGuildTextChannels(guildID string) ([]GuildChannel, error) {
 		if ch.Type == discordgo.ChannelTypeGuildText {
 			out = append(out, GuildChannel{ID: ch.ID, Name: ch.Name})
 		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	return out, nil
+}
+
+// GuildChannelWithType is like GuildChannel but also includes the Discord channel type.
+type GuildChannelWithType struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Type int    `json:"type"`
+}
+
+// GetGuildAllChannels returns all channels (text + categories + others) for a guild.
+func GetGuildAllChannels(guildID string) ([]GuildChannelWithType, error) {
+	if discordSession == nil {
+		return nil, fmt.Errorf("discord not initialized")
+	}
+	channels, err := discordSession.GuildChannels(guildID)
+	if err != nil {
+		return nil, err
+	}
+	var out []GuildChannelWithType
+	for _, ch := range channels {
+		out = append(out, GuildChannelWithType{ID: ch.ID, Name: ch.Name, Type: int(ch.Type)})
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
 	return out, nil

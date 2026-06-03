@@ -221,6 +221,25 @@ export default function DiscordSettingsPage() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [serverDropdownOpen, setServerDropdownOpen] = useState(false);
 
+  // Ticket system state
+  const [ticketPanelChannelId, setTicketPanelChannelId] = useState("");
+  const [ticketLogChannelId, setTicketLogChannelId] = useState("");
+  const [ticketCategoryId, setTicketCategoryId] = useState("");
+  const [ticketSupportRoleIds, setTicketSupportRoleIds] = useState<string[]>([]);
+  const [ticketPanelTitle, setTicketPanelTitle] = useState("Support Tickets");
+  const [ticketPanelBody, setTicketPanelBody] = useState("Click the button below to open a support ticket.");
+  const [ticketButtonLabel, setTicketButtonLabel] = useState("🎫 Open Ticket");
+  const [ticketPanelMessageId, setTicketPanelMessageId] = useState("");
+  const [loadingTicketConfig, setLoadingTicketConfig] = useState(false);
+  const [savingTicketConfig, setSavingTicketConfig] = useState(false);
+  const [ticketSaveSuccess, setTicketSaveSuccess] = useState(false);
+  const [ticketSaveError, setTicketSaveError] = useState<string | null>(null);
+  const [sendingPanel, setSendingPanel] = useState(false);
+  const [sendPanelSuccess, setSendPanelSuccess] = useState(false);
+  const [sendPanelError, setSendPanelError] = useState<string | null>(null);
+  type GuildCategory = { id: string; name: string };
+  const [guildCategories, setGuildCategories] = useState<GuildCategory[]>([]);
+
   // Role mapping state
   type GuildRole = { id: string; name: string; color: number };
   const [guildRoles, setGuildRoles] = useState<GuildRole[]>([]);
@@ -443,6 +462,38 @@ export default function DiscordSettingsPage() {
       .finally(() => setLoadingManagers(false));
   }, [selectedGuildId, isEditor]);
 
+  // Load ticket config when guild changes
+  useEffect(() => {
+    if (!selectedGuildId) return;
+    setLoadingTicketConfig(true);
+    setTicketPanelMessageId("");
+    fetch(`${backendUrl}/discord/tickets/config?guild_id=${encodeURIComponent(selectedGuildId)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data) {
+          setTicketPanelChannelId(data.panel_channel_id ?? "");
+          setTicketLogChannelId(data.log_channel_id ?? "");
+          setTicketCategoryId(data.category_id ?? "");
+          setTicketSupportRoleIds(data.support_role_ids ?? []);
+          setTicketPanelTitle(data.panel_title ?? "Support Tickets");
+          setTicketPanelBody(data.panel_body ?? "Click the button below to open a support ticket.");
+          setTicketButtonLabel(data.button_label ?? "🎫 Open Ticket");
+          setTicketPanelMessageId(data.panel_message_id ?? "");
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingTicketConfig(false));
+  }, [selectedGuildId]);
+
+  // Fetch guild categories (type=4) for ticket category selector
+  useEffect(() => {
+    if (!selectedGuildId) { setGuildCategories([]); return; }
+    fetch(`${backendUrl}/discord/channels?guild_id=${encodeURIComponent(selectedGuildId)}&all=true`)
+      .then((r) => (r.ok ? r.json() : { channels: [] }))
+      .then((data) => setGuildCategories((data.channels ?? []).filter((c: { id: string; name: string; type?: number }) => c.type === 4)))
+      .catch(() => setGuildCategories([]));
+  }, [selectedGuildId]);
+
   useEffect(() => {
     if (!menuOpen) return;
     function handleClickOutside(e: MouseEvent) {
@@ -521,6 +572,66 @@ export default function DiscordSettingsPage() {
       setRoleSaveError("Network error. Please try again.");
     } finally {
       setSavingRoles(false);
+    }
+  };
+
+  const handleSaveTicketConfig = async () => {
+    if (!selectedGuildId) return;
+    setSavingTicketConfig(true);
+    setTicketSaveError(null);
+    setTicketSaveSuccess(false);
+    try {
+      const res = await fetch(`${backendUrl}/discord/tickets/config`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          guild_id: selectedGuildId,
+          panel_channel_id: ticketPanelChannelId,
+          log_channel_id: ticketLogChannelId,
+          category_id: ticketCategoryId,
+          support_role_ids: ticketSupportRoleIds,
+          panel_title: ticketPanelTitle,
+          panel_body: ticketPanelBody,
+          button_label: ticketButtonLabel,
+        }),
+      });
+      if (!res.ok) {
+        setTicketSaveError("Failed to save ticket config.");
+      } else {
+        setTicketSaveSuccess(true);
+        setTimeout(() => setTicketSaveSuccess(false), 3000);
+      }
+    } catch {
+      setTicketSaveError("Network error. Please try again.");
+    } finally {
+      setSavingTicketConfig(false);
+    }
+  };
+
+  const handleSendTicketPanel = async () => {
+    if (!selectedGuildId) return;
+    setSendingPanel(true);
+    setSendPanelError(null);
+    setSendPanelSuccess(false);
+    try {
+      const res = await fetch(`${backendUrl}/discord/tickets/send-panel`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ guild_id: selectedGuildId }),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        setSendPanelError(text || "Failed to send panel.");
+      } else {
+        const data = await res.json();
+        if (data.panel_message_id) setTicketPanelMessageId(data.panel_message_id);
+        setSendPanelSuccess(true);
+        setTimeout(() => setSendPanelSuccess(false), 4000);
+      }
+    } catch {
+      setSendPanelError("Network error. Please try again.");
+    } finally {
+      setSendingPanel(false);
     }
   };
 
@@ -1210,6 +1321,168 @@ export default function DiscordSettingsPage() {
                             {addingManager ? "Adding…" : "Add"}
                           </button>
                         </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ── Ticket System ── */}
+                {selectedGuildId && (
+                  <div className="border-t border-slate-800 pt-5 flex flex-col gap-4">
+                    <div className="flex flex-col gap-1">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">🎫 Ticket System</p>
+                      <p className="text-xs text-slate-500">
+                        Configure the support ticket panel. Users click a button to open a private channel with selected support roles.
+                      </p>
+                    </div>
+
+                    {loadingTicketConfig ? (
+                      <div className="flex items-center gap-3 py-2">
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-600 border-t-accent" />
+                        <span className="text-sm text-slate-500">Loading ticket config…</span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-5">
+                        {/* Panel channel */}
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-xs font-semibold uppercase tracking-wide text-slate-300">Panel Channel</label>
+                          <p className="text-xs text-slate-500">The channel where the ticket open button will be posted.</p>
+                          <select
+                            value={ticketPanelChannelId}
+                            onChange={(e) => setTicketPanelChannelId(e.target.value)}
+                            className={channelSelectClass}
+                          >
+                            <option value="">— Select a channel —</option>
+                            {guildChannels.map((c) => <option key={c.id} value={c.id}>#{c.name}</option>)}
+                          </select>
+                        </div>
+
+                        {/* Log channel */}
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-xs font-semibold uppercase tracking-wide text-slate-300">Log Channel <span className="font-normal text-slate-500">(optional)</span></label>
+                          <p className="text-xs text-slate-500">Ticket open/close events will be logged here.</p>
+                          <select
+                            value={ticketLogChannelId}
+                            onChange={(e) => setTicketLogChannelId(e.target.value)}
+                            className={channelSelectClass}
+                          >
+                            <option value="">Disabled</option>
+                            {guildChannels.map((c) => <option key={c.id} value={c.id}>#{c.name}</option>)}
+                          </select>
+                        </div>
+
+                        {/* Category */}
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-xs font-semibold uppercase tracking-wide text-slate-300">Category <span className="font-normal text-slate-500">(optional)</span></label>
+                          <p className="text-xs text-slate-500">Ticket channels will be created inside this category.</p>
+                          <select
+                            value={ticketCategoryId}
+                            onChange={(e) => setTicketCategoryId(e.target.value)}
+                            className={channelSelectClass}
+                          >
+                            <option value="">No category</option>
+                            {guildCategories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                          </select>
+                        </div>
+
+                        {/* Support roles */}
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-xs font-semibold uppercase tracking-wide text-slate-300">Support Roles</label>
+                          <p className="text-xs text-slate-500">These roles can see and respond to every ticket channel.</p>
+                          {loadingRoles ? (
+                            <span className="text-xs text-slate-500">Loading roles…</span>
+                          ) : (
+                            <div className="flex flex-wrap gap-2 max-w-xl">
+                              {guildRoles.filter((r) => r.name !== "@everyone").map((r) => {
+                                const hex = r.color !== 0 ? `#${r.color.toString(16).padStart(6, "0")}` : undefined;
+                                const selected = ticketSupportRoleIds.includes(r.id);
+                                return (
+                                  <button
+                                    key={r.id}
+                                    type="button"
+                                    onClick={() => setTicketSupportRoleIds((prev) =>
+                                      selected ? prev.filter((id) => id !== r.id) : [...prev, r.id]
+                                    )}
+                                    style={selected && hex ? { borderColor: hex, color: hex } : undefined}
+                                    className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
+                                      selected
+                                        ? "border-accent bg-accent/10 text-accent"
+                                        : "border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-500 hover:text-slate-300"
+                                    }`}
+                                  >
+                                    {selected ? "✓ " : ""}{r.name}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Panel title / body / button label */}
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                          <div className="flex flex-col gap-1.5">
+                            <label className="text-xs font-semibold uppercase tracking-wide text-slate-300">Panel Title</label>
+                            <input
+                              type="text"
+                              value={ticketPanelTitle}
+                              onChange={(e) => setTicketPanelTitle(e.target.value)}
+                              placeholder="Support Tickets"
+                              className="rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-accent/60"
+                            />
+                          </div>
+                          <div className="flex flex-col gap-1.5">
+                            <label className="text-xs font-semibold uppercase tracking-wide text-slate-300">Button Label</label>
+                            <input
+                              type="text"
+                              value={ticketButtonLabel}
+                              onChange={(e) => setTicketButtonLabel(e.target.value)}
+                              placeholder="🎫 Open Ticket"
+                              className="rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-accent/60"
+                            />
+                          </div>
+                          <div className="sm:col-span-2 flex flex-col gap-1.5">
+                            <label className="text-xs font-semibold uppercase tracking-wide text-slate-300">Panel Message</label>
+                            <textarea
+                              value={ticketPanelBody}
+                              onChange={(e) => setTicketPanelBody(e.target.value)}
+                              rows={2}
+                              placeholder="Click the button below to open a support ticket."
+                              className="rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-accent/60 resize-none"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Action buttons */}
+                        <div className="flex flex-wrap items-center gap-3 pt-1">
+                          <button
+                            type="button"
+                            onClick={handleSaveTicketConfig}
+                            disabled={savingTicketConfig || !selectedGuildId}
+                            className="rounded-lg bg-accent px-5 py-2 text-sm font-medium text-white hover:bg-accent/90 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            {savingTicketConfig ? "Saving…" : "Save Config"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleSendTicketPanel}
+                            disabled={sendingPanel || !ticketPanelChannelId || !selectedGuildId}
+                            className="rounded-lg border border-accent/40 bg-accent/10 px-5 py-2 text-sm font-medium text-accent hover:bg-accent/20 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            {sendingPanel ? "Sending…" : "Send Panel"}
+                          </button>
+                          {ticketSaveSuccess && <span className="text-sm text-emerald-400">✓ Config saved!</span>}
+                          {ticketSaveError && <span className="text-sm text-red-400">{ticketSaveError}</span>}
+                          {sendPanelSuccess && <span className="text-sm text-emerald-400">✓ Panel sent!</span>}
+                          {sendPanelError && <span className="text-sm text-red-400">{sendPanelError}</span>}
+                        </div>
+
+                        {/* Panel message link */}
+                        {ticketPanelMessageId && ticketPanelChannelId && (
+                          <p className="text-xs text-slate-500">
+                            Active panel message ID: <span className="font-mono text-slate-400">{ticketPanelMessageId}</span>
+                            {" "}&mdash; sending a new panel posts a fresh message to the channel.
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>

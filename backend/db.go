@@ -2527,3 +2527,188 @@ func DeleteSpamFilter(broadcasterLogin string, id int64) error {
 	_, err := db.Exec(`DELETE FROM spam_filters WHERE broadcaster_login=$1 AND id=$2`, broadcasterLogin, id)
 	return err
 }
+
+// ─── Discord Ticket System ────────────────────────────────────────────────────
+
+// DiscordTicketConfig stores per-guild ticket panel settings.
+type DiscordTicketConfig struct {
+	GuildID         string
+	PanelChannelID  string   // channel where the ticket open button is posted
+	LogChannelID    string   // optional channel to log ticket open/close
+	CategoryID      string   // optional category to create ticket channels under
+	SupportRoleIDs  []string // roles that can see and respond to tickets
+	PanelMessageID  string   // ID of the bot's panel message (for re-use)
+	PanelTitle      string
+	PanelBody       string
+	ButtonLabel     string
+}
+
+// EnsureTicketTables creates tables if they don't exist.
+func EnsureTicketTables() error {
+	if db == nil {
+		return nil
+	}
+	_, err := db.Exec(`
+	CREATE TABLE IF NOT EXISTS discord_ticket_config (
+		guild_id          TEXT PRIMARY KEY,
+		panel_channel_id  TEXT NOT NULL DEFAULT '',
+		log_channel_id    TEXT NOT NULL DEFAULT '',
+		category_id       TEXT NOT NULL DEFAULT '',
+		support_role_ids  TEXT NOT NULL DEFAULT '',
+		panel_message_id  TEXT NOT NULL DEFAULT '',
+		panel_title       TEXT NOT NULL DEFAULT 'Support Tickets',
+		panel_body        TEXT NOT NULL DEFAULT 'Click the button below to open a support ticket.',
+		button_label      TEXT NOT NULL DEFAULT '🎫 Open Ticket'
+	);
+	CREATE TABLE IF NOT EXISTS discord_tickets (
+		id             BIGSERIAL PRIMARY KEY,
+		guild_id       TEXT        NOT NULL,
+		channel_id     TEXT        NOT NULL,
+		user_id        TEXT        NOT NULL,
+		username       TEXT        NOT NULL,
+		ticket_number  INT         NOT NULL,
+		status         TEXT        NOT NULL DEFAULT 'open',
+		opened_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+		closed_at      TIMESTAMPTZ,
+		closed_by_id   TEXT        NOT NULL DEFAULT '',
+		closed_by_name TEXT        NOT NULL DEFAULT ''
+	);
+	CREATE INDEX IF NOT EXISTS discord_tickets_guild_idx ON discord_tickets(guild_id);
+	CREATE INDEX IF NOT EXISTS discord_tickets_channel_idx ON discord_tickets(channel_id);
+	`)
+	return err
+}
+
+// GetTicketConfig returns the ticket config for a guild, or a zeroed struct if none.
+func GetTicketConfig(guildID string) (*DiscordTicketConfig, error) {
+	if db == nil {
+		return &DiscordTicketConfig{GuildID: guildID}, nil
+	}
+	var c DiscordTicketConfig
+	var rolesCSV string
+	err := db.QueryRow(`
+		SELECT guild_id, panel_channel_id, log_channel_id, category_id,
+		       support_role_ids, panel_message_id, panel_title, panel_body, button_label
+		FROM discord_ticket_config WHERE guild_id=$1
+	`, guildID).Scan(&c.GuildID, &c.PanelChannelID, &c.LogChannelID, &c.CategoryID,
+		&rolesCSV, &c.PanelMessageID, &c.PanelTitle, &c.PanelBody, &c.ButtonLabel)
+	if err == sql.ErrNoRows {
+		return &DiscordTicketConfig{GuildID: guildID, PanelTitle: "Support Tickets",
+			PanelBody: "Click the button below to open a support ticket.", ButtonLabel: "🎫 Open Ticket"}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if rolesCSV != "" {
+		c.SupportRoleIDs = strings.Split(rolesCSV, ",")
+	}
+	return &c, nil
+}
+
+// SaveTicketConfig upserts the ticket configuration for a guild.
+func SaveTicketConfig(c *DiscordTicketConfig) error {
+	if db == nil {
+		return fmt.Errorf("db not initialized")
+	}
+	rolesCSV := strings.Join(c.SupportRoleIDs, ",")
+	_, err := db.Exec(`
+		INSERT INTO discord_ticket_config
+		  (guild_id, panel_channel_id, log_channel_id, category_id, support_role_ids,
+		   panel_message_id, panel_title, panel_body, button_label)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+		ON CONFLICT (guild_id) DO UPDATE SET
+		  panel_channel_id = EXCLUDED.panel_channel_id,
+		  log_channel_id   = EXCLUDED.log_channel_id,
+		  category_id      = EXCLUDED.category_id,
+		  support_role_ids = EXCLUDED.support_role_ids,
+		  panel_message_id = EXCLUDED.panel_message_id,
+		  panel_title      = EXCLUDED.panel_title,
+		  panel_body       = EXCLUDED.panel_body,
+		  button_label     = EXCLUDED.button_label
+	`, c.GuildID, c.PanelChannelID, c.LogChannelID, c.CategoryID, rolesCSV,
+		c.PanelMessageID, c.PanelTitle, c.PanelBody, c.ButtonLabel)
+	return err
+}
+
+// UpdateTicketPanelMessageID persists only the panel message ID after posting the panel.
+func UpdateTicketPanelMessageID(guildID, messageID string) error {
+	if db == nil {
+		return nil
+	}
+	_, err := db.Exec(`UPDATE discord_ticket_config SET panel_message_id=$1 WHERE guild_id=$2`, messageID, guildID)
+	return err
+}
+
+// NextTicketNumber returns the next sequential ticket number for a guild.
+func NextTicketNumber(guildID string) (int, error) {
+	if db == nil {
+		return 1, nil
+	}
+	var n int
+	err := db.QueryRow(`SELECT COALESCE(MAX(ticket_number), 0)+1 FROM discord_tickets WHERE guild_id=$1`, guildID).Scan(&n)
+	return n, err
+}
+
+// CreateTicketRecord inserts a new ticket row.
+func CreateTicketRecord(guildID, channelID, userID, username string, ticketNum int) error {
+	if db == nil {
+		return nil
+	}
+	_, err := db.Exec(`
+		INSERT INTO discord_tickets (guild_id, channel_id, user_id, username, ticket_number)
+		VALUES ($1,$2,$3,$4,$5)
+	`, guildID, channelID, userID, username, ticketNum)
+	return err
+}
+
+// GetTicketByChannel returns the ticket record for a Discord channel, or nil if none.
+func GetTicketByChannel(channelID string) (*struct {
+	ID           int64
+	GuildID      string
+	UserID       string
+	Username     string
+	TicketNumber int
+	Status       string
+}, error) {
+	if db == nil {
+		return nil, nil
+	}
+	row := &struct {
+		ID           int64
+		GuildID      string
+		UserID       string
+		Username     string
+		TicketNumber int
+		Status       string
+	}{}
+	err := db.QueryRow(`
+		SELECT id, guild_id, user_id, username, ticket_number, status
+		FROM discord_tickets WHERE channel_id=$1
+	`, channelID).Scan(&row.ID, &row.GuildID, &row.UserID, &row.Username, &row.TicketNumber, &row.Status)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	return row, err
+}
+
+// CloseTicketRecord marks a ticket as closed.
+func CloseTicketRecord(channelID, closedByID, closedByName string) error {
+	if db == nil {
+		return nil
+	}
+	_, err := db.Exec(`
+		UPDATE discord_tickets SET status='closed', closed_at=now(), closed_by_id=$1, closed_by_name=$2
+		WHERE channel_id=$3
+	`, closedByID, closedByName, channelID)
+	return err
+}
+
+// HasOpenTicket returns true if the user already has an open ticket in the guild.
+func HasOpenTicket(guildID, userID string) (bool, error) {
+	if db == nil {
+		return false, nil
+	}
+	var count int
+	err := db.QueryRow(`SELECT COUNT(*) FROM discord_tickets WHERE guild_id=$1 AND user_id=$2 AND status='open'`, guildID, userID).Scan(&count)
+	return count > 0, err
+}

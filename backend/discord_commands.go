@@ -2033,3 +2033,243 @@ func discordGuildMemberAddHandler(s *discordgo.Session, e *discordgo.GuildMember
 		}
 	}
 }
+
+// ── Ticket system ─────────────────────────────────────────────────────────────
+
+// sendTicketPanel posts (or re-posts) the ticket panel embed+button to the
+// configured channel. Returns the message ID.
+func sendTicketPanel(s *discordgo.Session, cfg *DiscordTicketConfig) (string, error) {
+	title := cfg.PanelTitle
+	if title == "" {
+		title = "Support Tickets"
+	}
+	body := cfg.PanelBody
+	if body == "" {
+		body = "Click the button below to open a support ticket."
+	}
+	label := cfg.ButtonLabel
+	if label == "" {
+		label = "🎫 Open Ticket"
+	}
+
+	embed := &discordgo.MessageEmbed{
+		Title:       title,
+		Description: body,
+		Color:       0x5865F2, // Discord blurple
+	}
+	btn := discordgo.Button{
+		Label:    label,
+		Style:    discordgo.PrimaryButton,
+		CustomID: "ticket_create",
+	}
+	data := &discordgo.MessageSend{
+		Embeds: []*discordgo.MessageEmbed{embed},
+		Components: []discordgo.MessageComponent{
+			discordgo.ActionsRow{Components: []discordgo.MessageComponent{btn}},
+		},
+	}
+
+	msg, err := s.ChannelMessageSendComplex(cfg.PanelChannelID, data)
+	if err != nil {
+		return "", err
+	}
+	// Persist the new message ID
+	_ = UpdateTicketPanelMessageID(cfg.GuildID, msg.ID)
+	return msg.ID, nil
+}
+
+// handleTicketCreate handles the "Open Ticket" button interaction.
+func handleTicketCreate(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	// Acknowledge immediately with an ephemeral deferred response.
+	if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Flags: discordgo.MessageFlagsEphemeral,
+		},
+	}); err != nil {
+		log.Println("[tickets] defer respond:", err)
+		return
+	}
+
+	guildID := i.GuildID
+	user := i.Member.User
+	if user == nil {
+		return
+	}
+
+	cfg, err := GetTicketConfig(guildID)
+	if err != nil || cfg == nil {
+		_, _ = s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+			Content: strPtr("❌ Ticket system is not configured for this server."),
+		})
+		return
+	}
+
+	// Check if user already has an open ticket.
+	has, _ := HasOpenTicket(guildID, user.ID)
+	if has {
+		_, _ = s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+			Content: strPtr("❌ You already have an open ticket. Please use your existing ticket channel."),
+		})
+		return
+	}
+
+	// Determine the next ticket number.
+	ticketNum, err := NextTicketNumber(guildID)
+	if err != nil {
+		ticketNum = 1
+	}
+	channelName := fmt.Sprintf("ticket-%04d", ticketNum)
+
+	// Build permission overwrites:
+	// @everyone: deny ViewChannel
+	// ticket opener: allow ViewChannel + SendMessages + ReadMessageHistory
+	// each support role: allow ViewChannel + SendMessages + ReadMessageHistory + ManageMessages
+	// bot (self): allow all
+	perms := []*discordgo.PermissionOverwrite{
+		{
+			ID:   guildID, // @everyone role
+			Type: discordgo.PermissionOverwriteTypeRole,
+			Deny: discordgo.PermissionViewChannel,
+		},
+		{
+			ID:    user.ID,
+			Type:  discordgo.PermissionOverwriteTypeMember,
+			Allow: discordgo.PermissionViewChannel | discordgo.PermissionSendMessages | discordgo.PermissionReadMessageHistory,
+		},
+	}
+	for _, roleID := range cfg.SupportRoleIDs {
+		if roleID == "" {
+			continue
+		}
+		perms = append(perms, &discordgo.PermissionOverwrite{
+			ID:    roleID,
+			Type:  discordgo.PermissionOverwriteTypeRole,
+			Allow: discordgo.PermissionViewChannel | discordgo.PermissionSendMessages | discordgo.PermissionReadMessageHistory | discordgo.PermissionManageMessages,
+		})
+	}
+	// Bot self
+	self, err := s.User("@me")
+	if err == nil {
+		perms = append(perms, &discordgo.PermissionOverwrite{
+			ID:    self.ID,
+			Type:  discordgo.PermissionOverwriteTypeMember,
+			Allow: discordgo.PermissionAllText,
+		})
+	}
+
+	createData := &discordgo.GuildChannelCreateData{
+		Name:                 channelName,
+		Type:                 discordgo.ChannelTypeGuildText,
+		Topic:                fmt.Sprintf("Support ticket for %s", user.Username),
+		PermissionOverwrites: perms,
+	}
+	if cfg.CategoryID != "" {
+		createData.ParentID = cfg.CategoryID
+	}
+
+	ch, err := s.GuildChannelCreateComplex(guildID, *createData)
+	if err != nil {
+		log.Println("[tickets] create channel:", err)
+		_, _ = s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+			Content: strPtr("❌ Failed to create ticket channel. Please contact an admin."),
+		})
+		return
+	}
+
+	// Persist ticket to DB.
+	_ = CreateTicketRecord(guildID, ch.ID, user.ID, user.Username, ticketNum)
+
+	// Send welcome message in new channel.
+	closeBtn := discordgo.Button{
+		Label:    "🔒 Close Ticket",
+		Style:    discordgo.DangerButton,
+		CustomID: "ticket_close",
+	}
+	welcomeEmbed := &discordgo.MessageEmbed{
+		Title:       fmt.Sprintf("🎫 Ticket #%04d", ticketNum),
+		Description: fmt.Sprintf("Welcome <@%s>! Support staff will be with you shortly.\n\nDescribe your issue in this channel.", user.ID),
+		Color:       0x57F287, // green
+	}
+	_, _ = s.ChannelMessageSendComplex(ch.ID, &discordgo.MessageSend{
+		Embeds: []*discordgo.MessageEmbed{welcomeEmbed},
+		Components: []discordgo.MessageComponent{
+			discordgo.ActionsRow{Components: []discordgo.MessageComponent{closeBtn}},
+		},
+	})
+
+	// Log if configured.
+	if cfg.LogChannelID != "" {
+		logEmbed := &discordgo.MessageEmbed{
+			Title:       "🎫 Ticket Opened",
+			Description: fmt.Sprintf("<@%s> opened <#%s> (Ticket #%04d)", user.ID, ch.ID, ticketNum),
+			Color:       0x57F287,
+		}
+		_, _ = s.ChannelMessageSendEmbed(cfg.LogChannelID, logEmbed)
+	}
+
+	// Edit the ephemeral reply.
+	_, _ = s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+		Content: strPtr(fmt.Sprintf("✅ Your ticket has been created: <#%s>", ch.ID)),
+	})
+}
+
+// handleTicketClose handles the "Close Ticket" button interaction.
+func handleTicketClose(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Flags: discordgo.MessageFlagsEphemeral,
+		},
+	}); err != nil {
+		log.Println("[tickets] close defer respond:", err)
+		return
+	}
+
+	channelID := i.ChannelID
+	guildID := i.GuildID
+	closer := i.Member.User
+	if closer == nil {
+		return
+	}
+
+	ticket, err := GetTicketByChannel(channelID)
+	if err != nil || ticket == nil {
+		_, _ = s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+			Content: strPtr("❌ This channel is not a ticket."),
+		})
+		return
+	}
+	if ticket.Status != "open" {
+		_, _ = s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+			Content: strPtr("❌ This ticket is already closed."),
+		})
+		return
+	}
+
+	_ = CloseTicketRecord(channelID, closer.ID, closer.Username)
+
+	cfg, _ := GetTicketConfig(guildID)
+
+	// Log if configured.
+	if cfg != nil && cfg.LogChannelID != "" {
+		logEmbed := &discordgo.MessageEmbed{
+			Title:       "🔒 Ticket Closed",
+			Description: fmt.Sprintf("<@%s> closed <#%s> (Ticket #%04d, opened by <@%s>)", closer.ID, channelID, ticket.TicketNumber, ticket.UserID),
+			Color:       0xED4245, // red
+		}
+		_, _ = s.ChannelMessageSendEmbed(cfg.LogChannelID, logEmbed)
+	}
+
+	_, _ = s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+		Content: strPtr("🔒 Ticket closed. This channel will be deleted in 5 seconds."),
+	})
+
+	// Delete channel after a short delay.
+	go func() {
+		time.Sleep(5 * time.Second)
+		if _, err := s.ChannelDelete(channelID); err != nil {
+			log.Println("[tickets] delete channel:", err)
+		}
+	}()
+}
