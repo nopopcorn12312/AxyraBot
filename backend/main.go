@@ -961,22 +961,23 @@ func handleChatMessageEvent(channelLogin, chatterLogin, chatterID, messageID, me
 			return
 		}
 		arg := strings.TrimSpace(strings.TrimPrefix(message, "!followage"))
-		targetDisplay := chatterLogin
 		targetLogin := chatterLogin
 		if arg != "" {
-			clean := strings.TrimSpace(arg)
-			clean = strings.TrimPrefix(clean, "@")
+			clean := strings.TrimSpace(strings.TrimPrefix(arg, "@"))
 			if clean != "" {
-				targetDisplay = clean
-				targetLogin = clean
+				targetLogin = strings.ToLower(clean)
 			}
 		}
 		ageText, err := getFollowAgeString(channelLogin, targetLogin)
 		if err != nil {
 			log.Println("failed to get follow age:", err)
+			msg := fmt.Sprintf("%s is not following %s.", targetLogin, channelLogin)
+			if err2 := sendHelixChatMessage(channelLogin, msg); err2 != nil {
+				log.Println("failed to send !followage error response:", err2)
+			}
 			return
 		}
-		if err := sendHelixChatMessage(channelLogin, fmt.Sprintf("%s has been following %s for %s", targetDisplay, channelLogin, ageText)); err != nil {
+		if err := sendHelixChatMessage(channelLogin, fmt.Sprintf("%s has been following %s for %s.", targetLogin, channelLogin, ageText)); err != nil {
 			log.Println("failed to send !followage response:", err)
 		}
 	}
