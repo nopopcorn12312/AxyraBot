@@ -395,6 +395,7 @@ func startEventSubWS() {
 											channelLogin, _ := event["broadcaster_user_login"].(string)
 											chatterLogin, _ := event["chatter_user_login"].(string)
 											chatterID, _ := event["chatter_user_id"].(string)
+											chatterName, _ := event["chatter_user_name"].(string)
 											messageID, _ := event["message_id"].(string)
 											msgText := ""
 											if msgObj, ok := event["message"].(map[string]interface{}); ok {
@@ -402,8 +403,24 @@ func startEventSubWS() {
 													msgText = t
 												}
 											}
+											// Check subscriber badge for giveaway multiplier
+											isSub := false
+											if badges, ok := event["badges"].([]interface{}); ok {
+												for _, b := range badges {
+													if bm, ok := b.(map[string]interface{}); ok {
+														if sid, _ := bm["set_id"].(string); sid == "subscriber" || sid == "founder" {
+															isSub = true
+															break
+														}
+													}
+												}
+											}
 											if channelLogin != "" && msgText != "" {
 												go handleChatMessageEvent(channelLogin, chatterLogin, chatterID, messageID, msgText)
+												// Record for active-users giveaway
+												go RecordGiveawayEntry(channelLogin, chatterLogin, chatterName, isSub)
+												// Record for keyword giveaway if message matches
+												go RecordGiveawayKeyword(channelLogin, chatterLogin, chatterName, msgText, isSub)
 											}
 										}
 									case "channel.follow":

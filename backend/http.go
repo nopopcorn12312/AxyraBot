@@ -9,13 +9,125 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
+
+// ---------------------------------------------------------------------------
+// Giveaway in-memory state
+// ---------------------------------------------------------------------------
+
+type GiveawayEntry struct {
+	Login        string    `json:"login"`
+	DisplayName  string    `json:"displayName"`
+	IsSubscriber bool      `json:"isSubscriber"`
+	EnteredAt    time.Time `json:"enteredAt"`
+	LastSeen     time.Time `json:"-"`
+}
+
+type GiveawayState struct {
+	mu            sync.Mutex
+	Active        bool             `json:"active"`
+	Type          string           `json:"type"` // "active" or "keyword"
+	Keyword       string           `json:"keyword"`
+	InactivitySec int              `json:"inactivitySec"`
+	SubMultiplier int              `json:"subMultiplier"`
+	ChatAnnounce  bool             `json:"chatAnnounce"`
+	StartedAt     time.Time        `json:"startedAt"`
+	Entries       map[string]*GiveawayEntry `json:"entries"`
+	Winner        *GiveawayEntry   `json:"winner"`
+}
+
+var (
+	giveaways   = map[string]*GiveawayState{}
+	giveawaysMu sync.RWMutex
+)
+
+func getOrCreateGiveaway(login string) *GiveawayState {
+	giveawaysMu.Lock()
+	defer giveawaysMu.Unlock()
+	if g, ok := giveaways[login]; ok {
+		return g
+	}
+	g := &GiveawayState{
+		Type:          "active",
+		SubMultiplier: 1,
+		ChatAnnounce:  true,
+		Entries:       map[string]*GiveawayEntry{},
+	}
+	giveaways[login] = g
+	return g
+}
+
+// RecordGiveawayEntry is called from the chat message handler to add a chatter
+// to the active giveaway for their channel, if any.
+func RecordGiveawayEntry(channelLogin, chatterLogin, displayName string, isSubscriber bool) {
+	giveawaysMu.RLock()
+	g, ok := giveaways[channelLogin]
+	giveawaysMu.RUnlock()
+	if !ok {
+		return
+	}
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if !g.Active {
+		return
+	}
+	if g.Type == "keyword" {
+		// keyword matching is handled at call site after checking message text
+		return
+	}
+	// Active-users mode: record/refresh the entry
+	chatterLogin = strings.ToLower(chatterLogin)
+	if e, exists := g.Entries[chatterLogin]; exists {
+		e.LastSeen = time.Now()
+		e.IsSubscriber = isSubscriber
+	} else {
+		g.Entries[chatterLogin] = &GiveawayEntry{
+			Login:        chatterLogin,
+			DisplayName:  displayName,
+			IsSubscriber: isSubscriber,
+			EnteredAt:    time.Now(),
+		}
+	}
+}
+
+// RecordGiveawayKeyword is called for every message; records entry only if
+// the giveaway is active in keyword mode and the message matches the keyword.
+func RecordGiveawayKeyword(channelLogin, chatterLogin, displayName, msgText string, isSubscriber bool) {
+	giveawaysMu.RLock()
+	g, ok := giveaways[channelLogin]
+	giveawaysMu.RUnlock()
+	if !ok {
+		return
+	}
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if !g.Active || g.Type != "keyword" || g.Keyword == "" {
+		return
+	}
+	// Case-insensitive fuzzy match: message contains keyword
+	if !strings.Contains(strings.ToLower(msgText), strings.ToLower(g.Keyword)) {
+		return
+	}
+	chatterLogin = strings.ToLower(chatterLogin)
+	if _, exists := g.Entries[chatterLogin]; !exists {
+		g.Entries[chatterLogin] = &GiveawayEntry{
+			Login:        chatterLogin,
+			DisplayName:  displayName,
+			IsSubscriber: isSubscriber,
+			EnteredAt:    time.Now(),
+		}
+	}
+}
+
+// GiveawayEntry needs a LastSeen field used internally.
 
 func startHTTPServer(clientID, clientSecret string) {
 	mux := http.NewServeMux()
@@ -72,6 +184,12 @@ func startHTTPServer(clientID, clientSecret string) {
 	mux.HandleFunc("/audit/logs", withCORS(handleAuditLogs))
 	mux.HandleFunc("/chat/stats", withCORS(handleChatStats))
 	mux.HandleFunc("/categories/search", withCORS(handleCategorySearch(clientID)))
+	mux.HandleFunc("/giveaway/state", withCORS(handleGiveawayState))
+	mux.HandleFunc("/giveaway/start", withCORS(handleGiveawayStart))
+	mux.HandleFunc("/giveaway/stop", withCORS(handleGiveawayStop))
+	mux.HandleFunc("/giveaway/pick-winner", withCORS(handleGiveawayPickWinner))
+	mux.HandleFunc("/giveaway/clear", withCORS(handleGiveawayClear))
+	mux.HandleFunc("/giveaway/remove-entry", withCORS(handleGiveawayRemoveEntry))
 	mux.HandleFunc("/eventsub/callback", handleEventSubWebhook)
 	addr := ":8080"
 	if p := os.Getenv("PORT"); p != "" {
@@ -2581,4 +2699,257 @@ func handleSpamFiltersDelete(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, "ok")
+}
+// ---------------------------------------------------------------------------
+// Giveaway HTTP handlers
+// ---------------------------------------------------------------------------
+
+// handleGiveawayState returns the current giveaway state for a broadcaster.
+func handleGiveawayState(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	login := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("login")))
+	if login == "" {
+		http.Error(w, "missing login", http.StatusBadRequest)
+		return
+	}
+	g := getOrCreateGiveaway(login)
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	type entryOut struct {
+		Login        string    `json:"login"`
+		DisplayName  string    `json:"displayName"`
+		IsSubscriber bool      `json:"isSubscriber"`
+		EnteredAt    time.Time `json:"enteredAt"`
+	}
+	entries := make([]entryOut, 0, len(g.Entries))
+	for _, e := range g.Entries {
+		// Evict inactive entries if timeout is set
+		if g.InactivitySec > 0 && !e.LastSeen.IsZero() && time.Since(e.LastSeen) > time.Duration(g.InactivitySec)*time.Second {
+			delete(g.Entries, e.Login)
+			continue
+		}
+		entries = append(entries, entryOut{e.Login, e.DisplayName, e.IsSubscriber, e.EnteredAt})
+	}
+
+	var winner *entryOut
+	if g.Winner != nil {
+		w2 := entryOut{g.Winner.Login, g.Winner.DisplayName, g.Winner.IsSubscriber, g.Winner.EnteredAt}
+		winner = &w2
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
+		"active":        g.Active,
+		"type":          g.Type,
+		"keyword":       g.Keyword,
+		"inactivitySec": g.InactivitySec,
+		"subMultiplier": g.SubMultiplier,
+		"chatAnnounce":  g.ChatAnnounce,
+		"entries":       entries,
+		"winner":        winner,
+	}); err != nil {
+		log.Println("encode giveaway state:", err)
+	}
+}
+
+// handleGiveawayStart starts or updates settings of a giveaway.
+func handleGiveawayStart(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	var body struct {
+		Login         string `json:"login"`
+		Type          string `json:"type"`
+		Keyword       string `json:"keyword"`
+		InactivitySec int    `json:"inactivitySec"`
+		SubMultiplier int    `json:"subMultiplier"`
+		ChatAnnounce  bool   `json:"chatAnnounce"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "bad json", http.StatusBadRequest)
+		return
+	}
+	login := strings.ToLower(strings.TrimSpace(body.Login))
+	if login == "" {
+		http.Error(w, "missing login", http.StatusBadRequest)
+		return
+	}
+	if body.SubMultiplier < 1 {
+		body.SubMultiplier = 1
+	}
+	g := getOrCreateGiveaway(login)
+	g.mu.Lock()
+	g.Active = true
+	g.Type = body.Type
+	g.Keyword = strings.TrimSpace(body.Keyword)
+	g.InactivitySec = body.InactivitySec
+	g.SubMultiplier = body.SubMultiplier
+	g.ChatAnnounce = body.ChatAnnounce
+	g.StartedAt = time.Now()
+	g.Winner = nil
+	g.mu.Unlock()
+
+	if body.ChatAnnounce {
+		msg := "🎉 A giveaway has started!"
+		if body.Type == "keyword" && body.Keyword != "" {
+			msg = fmt.Sprintf("🎉 A giveaway has started! Type \"%s\" to enter!", body.Keyword)
+		}
+		if err := sendHelixChatMessage(login, msg); err != nil {
+			log.Println("giveaway start announce:", err)
+		}
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// handleGiveawayStop stops the active giveaway.
+func handleGiveawayStop(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	var body struct {
+		Login string `json:"login"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "bad json", http.StatusBadRequest)
+		return
+	}
+	login := strings.ToLower(strings.TrimSpace(body.Login))
+	if login == "" {
+		http.Error(w, "missing login", http.StatusBadRequest)
+		return
+	}
+	g := getOrCreateGiveaway(login)
+	g.mu.Lock()
+	g.Active = false
+	g.mu.Unlock()
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// handleGiveawayPickWinner picks a random winner from current entries using
+// the subscriber luck multiplier as extra tickets for subscribers.
+func handleGiveawayPickWinner(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	var body struct {
+		Login string `json:"login"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "bad json", http.StatusBadRequest)
+		return
+	}
+	login := strings.ToLower(strings.TrimSpace(body.Login))
+	if login == "" {
+		http.Error(w, "missing login", http.StatusBadRequest)
+		return
+	}
+	g := getOrCreateGiveaway(login)
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	if len(g.Entries) == 0 {
+		http.Error(w, "no entries", http.StatusBadRequest)
+		return
+	}
+
+	multiplier := g.SubMultiplier
+	if multiplier < 1 {
+		multiplier = 1
+	}
+
+	// Build weighted ticket pool
+	var pool []*GiveawayEntry
+	for _, e := range g.Entries {
+		tickets := 1
+		if e.IsSubscriber && multiplier > 1 {
+			tickets = multiplier
+		}
+		for i := 0; i < tickets; i++ {
+			pool = append(pool, e)
+		}
+	}
+
+	winner := pool[rand.Intn(len(pool))]
+	g.Winner = winner
+
+	if g.ChatAnnounce {
+		displayName := winner.DisplayName
+		if displayName == "" {
+			displayName = winner.Login
+		}
+		msg := fmt.Sprintf("🎉 Congratulations @%s, you won the giveaway!", displayName)
+		if err := sendHelixChatMessage(login, msg); err != nil {
+			log.Println("giveaway winner announce:", err)
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
+		"login":        winner.Login,
+		"displayName":  winner.DisplayName,
+		"isSubscriber": winner.IsSubscriber,
+	}); err != nil {
+		log.Println("encode giveaway winner:", err)
+	}
+}
+
+// handleGiveawayClear clears all entries and the winner.
+func handleGiveawayClear(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	var body struct {
+		Login string `json:"login"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "bad json", http.StatusBadRequest)
+		return
+	}
+	login := strings.ToLower(strings.TrimSpace(body.Login))
+	if login == "" {
+		http.Error(w, "missing login", http.StatusBadRequest)
+		return
+	}
+	g := getOrCreateGiveaway(login)
+	g.mu.Lock()
+	g.Entries = map[string]*GiveawayEntry{}
+	g.Winner = nil
+	g.mu.Unlock()
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// handleGiveawayRemoveEntry removes a single user from the giveaway entries.
+func handleGiveawayRemoveEntry(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	var body struct {
+		Login     string `json:"login"`
+		UserLogin string `json:"userLogin"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "bad json", http.StatusBadRequest)
+		return
+	}
+	login := strings.ToLower(strings.TrimSpace(body.Login))
+	userLogin := strings.ToLower(strings.TrimSpace(body.UserLogin))
+	if login == "" || userLogin == "" {
+		http.Error(w, "missing login or userLogin", http.StatusBadRequest)
+		return
+	}
+	g := getOrCreateGiveaway(login)
+	g.mu.Lock()
+	delete(g.Entries, userLogin)
+	g.mu.Unlock()
+	w.WriteHeader(http.StatusNoContent)
 }

@@ -763,6 +763,9 @@ export default function DiscordSettingsPage() {
                   <Link href="/birthdays" className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${pathname === "/birthdays" ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]" : "text-slate-200 hover:bg-slate-800/80"}`}>
                     <span className="text-lg">🎂</span>{sidebarOpen && <span>Birthdays</span>}
                   </Link>
+                  <Link href="/giveaways" className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${pathname === "/giveaways" ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]" : "text-slate-200 hover:bg-slate-800/80"}`}>
+                    <span className="text-lg">🎁</span>{sidebarOpen && <span>Giveaways</span>}
+                  </Link>
                   {!isEditor && (
                     <Link href="/roles" className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${pathname === "/roles" ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]" : "text-slate-200 hover:bg-slate-800/80"}`}>
                       <span className="text-lg">🎭</span>{sidebarOpen && <span>Roles</span>}
