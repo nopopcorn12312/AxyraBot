@@ -27,6 +27,8 @@ type GiveawayEntry struct {
 	Login        string    `json:"login"`
 	DisplayName  string    `json:"displayName"`
 	IsSubscriber bool      `json:"isSubscriber"`
+	IsVIP        bool      `json:"isVip"`
+	IsMod        bool      `json:"isMod"`
 	EnteredAt    time.Time `json:"enteredAt"`
 	LastSeen     time.Time `json:"-"`
 }
@@ -67,7 +69,7 @@ func getOrCreateGiveaway(login string) *GiveawayState {
 
 // RecordGiveawayEntry is called from the chat message handler to add a chatter
 // to the active giveaway for their channel, if any.
-func RecordGiveawayEntry(channelLogin, chatterLogin, displayName string, isSubscriber bool) {
+func RecordGiveawayEntry(channelLogin, chatterLogin, displayName string, isSubscriber, isVIP, isMod bool) {
 	giveawaysMu.RLock()
 	g, ok := giveaways[channelLogin]
 	giveawaysMu.RUnlock()
@@ -88,11 +90,15 @@ func RecordGiveawayEntry(channelLogin, chatterLogin, displayName string, isSubsc
 	if e, exists := g.Entries[chatterLogin]; exists {
 		e.LastSeen = time.Now()
 		e.IsSubscriber = isSubscriber
+		e.IsVIP = isVIP
+		e.IsMod = isMod
 	} else {
 		g.Entries[chatterLogin] = &GiveawayEntry{
 			Login:        chatterLogin,
 			DisplayName:  displayName,
 			IsSubscriber: isSubscriber,
+			IsVIP:        isVIP,
+			IsMod:        isMod,
 			EnteredAt:    time.Now(),
 		}
 	}
@@ -100,7 +106,7 @@ func RecordGiveawayEntry(channelLogin, chatterLogin, displayName string, isSubsc
 
 // RecordGiveawayKeyword is called for every message; records entry only if
 // the giveaway is active in keyword mode and the message matches the keyword.
-func RecordGiveawayKeyword(channelLogin, chatterLogin, displayName, msgText string, isSubscriber bool) {
+func RecordGiveawayKeyword(channelLogin, chatterLogin, displayName, msgText string, isSubscriber, isVIP, isMod bool) {
 	giveawaysMu.RLock()
 	g, ok := giveaways[channelLogin]
 	giveawaysMu.RUnlock()
@@ -122,6 +128,8 @@ func RecordGiveawayKeyword(channelLogin, chatterLogin, displayName, msgText stri
 			Login:        chatterLogin,
 			DisplayName:  displayName,
 			IsSubscriber: isSubscriber,
+			IsVIP:        isVIP,
+			IsMod:        isMod,
 			EnteredAt:    time.Now(),
 		}
 	}

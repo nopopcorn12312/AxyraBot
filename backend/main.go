@@ -403,14 +403,18 @@ func startEventSubWS() {
 													msgText = t
 												}
 											}
-											// Check subscriber badge for giveaway multiplier
-											isSub := false
+											// Extract badges for giveaway role tracking
+											isSub, isVIP, isMod := false, false, false
 											if badges, ok := event["badges"].([]interface{}); ok {
 												for _, b := range badges {
 													if bm, ok := b.(map[string]interface{}); ok {
-														if sid, _ := bm["set_id"].(string); sid == "subscriber" || sid == "founder" {
+														switch sid, _ := bm["set_id"].(string); sid {
+														case "subscriber", "founder":
 															isSub = true
-															break
+														case "vip":
+															isVIP = true
+														case "moderator", "broadcaster":
+															isMod = true
 														}
 													}
 												}
@@ -418,9 +422,9 @@ func startEventSubWS() {
 											if channelLogin != "" && msgText != "" {
 												go handleChatMessageEvent(channelLogin, chatterLogin, chatterID, messageID, msgText)
 												// Record for active-users giveaway
-												go RecordGiveawayEntry(channelLogin, chatterLogin, chatterName, isSub)
+												go RecordGiveawayEntry(channelLogin, chatterLogin, chatterName, isSub, isVIP, isMod)
 												// Record for keyword giveaway if message matches
-												go RecordGiveawayKeyword(channelLogin, chatterLogin, chatterName, msgText, isSub)
+												go RecordGiveawayKeyword(channelLogin, chatterLogin, chatterName, msgText, isSub, isVIP, isMod)
 											}
 										}
 									case "channel.follow":
