@@ -2586,13 +2586,35 @@ func handleEventSubWebhook(w http.ResponseWriter, r *http.Request) {
 			channelLogin, _ := event["broadcaster_user_login"].(string)
 			chatterLogin, _ := event["chatter_user_login"].(string)
 			chatterID, _ := event["chatter_user_id"].(string)
+			chatterName, _ := event["chatter_user_name"].(string)
 			messageID, _ := event["message_id"].(string)
 			msgText := ""
 			if msgObj, ok := event["message"].(map[string]interface{}); ok {
 				msgText, _ = msgObj["text"].(string)
 			}
+			// Extract badges for giveaway role tracking
+			isSub, isVIP, isMod := false, false, false
+			if badges, ok := event["badges"].([]interface{}); ok {
+				for _, b := range badges {
+					if bm, ok := b.(map[string]interface{}); ok {
+						switch sid, _ := bm["set_id"].(string); sid {
+						case "subscriber", "founder":
+							isSub = true
+						case "vip":
+							isVIP = true
+						case "moderator", "broadcaster":
+							isMod = true
+						}
+					}
+				}
+			}
+			if chatterName == "" {
+				chatterName = chatterLogin
+			}
 			if channelLogin != "" && msgText != "" {
 				handleChatMessageEvent(channelLogin, chatterLogin, chatterID, messageID, msgText)
+				RecordGiveawayEntry(channelLogin, chatterLogin, chatterName, isSub, isVIP, isMod)
+				RecordGiveawayKeyword(channelLogin, chatterLogin, chatterName, msgText, isSub, isVIP, isMod)
 			}
 		}(body)
 		w.WriteHeader(http.StatusNoContent)
