@@ -293,6 +293,11 @@ func main() {
 			log.Println("failed listing subscriptions:", err)
 		}
 
+		// Remove duplicate webhook subscriptions that accumulate across restarts.
+		// Without this, every restart creates another subscription and the same
+		// chat message fires the callback N times, causing delete 404s.
+		deduplicateWebhookSubscriptions(token, clientID)
+
 		// attempt to register EventSub subscriptions for the configured channel
 		go registerEventSubSubscriptions(token, clientID, channel, tokensPath)
 	}
@@ -3256,6 +3261,118 @@ func getAppAccessToken(clientID, clientSecret string) (string, error) {
 	return res.AccessToken, nil
 }
 
+// eventSubSubEntry represents one EventSub subscription from the Helix list response.
+type eventSubSubEntry struct {
+	ID        string            `json:"id"`
+	Status    string            `json:"status"`
+	Type      string            `json:"type"`
+	Condition map[string]string `json:"condition"`
+	Transport struct {
+		Method   string `json:"method"`
+		Callback string `json:"callback"`
+	} `json:"transport"`
+}
+
+// getEventSubSubscriptions returns the full list of EventSub subscriptions for
+// this application, paging through all cursors.
+func getEventSubSubscriptions(appToken, clientID string) ([]eventSubSubEntry, error) {
+	if appToken == "" {
+		return nil, fmt.Errorf("app token required")
+	}
+	var all []eventSubSubEntry
+	cursor := ""
+	for {
+		u := "https://api.twitch.tv/helix/eventsub/subscriptions"
+		if cursor != "" {
+			u += "?after=" + url.QueryEscape(cursor)
+		}
+		req, err := http.NewRequest("GET", u, nil)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Client-ID", clientID)
+		req.Header.Set("Authorization", "Bearer "+appToken)
+		client := &http.Client{Timeout: 10 * time.Second}
+		resp, err := client.Do(req)
+		if err != nil {
+			return nil, err
+		}
+		var page struct {
+			Data       []eventSubSubEntry `json:"data"`
+			Pagination struct {
+				Cursor string `json:"cursor"`
+			} `json:"pagination"`
+		}
+		err = json.NewDecoder(resp.Body).Decode(&page)
+		resp.Body.Close()
+		if err != nil {
+			return nil, err
+		}
+		all = append(all, page.Data...)
+		if page.Pagination.Cursor == "" || page.Pagination.Cursor == cursor {
+			break
+		}
+		cursor = page.Pagination.Cursor
+	}
+	return all, nil
+}
+
+// deleteEventSubSubscription deletes a single EventSub subscription by ID.
+func deleteEventSubSubscription(appToken, clientID, subID string) error {
+	req, err := http.NewRequest("DELETE",
+		"https://api.twitch.tv/helix/eventsub/subscriptions?id="+url.QueryEscape(subID), nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Client-ID", clientID)
+	req.Header.Set("Authorization", "Bearer "+appToken)
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	resp.Body.Close()
+	return nil
+}
+
+// deduplicateWebhookSubscriptions ensures at most one webhook subscription
+// exists per (type, broadcaster_user_id) pair. Extra copies that accumulate
+// across server restarts are deleted so the same chat message isn't processed
+// multiple times (which would cause the second delete attempt to 404).
+func deduplicateWebhookSubscriptions(appToken, clientID string) {
+	subs, err := getEventSubSubscriptions(appToken, clientID)
+	if err != nil {
+		log.Println("[EventSub] failed to list subscriptions for dedup:", err)
+		return
+	}
+	// key = "type:broadcaster_user_id" → first seen sub ID
+	seen := map[string]string{}
+	deleted := 0
+	for _, s := range subs {
+		if s.Transport.Method != "webhook" {
+			continue
+		}
+		broadcasterID := s.Condition["broadcaster_user_id"]
+		key := s.Type + ":" + broadcasterID
+		if first, ok := seen[key]; ok {
+			// duplicate — delete this one (keep the one we saw first)
+			log.Printf("[EventSub] deleting duplicate %s sub id=%s (keeping %s)", s.Type, s.ID, first)
+			if err := deleteEventSubSubscription(appToken, clientID, s.ID); err != nil {
+				log.Printf("[EventSub] failed to delete sub %s: %v", s.ID, err)
+			} else {
+				deleted++
+			}
+		} else {
+			seen[key] = s.ID
+		}
+	}
+	if deleted > 0 {
+		log.Printf("[EventSub] dedup removed %d duplicate webhook subscription(s)", deleted)
+	} else {
+		log.Println("[EventSub] no duplicate webhook subscriptions found")
+	}
+}
+
 // listEventSubSubscriptions lists current EventSub subscriptions for the app
 func listEventSubSubscriptions(appToken, clientID string) error {
 	if appToken == "" {
@@ -3440,6 +3557,9 @@ func registerEventSubSubscriptions(appToken, clientID, channel, tokensPath strin
 	// Using webhook + app token is what qualifies the bot for the "Chat Bots"
 	// section in the Users in Chat viewer list.
 	if webhookSecret != "" && callbackURL != "" && appToken != "" && botID != "" {
+		// Deduplicate first: previous runs leave behind stale subscriptions that
+		// cause the same message to be delivered (and deletion attempted) N times.
+		deduplicateWebhookSubscriptions(appToken, clientID)
 		for _, ch := range channels {
 			broadcasterID, err := getUserID(ch, appToken, clientID)
 			if err != nil {
