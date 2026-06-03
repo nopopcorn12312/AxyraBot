@@ -483,8 +483,13 @@ export default function BirthdaysPage() {
   const [addError, setAddError] = useState<string | null>(null);
   const addModalRef = useRef<HTMLDivElement | null>(null);
   const [deletingBirthday, setDeletingBirthday] = useState<string | null>(null);
+  const [birthdayPage, setBirthdayPage] = useState(1);
+  const BIRTHDAY_PAGE_SIZE = 10;
   const menuRef = useRef<HTMLDivElement | null>(null);
   const pathname = usePathname();
+
+  // Reset to page 1 when the birthdays list changes
+  useEffect(() => { setBirthdayPage(1); }, [birthdays.length]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1164,49 +1169,78 @@ export default function BirthdaysPage() {
                       .
                     </p>
                   )}
-                  {!loadingBirthdays && !birthdaysError && birthdays.length > 0 && (
-                    <div className="mt-2 overflow-x-auto">
-                      <table className="min-w-full text-sm">
-                        <thead>
-                          <tr className="border-b border-slate-800 text-left text-xs uppercase tracking-wide text-slate-400">
-                            <th className="py-2 pr-3">Name</th>
-                            <th className="py-2 pr-3">Username</th>
-                            <th className="py-2 pr-3">Birthday</th>
-                            <th className="py-2">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {birthdays.map((b) => (
-                            <tr
-                              key={`${b.userLogin}-${b.month}-${b.day}`}
-                              className="border-b border-slate-900/60"
-                            >
-                              <td className="py-2 pr-3 text-slate-100">
-                                {b.displayName || b.userLogin}
-                              </td>
-                              <td className="py-2 pr-3 text-slate-400">{b.userLogin}</td>
-                              <td className="py-2 pr-3 text-slate-200">
-                                {formatMonthDay(b.month, b.day)}
-                              </td>
-                              <td className="py-2">
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteBirthday(b.userLogin)}
-                                  disabled={deletingBirthday === b.userLogin}
-                                  className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-red-700 bg-red-700/80 text-white hover:bg-red-600/90 disabled:opacity-50"
-                                >
-                                  <span className="sr-only">Delete birthday</span>
-                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
-                                    <path d="M6 2a1 1 0 0 0-1 1v1H3.5a.5.5 0 0 0 0 1h.54l.76 10.137A2 2 0 0 0 6.79 17h6.42a2 2 0 0 0 1.99-1.863L15.96 5H16.5a.5.5 0 0 0 0-1H15V3a1 1 0 0 0-1-1H6Zm1 2V3h6v1H7Z" />
-                                  </svg>
-                                </button>
-                              </td>
+                  {!loadingBirthdays && !birthdaysError && birthdays.length > 0 && (() => {
+                    const totalPages = Math.max(1, Math.ceil(birthdays.length / BIRTHDAY_PAGE_SIZE));
+                    const safePage = Math.min(birthdayPage, totalPages);
+                    const pageRows = birthdays.slice((safePage - 1) * BIRTHDAY_PAGE_SIZE, safePage * BIRTHDAY_PAGE_SIZE);
+                    return (
+                      <>
+                        <table className="mt-2 min-w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-slate-800 text-left text-xs uppercase tracking-wide text-slate-400">
+                              <th className="py-2 pr-3">Name</th>
+                              <th className="py-2 pr-3">Username</th>
+                              <th className="py-2 pr-3">Birthday</th>
+                              <th className="py-2">Actions</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
+                          </thead>
+                          <tbody>
+                            {pageRows.map((b) => (
+                              <tr
+                                key={`${b.userLogin}-${b.month}-${b.day}`}
+                                className="border-b border-slate-900/60"
+                              >
+                                <td className="py-2 pr-3 text-slate-100">
+                                  {b.displayName || b.userLogin}
+                                </td>
+                                <td className="py-2 pr-3 text-slate-400">{b.userLogin}</td>
+                                <td className="py-2 pr-3 text-slate-200">
+                                  {formatMonthDay(b.month, b.day)}
+                                </td>
+                                <td className="py-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteBirthday(b.userLogin)}
+                                    disabled={deletingBirthday === b.userLogin}
+                                    className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-red-700 bg-red-700/80 text-white hover:bg-red-600/90 disabled:opacity-50"
+                                  >
+                                    <span className="sr-only">Delete birthday</span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+                                      <path d="M6 2a1 1 0 0 0-1 1v1H3.5a.5.5 0 0 0 0 1h.54l.76 10.137A2 2 0 0 0 6.79 17h6.42a2 2 0 0 0 1.99-1.863L15.96 5H16.5a.5.5 0 0 0 0-1H15V3a1 1 0 0 0-1-1H6Zm1 2V3h6v1H7Z" />
+                                    </svg>
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                        {totalPages > 1 && (
+                          <div className="flex items-center justify-center gap-4 mt-4">
+                            <button
+                              type="button"
+                              onClick={() => setBirthdayPage((p) => Math.max(1, p - 1))}
+                              disabled={safePage === 1}
+                              className="flex items-center justify-center text-slate-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="h-7 w-7"><polyline points="15 18 9 12 15 6" /></svg>
+                            </button>
+                            <span className="text-sm text-slate-300">
+                              Page <span className="font-semibold text-slate-100">{safePage}</span> of{" "}
+                              <span className="font-semibold text-slate-100">{totalPages}</span>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setBirthdayPage((p) => Math.min(totalPages, p + 1))}
+                              disabled={safePage === totalPages}
+                              className="flex items-center justify-center text-slate-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="h-7 w-7"><polyline points="9 18 15 12 9 6" /></svg>
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </section>
               </div>
             )}
