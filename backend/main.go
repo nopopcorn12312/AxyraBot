@@ -69,6 +69,7 @@ var defaultCommandNames = func() []string {
 		"!game",
 		"!accountage",
 		"!followage",
+		"!watchtime",
 		"!uptime",
 		"!commands",
 	}
@@ -999,6 +1000,55 @@ func handleChatMessageEvent(channelLogin, chatterLogin, chatterID, messageID, me
 		}
 		if err := sendHelixChatMessage(channelLogin, fmt.Sprintf("%s has been live for %s", channelLogin, uptime)); err != nil {
 			log.Println("failed to send !uptime response:", err)
+		}
+	}
+
+	// !watchtime [username] - report how many hours a viewer has been in chat
+	if isChatCommand(message, "!watchtime") {
+		if !isDefaultCommandEnabled(channelLogin, "!watchtime") {
+			return
+		}
+		arg := strings.TrimSpace(strings.TrimPrefix(message, "!watchtime"))
+		targetLogin := chatterLogin
+		if arg != "" {
+			clean := strings.TrimSpace(strings.TrimPrefix(arg, "@"))
+			if clean != "" {
+				targetLogin = strings.ToLower(clean)
+			}
+		}
+		seconds, err := GetWatchTimeSeconds(channelLogin, targetLogin)
+		if err != nil || seconds == 0 {
+			if err := sendHelixChatMessage(channelLogin, fmt.Sprintf("%s has no watch time recorded in %s's channel.", targetLogin, channelLogin)); err != nil {
+				log.Println("failed to send !watchtime response:", err)
+			}
+			return
+		}
+		totalMinutes := int(seconds / 60)
+		hours := totalMinutes / 60
+		minutes := totalMinutes % 60
+		var wtText string
+		if hours > 0 && minutes > 0 {
+			wtText = fmt.Sprintf("%d hour", hours)
+			if hours != 1 {
+				wtText += "s"
+			}
+			wtText += fmt.Sprintf(" %d minute", minutes)
+			if minutes != 1 {
+				wtText += "s"
+			}
+		} else if hours > 0 {
+			wtText = fmt.Sprintf("%d hour", hours)
+			if hours != 1 {
+				wtText += "s"
+			}
+		} else {
+			wtText = fmt.Sprintf("%d minute", minutes)
+			if minutes != 1 {
+				wtText += "s"
+			}
+		}
+		if err := sendHelixChatMessage(channelLogin, fmt.Sprintf("%s has watched %s for %s.", targetLogin, channelLogin, wtText)); err != nil {
+			log.Println("failed to send !watchtime response:", err)
 		}
 	}
 
@@ -2115,42 +2165,15 @@ func getFollowAgeString(broadcasterLogin, followerLogin string) (string, error) 
 	if clientID == "" {
 		return "", fmt.Errorf("TWITCH_CLIENT_ID not set")
 	}
-	botOAuth := os.Getenv("TWITCH_BOT_OAUTH")
-	accessToken := strings.TrimPrefix(botOAuth, "oauth:")
-	if accessToken == "" {
-		return "", fmt.Errorf("TWITCH_BOT_OAUTH not set or empty")
+
+	// Use the broadcaster's stored user token — /helix/channels/followers
+	// requires a user token with moderator:read:followers scope.
+	broadcasterID, accessToken, err := ensureValidUserToken(broadcasterLogin)
+	if err != nil {
+		return "", fmt.Errorf("could not get user token for %s: %w", broadcasterLogin, err)
 	}
 
 	client := &http.Client{Timeout: 10 * time.Second}
-
-	// resolve broadcaster id
-	usersReq, err := http.NewRequest("GET", "https://api.twitch.tv/helix/users?login="+url.QueryEscape(broadcasterLogin), nil)
-	if err != nil {
-		return "", err
-	}
-	usersReq.Header.Set("Client-ID", clientID)
-	usersReq.Header.Set("Authorization", "Bearer "+accessToken)
-	usersResp, err := client.Do(usersReq)
-	if err != nil {
-		return "", err
-	}
-	defer usersResp.Body.Close()
-	if usersResp.StatusCode != http.StatusOK {
-		b, _ := io.ReadAll(usersResp.Body)
-		return "", fmt.Errorf("helix users status %s: %s", usersResp.Status, string(b))
-	}
-	var usersRes struct {
-		Data []struct {
-			ID string `json:"id"`
-		} `json:"data"`
-	}
-	if err := json.NewDecoder(usersResp.Body).Decode(&usersRes); err != nil {
-		return "", err
-	}
-	if len(usersRes.Data) == 0 {
-		return "", fmt.Errorf("broadcaster not found: %s", broadcasterLogin)
-	}
-	broadcasterID := usersRes.Data[0].ID
 
 	// resolve follower id
 	followerReq, err := http.NewRequest("GET", "https://api.twitch.tv/helix/users?login="+url.QueryEscape(followerLogin), nil)

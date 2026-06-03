@@ -42,6 +42,12 @@ const defaultCommands: { name: string; label?: string; description: string; enab
     enabled: true,
   },
   {
+    name: "!watchtime",
+    label: "!watchtime [username]",
+    description: "Shows how many hours a viewer has spent in the channel.",
+    enabled: true,
+  },
+  {
     name: "!uptime",
     description: "Shows how long the channel has been live this session.",
     enabled: true,
