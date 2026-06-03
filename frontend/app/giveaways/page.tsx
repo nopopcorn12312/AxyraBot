@@ -56,7 +56,6 @@ export default function GiveawaysPage() {
   // Giveaway settings (local form state)
   const [keyword, setKeyword] = useState("");
   const [subMultiplier, setSubMultiplier] = useState(1);
-  const [chatAnnounce, setChatAnnounce] = useState(true);
 
   // Live state from backend
   const [giveaway, setGiveaway] = useState<GiveawayStateData | null>(null);
@@ -68,6 +67,7 @@ export default function GiveawaysPage() {
 
   const menuRef = useRef<HTMLDivElement | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const initialSyncDone = useRef(false);
   const pathname = usePathname();
 
   // ── Auth ────────────────────────────────────────────────────────────────
@@ -104,10 +104,12 @@ export default function GiveawaysPage() {
       if (!res.ok) return;
       const data: GiveawayStateData = await res.json();
       setGiveaway(data);
-      // Sync form from backend if not currently editing
-      setKeyword(data.keyword ?? "");
-      setSubMultiplier(data.subMultiplier ?? 1);
-      setChatAnnounce(data.chatAnnounce ?? true);
+      // Only sync form fields on first load — never overwrite while user is typing
+      if (!initialSyncDone.current) {
+        initialSyncDone.current = true;
+        setKeyword(data.keyword ?? "");
+        setSubMultiplier(data.subMultiplier ?? 1);
+      }
     } catch {
       // ignore
     }
@@ -144,7 +146,7 @@ export default function GiveawaysPage() {
             keyword: keyword.trim(),
             inactivitySec: 0,
             subMultiplier,
-            chatAnnounce,
+            chatAnnounce: true,
           }),
         });
       }
@@ -478,19 +480,6 @@ export default function GiveawaysPage() {
                   </>
                 )}
               </button>
-            </div>
-
-            {/* Chat Announcements */}
-            <div className="mb-5 flex flex-wrap items-center gap-6">
-              <div className="ml-auto flex items-center gap-2">
-                <span className="text-sm text-slate-300">Chat Announcements</span>
-                <input
-                  type="checkbox"
-                  checked={chatAnnounce}
-                  onChange={(e) => setChatAnnounce(e.target.checked)}
-                  className="h-4 w-4 rounded accent-indigo-500 cursor-pointer"
-                />
-              </div>
             </div>
 
             {/* Keyword phrase */}
