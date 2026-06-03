@@ -43,6 +43,7 @@ func startHTTPServer(clientID, clientSecret string) {
 	mux.HandleFunc("/modules/settings", withCORS(handleModuleSettings))
 	mux.HandleFunc("/birthdays/list", withCORS(handleBirthdaysList))
 	mux.HandleFunc("/birthdays/add", withCORS(handleBirthdaysAdd))
+	mux.HandleFunc("/birthdays/delete", withCORS(handleBirthdaysDelete))
 	mux.HandleFunc("/birthdays/settings", withCORS(handleBirthdaysSettings))
 	mux.HandleFunc("/birthdays/command-messages", withCORS(handleBirthdayCommandMessages))
 	mux.HandleFunc("/discord/settings", withCORS(handleDiscordSettings))
@@ -1407,6 +1408,35 @@ func handleBirthdaysAdd(w http.ResponseWriter, r *http.Request) {
 	}{Results: results}); err != nil {
 		log.Println("encode birthdays add:", err)
 	}
+}
+
+// handleBirthdaysDelete deletes a single birthday entry by broadcaster login
+// and user login.
+func handleBirthdaysDelete(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	var body struct {
+		Login     string `json:"login"`
+		UserLogin string `json:"userLogin"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "bad json", http.StatusBadRequest)
+		return
+	}
+	login := strings.ToLower(strings.TrimSpace(body.Login))
+	userLogin := strings.ToLower(strings.TrimSpace(body.UserLogin))
+	if login == "" || userLogin == "" {
+		http.Error(w, "missing login or userLogin", http.StatusBadRequest)
+		return
+	}
+	if err := DeleteBirthday(login, userLogin); err != nil {
+		log.Println("handleBirthdaysDelete:", err)
+		http.Error(w, "db error", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // handleBirthdaysSettings exposes birthday-related settings for a

@@ -482,6 +482,7 @@ export default function BirthdaysPage() {
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
   const addModalRef = useRef<HTMLDivElement | null>(null);
+  const [deletingBirthday, setDeletingBirthday] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const pathname = usePathname();
 
@@ -677,6 +678,24 @@ export default function BirthdaysPage() {
       setAddError("Could not save birthdays. Please try again.");
     } finally {
       setAdding(false);
+    }
+  };
+
+  const handleDeleteBirthday = async (userLogin: string) => {
+    if (!login) return;
+    setDeletingBirthday(userLogin);
+    try {
+      const res = await fetch(`${backendUrl}/birthdays/delete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ login, userLogin }),
+      });
+      if (!res.ok) throw new Error("delete failed");
+      setBirthdays((prev) => prev.filter((b) => b.userLogin !== userLogin));
+    } catch {
+      // silent — the row stays in the list if delete fails
+    } finally {
+      setDeletingBirthday(null);
     }
   };
 
@@ -1153,6 +1172,7 @@ export default function BirthdaysPage() {
                             <th className="py-2 pr-3">Name</th>
                             <th className="py-2 pr-3">Username</th>
                             <th className="py-2 pr-3">Birthday</th>
+                            <th className="py-2">Actions</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1167,6 +1187,19 @@ export default function BirthdaysPage() {
                               <td className="py-2 pr-3 text-slate-400">{b.userLogin}</td>
                               <td className="py-2 pr-3 text-slate-200">
                                 {formatMonthDay(b.month, b.day)}
+                              </td>
+                              <td className="py-2">
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteBirthday(b.userLogin)}
+                                  disabled={deletingBirthday === b.userLogin}
+                                  className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-red-700 bg-red-700/80 text-white hover:bg-red-600/90 disabled:opacity-50"
+                                >
+                                  <span className="sr-only">Delete birthday</span>
+                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+                                    <path d="M6 2a1 1 0 0 0-1 1v1H3.5a.5.5 0 0 0 0 1h.54l.76 10.137A2 2 0 0 0 6.79 17h6.42a2 2 0 0 0 1.99-1.863L15.96 5H16.5a.5.5 0 0 0 0-1H15V3a1 1 0 0 0-1-1H6Zm1 2V3h6v1H7Z" />
+                                  </svg>
+                                </button>
                               </td>
                             </tr>
                           ))}
