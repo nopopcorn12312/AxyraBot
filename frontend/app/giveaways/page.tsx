@@ -14,6 +14,8 @@ type GiveawayEntry = {
   login: string;
   displayName: string;
   isSubscriber: boolean;
+  isVip: boolean;
+  isMod: boolean;
   enteredAt: string;
 };
 
@@ -56,6 +58,7 @@ export default function GiveawaysPage() {
   // Giveaway settings (local form state)
   const [keyword, setKeyword] = useState("");
   const [subMultiplier, setSubMultiplier] = useState(1);
+  const [chatAnnounce, setChatAnnounce] = useState(true);
 
   // Live state from backend
   const [giveaway, setGiveaway] = useState<GiveawayStateData | null>(null);
@@ -109,6 +112,7 @@ export default function GiveawaysPage() {
         initialSyncDone.current = true;
         setKeyword(data.keyword ?? "");
         setSubMultiplier(data.subMultiplier ?? 1);
+        setChatAnnounce(data.chatAnnounce ?? true);
       }
     } catch {
       // ignore
@@ -146,7 +150,7 @@ export default function GiveawaysPage() {
             keyword: keyword.trim(),
             inactivitySec: 0,
             subMultiplier,
-            chatAnnounce: true,
+            chatAnnounce,
           }),
         });
       }
@@ -433,6 +437,8 @@ export default function GiveawaysPage() {
                   className="flex items-center justify-between rounded-lg px-2 py-1.5 text-xs hover:bg-slate-800/60 group"
                 >
                   <div className="flex items-center gap-1.5 min-w-0">
+                    {e.isMod && <span title="Moderator" className="text-xs font-bold text-green-400">MOD</span>}
+                    {e.isVip && <span title="VIP" className="text-xs font-bold text-pink-400">VIP</span>}
                     {e.isSubscriber && <span title="Subscriber" className="text-purple-400">★</span>}
                     <span className="truncate text-slate-200">{e.displayName || e.login}</span>
                   </div>
@@ -484,6 +490,18 @@ export default function GiveawaysPage() {
 
             {/* Keyword phrase */}
             <div className="mb-5">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-sm font-medium text-slate-300">Keyword Phrase</span>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <span className="text-xs text-slate-400">Chat Announcements</span>
+                  <input
+                    type="checkbox"
+                    checked={chatAnnounce}
+                    onChange={(e) => setChatAnnounce(e.target.checked)}
+                    className="h-4 w-4 rounded accent-indigo-500 cursor-pointer"
+                  />
+                </label>
+              </div>
               <input
                 type="text"
                 placeholder="Keyword Phrase"

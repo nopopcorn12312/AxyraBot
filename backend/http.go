@@ -70,6 +70,7 @@ func getOrCreateGiveaway(login string) *GiveawayState {
 // RecordGiveawayEntry is called from the chat message handler to add a chatter
 // to the active giveaway for their channel, if any.
 func RecordGiveawayEntry(channelLogin, chatterLogin, displayName string, isSubscriber, isVIP, isMod bool) {
+	channelLogin = strings.ToLower(strings.TrimSpace(channelLogin))
 	giveawaysMu.RLock()
 	g, ok := giveaways[channelLogin]
 	giveawaysMu.RUnlock()
@@ -107,6 +108,7 @@ func RecordGiveawayEntry(channelLogin, chatterLogin, displayName string, isSubsc
 // RecordGiveawayKeyword is called for every message; records entry only if
 // the giveaway is active in keyword mode and the message matches the keyword.
 func RecordGiveawayKeyword(channelLogin, chatterLogin, displayName, msgText string, isSubscriber, isVIP, isMod bool) {
+	channelLogin = strings.ToLower(strings.TrimSpace(channelLogin))
 	giveawaysMu.RLock()
 	g, ok := giveaways[channelLogin]
 	giveawaysMu.RUnlock()
@@ -2731,6 +2733,8 @@ func handleGiveawayState(w http.ResponseWriter, r *http.Request) {
 		Login        string    `json:"login"`
 		DisplayName  string    `json:"displayName"`
 		IsSubscriber bool      `json:"isSubscriber"`
+		IsVIP        bool      `json:"isVip"`
+		IsMod        bool      `json:"isMod"`
 		EnteredAt    time.Time `json:"enteredAt"`
 	}
 	entries := make([]entryOut, 0, len(g.Entries))
@@ -2740,12 +2744,12 @@ func handleGiveawayState(w http.ResponseWriter, r *http.Request) {
 			delete(g.Entries, e.Login)
 			continue
 		}
-		entries = append(entries, entryOut{e.Login, e.DisplayName, e.IsSubscriber, e.EnteredAt})
+		entries = append(entries, entryOut{e.Login, e.DisplayName, e.IsSubscriber, e.IsVIP, e.IsMod, e.EnteredAt})
 	}
 
 	var winner *entryOut
 	if g.Winner != nil {
-		w2 := entryOut{g.Winner.Login, g.Winner.DisplayName, g.Winner.IsSubscriber, g.Winner.EnteredAt}
+		w2 := entryOut{g.Winner.Login, g.Winner.DisplayName, g.Winner.IsSubscriber, g.Winner.IsVIP, g.Winner.IsMod, g.Winner.EnteredAt}
 		winner = &w2
 	}
 
@@ -2800,6 +2804,7 @@ func handleGiveawayStart(w http.ResponseWriter, r *http.Request) {
 	g.ChatAnnounce = body.ChatAnnounce
 	g.StartedAt = time.Now()
 	g.Winner = nil
+	g.Entries = map[string]*GiveawayEntry{}
 	g.mu.Unlock()
 
 	if body.ChatAnnounce {
