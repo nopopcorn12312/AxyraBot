@@ -624,7 +624,7 @@ export default function GiveawaysPage() {
           </div>
 
           {/* Chat Panel */}
-          <div className="flex w-72 shrink-0 flex-col rounded-2xl border border-slate-800 bg-slate-900/80 overflow-hidden">
+          <div className="flex w-96 shrink-0 flex-col rounded-2xl border border-slate-800 bg-slate-900/80 overflow-hidden">
             <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
               <h2 className="font-semibold text-slate-100">Stream Chat</h2>
               {chatChannel && (
