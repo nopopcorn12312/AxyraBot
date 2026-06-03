@@ -64,7 +64,6 @@ var birthdayCommandNames = []string{
 // List of built-in default commands that can be toggled per broadcaster.
 var defaultCommandNames = func() []string {
 	base := []string{
-		"!hello",
 		"!vanish",
 		"!title",
 		"!game",
@@ -72,7 +71,6 @@ var defaultCommandNames = func() []string {
 		"!followage",
 		"!uptime",
 		"!commands",
-		"!ai",
 	}
 	return append(base, birthdayCommandNames...)
 }()
@@ -670,38 +668,6 @@ func handleChatMessageEvent(channelLogin, chatterLogin, chatterID, messageID, me
 		botName = "AxyraBot"
 	}
 
-	// !ai (message) - ask ChatGPT a question or send a prompt and reply in chat.
-	if isChatCommand(message, "!ai") {
-		if !isDefaultCommandEnabled(channelLogin, "!ai") {
-			return
-		}
-		prompt := strings.TrimSpace(strings.TrimPrefix(message, "!ai"))
-		if prompt == "" {
-			if err := sendHelixChatMessage(channelLogin, "Usage: !ai <your question or prompt>"); err != nil {
-				log.Println("failed to send !ai usage response:", err)
-			}
-			return
-		}
-		// Call the external AI provider (e.g., OpenAI) to get a short answer.
-		reply, err := getAIResponse(channelLogin, chatterLogin, prompt)
-		if err != nil {
-			log.Println("failed to get !ai response:", err)
-			if err := sendHelixChatMessage(channelLogin, "Sorry, the AI is not available right now."); err != nil {
-				log.Println("failed to send !ai error response:", err)
-			}
-			return
-		}
-		if strings.TrimSpace(reply) == "" {
-			return
-		}
-		// Prefix with the requesting user so chat can see who asked.
-		msg := fmt.Sprintf("@%s %s", chatterLogin, reply)
-		if err := sendHelixChatMessage(channelLogin, msg); err != nil {
-			log.Println("failed to send !ai chat response:", err)
-		}
-		return
-	}
-
 	// !addcom !trigger response - add or update a custom command (mods + broadcaster only)
 	if isChatCommand(message, "!addcom") {
 		// Require broadcaster or moderator
@@ -881,16 +847,6 @@ func handleChatMessageEvent(channelLogin, chatterLogin, chatterID, messageID, me
 			log.Println("failed to send !editcom confirmation:", err)
 		}
 		return
-	}
-
-	// basic commands migrated from IRC handler
-	if isChatCommand(message, "!hello") {
-		if !isDefaultCommandEnabled(channelLogin, "!hello") {
-			return
-		}
-		if err := sendHelixChatMessage(channelLogin, fmt.Sprintf("Hello! I am %s", botName)); err != nil {
-			log.Println("failed to send !hello response:", err)
-		}
 	}
 
 	// !vanish - timeout the user for 1 second with a playful reason

@@ -13,11 +13,6 @@ const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL;
 
 const defaultCommands: { name: string; label?: string; description: string; enabled: boolean }[] = [
   {
-    name: "!hello",
-    description: "Greets chat with the bot's name.",
-    enabled: true,
-  },
-  {
     name: "!vanish",
     description: "Times out the user briefly with a playful message.",
     enabled: true,
@@ -54,12 +49,6 @@ const defaultCommands: { name: string; label?: string; description: string; enab
   {
     name: "!commands",
     description: "Links viewers to your channel's custom commands page.",
-    enabled: true,
-  },
-  {
-    name: "!ai",
-    label: "!ai <prompt>",
-    description: "Ask the AI a question or send a short prompt.",
     enabled: true,
   },
   {
