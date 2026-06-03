@@ -1822,7 +1822,7 @@ func timeoutUser(channelLogin, targetLogin string, seconds int, reason string) e
 }
 
 // deleteHelixMessage deletes a single chat message using the Helix
-// DELETE /helix/chat/messages endpoint (requires moderator:manage:chat_messages).
+// DELETE /helix/moderation/chat endpoint (requires moderator:manage:chat_messages).
 // The broadcaster's stored token is used as both broadcaster and moderator.
 func deleteHelixMessage(channelLogin, messageID string) error {
 	channelLogin = strings.ToLower(channelLogin)
@@ -1843,7 +1843,7 @@ func deleteHelixMessage(channelLogin, messageID string) error {
 
 	doDelete := func() (int, []byte, error) {
 		endpoint := fmt.Sprintf(
-			"https://api.twitch.tv/helix/chat/messages?broadcaster_id=%s&moderator_id=%s&message_id=%s",
+			"https://api.twitch.tv/helix/moderation/chat?broadcaster_id=%s&moderator_id=%s&message_id=%s",
 			url.QueryEscape(broadcasterID), url.QueryEscape(broadcasterID), url.QueryEscape(messageID),
 		)
 		req, err := http.NewRequest("DELETE", endpoint, nil)
