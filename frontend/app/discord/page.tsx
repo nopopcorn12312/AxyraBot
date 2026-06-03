@@ -204,6 +204,8 @@ export default function DiscordSettingsPage() {
   const [moderationOpen, setModerationOpen] = usePersistentSectionState("axyra.sidebar.moderationOpen", true);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const serverDropdownRef = useRef<HTMLDivElement | null>(null);
+  // Tracks which channel already has the panel posted so we only re-send when it changes.
+  const lastSentTicketChannelRef = useRef<string>("");
   const pathname = usePathname();
 
   // Discord state
@@ -479,6 +481,8 @@ export default function DiscordSettingsPage() {
           setTicketPanelBody(data.panel_body ?? "Click the button below to open a support ticket.");
           setTicketButtonLabel(data.button_label ?? "🎫 Open Ticket");
           setTicketPanelMessageId(data.panel_message_id ?? "");
+          // Remember what channel already has a live panel so we don't re-send on every save.
+          lastSentTicketChannelRef.current = data.panel_channel_id ?? "";
         }
       })
       .catch(() => {})
@@ -532,10 +536,39 @@ export default function DiscordSettingsPage() {
       });
       if (!res.ok) {
         setSaveError("Failed to save settings. Please try again.");
-      } else {
-        setSaveSuccess(true);
-        setTimeout(() => setSaveSuccess(false), 3000);
+        return;
       }
+      // If a ticket panel channel is configured, persist it and send the panel
+      // whenever the channel changes (or is set for the first time).
+      if (selectedGuildId && ticketPanelChannelId &&
+          ticketPanelChannelId !== lastSentTicketChannelRef.current) {
+        await fetch(`${backendUrl}/discord/tickets/config`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            guild_id: selectedGuildId,
+            panel_channel_id: ticketPanelChannelId,
+            log_channel_id: ticketLogChannelId,
+            category_id: ticketCategoryId,
+            support_role_ids: ticketSupportRoleIds,
+            panel_title: ticketPanelTitle,
+            panel_body: ticketPanelBody,
+            button_label: ticketButtonLabel,
+          }),
+        });
+        const panelRes = await fetch(`${backendUrl}/discord/tickets/send-panel`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ guild_id: selectedGuildId }),
+        });
+        if (panelRes.ok) {
+          const data = await panelRes.json();
+          if (data.panel_message_id) setTicketPanelMessageId(data.panel_message_id);
+          lastSentTicketChannelRef.current = ticketPanelChannelId;
+        }
+      }
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
     } catch {
       setSaveError("Network error. Please try again.");
     } finally {
@@ -1099,6 +1132,31 @@ export default function DiscordSettingsPage() {
                               <option value="">Disabled</option>
                               {guildChannels.map((c) => <option key={c.id} value={c.id}>#{c.name}</option>)}
                             </select>
+                          </div>
+
+                          <div className="flex flex-col gap-1.5">
+                            <div className="flex items-center gap-2">
+                              <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-300">
+                                <span>🎫</span> Ticket Panel
+                              </label>
+                              {ticketPanelMessageId && ticketPanelChannelId && (
+                                <span className="text-xs text-emerald-400">● Active</span>
+                              )}
+                            </div>
+                            <p className="text-xs text-slate-500">
+                              The bot will post an &ldquo;Open a Ticket&rdquo; button here. Changing this channel and saving will post a new panel.
+                            </p>
+                            <select
+                              value={ticketPanelChannelId}
+                              onChange={(e) => setTicketPanelChannelId(e.target.value)}
+                              className={channelSelectClass}
+                            >
+                              <option value="">Disabled</option>
+                              {guildChannels.map((c) => <option key={c.id} value={c.id}>#{c.name}</option>)}
+                            </select>
+                            {ticketPanelChannelId && ticketPanelChannelId !== lastSentTicketChannelRef.current && (
+                              <p className="text-xs text-amber-400">⚠ A new panel will be posted to this channel when you save.</p>
+                            )}
                           </div>
                         </div>
                       )}
