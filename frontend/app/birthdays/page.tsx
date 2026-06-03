@@ -1179,7 +1179,6 @@ export default function BirthdaysPage() {
                           <thead>
                             <tr className="border-b border-slate-800 text-left text-xs uppercase tracking-wide text-slate-400">
                               <th className="py-2 pr-3">Name</th>
-                              <th className="py-2 pr-3">Username</th>
                               <th className="py-2 pr-3">Birthday</th>
                               <th className="py-2">Actions</th>
                             </tr>
@@ -1193,7 +1192,6 @@ export default function BirthdaysPage() {
                                 <td className="py-2 pr-3 text-slate-100">
                                   {b.displayName || b.userLogin}
                                 </td>
-                                <td className="py-2 pr-3 text-slate-400">{b.userLogin}</td>
                                 <td className="py-2 pr-3 text-slate-200">
                                   {formatMonthDay(b.month, b.day)}
                                 </td>
