@@ -54,9 +54,7 @@ export default function GiveawaysPage() {
   );
 
   // Giveaway settings (local form state)
-  const [gType, setGType] = useState<"active" | "keyword">("active");
   const [keyword, setKeyword] = useState("");
-  const [inactivitySec, setInactivitySec] = useState(0);
   const [subMultiplier, setSubMultiplier] = useState(1);
   const [chatAnnounce, setChatAnnounce] = useState(true);
 
@@ -107,9 +105,7 @@ export default function GiveawaysPage() {
       const data: GiveawayStateData = await res.json();
       setGiveaway(data);
       // Sync form from backend if not currently editing
-      setGType(data.type);
       setKeyword(data.keyword ?? "");
-      setInactivitySec(data.inactivitySec ?? 0);
       setSubMultiplier(data.subMultiplier ?? 1);
       setChatAnnounce(data.chatAnnounce ?? true);
     } catch {
@@ -144,9 +140,9 @@ export default function GiveawaysPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             login,
-            type: gType,
+            type: "keyword",
             keyword: keyword.trim(),
-            inactivitySec,
+            inactivitySec: 0,
             subMultiplier,
             chatAnnounce,
           }),
@@ -484,31 +480,8 @@ export default function GiveawaysPage() {
               </button>
             </div>
 
-            {/* Giveaway type + Chat Announcements */}
+            {/* Chat Announcements */}
             <div className="mb-5 flex flex-wrap items-center gap-6">
-              <span className="text-sm font-medium text-slate-300">Giveaway type</span>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="gType"
-                  value="active"
-                  checked={gType === "active"}
-                  onChange={() => setGType("active")}
-                  className="accent-indigo-500"
-                />
-                <span className="text-sm text-slate-200">Active Users</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="gType"
-                  value="keyword"
-                  checked={gType === "keyword"}
-                  onChange={() => setGType("keyword")}
-                  className="accent-indigo-500"
-                />
-                <span className="text-sm text-slate-200">Keyword</span>
-              </label>
               <div className="ml-auto flex items-center gap-2">
                 <span className="text-sm text-slate-300">Chat Announcements</span>
                 <input
@@ -527,37 +500,10 @@ export default function GiveawaysPage() {
                 placeholder="Keyword Phrase"
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
-                disabled={gType !== "keyword"}
-                className="w-full rounded-lg border border-slate-700 bg-slate-800/60 px-4 py-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-40"
+                className="w-full rounded-lg border border-slate-700 bg-slate-800/60 px-4 py-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
               <p className="mt-1.5 text-xs text-slate-500">
-                Keyword phrases are fuzzy matched and case-insensitive, regex is not supported.
-              </p>
-            </div>
-
-            {/* Inactivity timeout */}
-            <div className="mb-5">
-              <label className="mb-2 block text-sm font-medium text-slate-300">
-                Inactivity timeout (in seconds)
-              </label>
-              <div className="flex items-center gap-3">
-                <input
-                  type="range"
-                  min={0}
-                  max={600}
-                  step={10}
-                  value={inactivitySec}
-                  onChange={(e) => setInactivitySec(Number(e.target.value))}
-                  className="flex-1 accent-indigo-500"
-                />
-                <div className="flex h-8 w-16 items-center justify-center rounded border border-slate-700 bg-slate-800 text-sm text-slate-100">
-                  {inactivitySec}
-                </div>
-              </div>
-              <p className="mt-1 text-xs text-slate-500">
-                {inactivitySec === 0
-                  ? "Users are not kicked from the giveaway for inactivity"
-                  : `Users inactive for more than ${inactivitySec}s will be removed`}
+                The message must exactly match the keyword — case-sensitive. No extra text allowed.
               </p>
             </div>
 

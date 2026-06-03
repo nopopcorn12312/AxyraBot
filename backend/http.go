@@ -112,8 +112,8 @@ func RecordGiveawayKeyword(channelLogin, chatterLogin, displayName, msgText stri
 	if !g.Active || g.Type != "keyword" || g.Keyword == "" {
 		return
 	}
-	// Case-insensitive fuzzy match: message contains keyword
-	if !strings.Contains(strings.ToLower(msgText), strings.ToLower(g.Keyword)) {
+	// Exact case-sensitive match: message must equal keyword exactly
+	if strings.TrimSpace(msgText) != g.Keyword {
 		return
 	}
 	chatterLogin = strings.ToLower(chatterLogin)
