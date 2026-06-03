@@ -42,6 +42,7 @@ func startHTTPServer(clientID, clientSecret string) {
 	mux.HandleFunc("/user/avatar", withCORS(handleUserAvatar(clientID, clientSecret)))
 	mux.HandleFunc("/modules/settings", withCORS(handleModuleSettings))
 	mux.HandleFunc("/birthdays/list", withCORS(handleBirthdaysList))
+	mux.HandleFunc("/birthdays/add", withCORS(handleBirthdaysAdd))
 	mux.HandleFunc("/birthdays/settings", withCORS(handleBirthdaysSettings))
 	mux.HandleFunc("/birthdays/command-messages", withCORS(handleBirthdayCommandMessages))
 	mux.HandleFunc("/discord/settings", withCORS(handleDiscordSettings))
@@ -1348,6 +1349,63 @@ func handleBirthdaysList(w http.ResponseWriter, r *http.Request) {
 		Birthdays interface{} `json:"birthdays"`
 	}{Birthdays: out}); err != nil {
 		log.Println("encode birthdays list:", err)
+	}
+}
+
+// handleBirthdaysAdd accepts a POST with a list of birthday entries and upserts
+// them all. Each entry is "NAME MM DD" on its own line.
+func handleBirthdaysAdd(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	var body struct {
+		Login   string `json:"login"`
+		Entries string `json:"entries"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "bad json", http.StatusBadRequest)
+		return
+	}
+	login := strings.ToLower(strings.TrimSpace(body.Login))
+	if login == "" {
+		http.Error(w, "missing login", http.StatusBadRequest)
+		return
+	}
+	type result struct {
+		Line  string `json:"line"`
+		Error string `json:"error,omitempty"`
+	}
+	var results []result
+	for _, rawLine := range strings.Split(body.Entries, "\n") {
+		line := strings.TrimSpace(rawLine)
+		if line == "" {
+			continue
+		}
+		parts := strings.Fields(line)
+		if len(parts) != 3 {
+			results = append(results, result{Line: line, Error: "expected: NAME MM DD"})
+			continue
+		}
+		name := parts[0]
+		month, err1 := strconv.Atoi(parts[1])
+		day, err2 := strconv.Atoi(parts[2])
+		if err1 != nil || err2 != nil || month < 1 || month > 12 || day < 1 || day > 31 {
+			results = append(results, result{Line: line, Error: "month must be 1-12, day must be 1-31"})
+			continue
+		}
+		if err := UpsertBirthday(login, strings.ToLower(name), name, month, day); err != nil {
+			log.Println("handleBirthdaysAdd UpsertBirthday:", err)
+			results = append(results, result{Line: line, Error: "db error"})
+			continue
+		}
+		results = append(results, result{Line: line})
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(struct {
+		Results []result `json:"results"`
+	}{Results: results}); err != nil {
+		log.Println("encode birthdays add:", err)
 	}
 }
 
