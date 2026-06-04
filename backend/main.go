@@ -2844,14 +2844,27 @@ func isSevenTVObjectID(s string) bool {
 	return true
 }
 
-// sevenTVSearchEmoteByName searches the 7TV emote catalogue for an emote
-// with exactly the given name (case-insensitive) and returns its ObjectID.
+// sevenTVSearchEmoteByName searches the 7TV emote catalogue via GraphQL for
+// an emote with exactly the given name (case-insensitive) and returns its ID.
 func sevenTVSearchEmoteByName(name string) (string, error) {
-	apiURL := "https://7tv.io/v3/emotes?query=" + url.QueryEscape(name) + "&limit=20"
-	req, err := http.NewRequest("GET", apiURL, nil)
+	const gqlQuery = `query SearchEmotes($query: String!, $limit: Int) {
+  emotes(query: $query, limit: $limit) {
+    items { id name }
+  }
+}`
+	body := map[string]interface{}{
+		"query":     gqlQuery,
+		"variables": map[string]interface{}{"query": name, "limit": 20},
+	}
+	bodyBytes, err := json.Marshal(body)
 	if err != nil {
 		return "", err
 	}
+	req, err := http.NewRequest("POST", "https://7tv.io/v3/gql", bytes.NewReader(bodyBytes))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", "application/json")
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -2863,24 +2876,35 @@ func sevenTVSearchEmoteByName(name string) (string, error) {
 		return "", fmt.Errorf("7TV search returned %s: %s", resp.Status, string(b))
 	}
 	var result struct {
-		Items []struct {
-			ID   string `json:"id"`
-			Name string `json:"name"`
-		} `json:"items"`
+		Data struct {
+			Emotes struct {
+				Items []struct {
+					ID   string `json:"id"`
+					Name string `json:"name"`
+				} `json:"items"`
+			} `json:"emotes"`
+		} `json:"data"`
+		Errors []struct {
+			Message string `json:"message"`
+		} `json:"errors"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return "", err
 	}
+	if len(result.Errors) > 0 {
+		return "", fmt.Errorf("7TV search error: %s", result.Errors[0].Message)
+	}
+	items := result.Data.Emotes.Items
 	// Prefer exact case-insensitive name match
-	for _, item := range result.Items {
+	for _, item := range items {
 		if strings.EqualFold(item.Name, name) {
 			return item.ID, nil
 		}
 	}
-	if len(result.Items) == 0 {
+	if len(items) == 0 {
 		return "", fmt.Errorf("no emote named %q found on 7TV", name)
 	}
-	return "", fmt.Errorf("no emote with exact name %q found on 7TV (did you mean %q?)", name, result.Items[0].Name)
+	return "", fmt.Errorf("no emote with exact name %q found on 7TV (did you mean %q?)", name, items[0].Name)
 }
 
 // sevenTVGetActiveEmoteSet queries the 7TV REST API to find the active
