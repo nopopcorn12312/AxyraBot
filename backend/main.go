@@ -2771,14 +2771,16 @@ func sevenTVAddEmote(channelLogin, emoteInput string) (string, error) {
 		return "", fmt.Errorf("could not parse emote ID from %q", emoteInput)
 	}
 
-	// --- 2. Get the broadcaster's 7TV token ---
-	token, err := Get7TVToken(channelLogin)
-	if err != nil || token == "" {
-		return "", fmt.Errorf("no 7TV token configured — set one in the Commands dashboard")
+	// --- 2. Use the shared bot 7TV token (set via SEVENTV_BOT_TOKEN env var).
+	// Broadcasters grant editor access on 7TV; the bot then acts as an editor.
+	token := strings.TrimSpace(os.Getenv("SEVENTV_BOT_TOKEN"))
+	if token == "" {
+		return "", fmt.Errorf("7TV is not configured on this bot — contact the bot owner")
 	}
 
 	// --- 3. Get the broadcaster's Twitch user ID ---
 	var twitchUserID string
+	var err error
 	if db != nil {
 		row := db.QueryRow(`SELECT twitch_user_id FROM users WHERE login=$1`, strings.ToLower(channelLogin))
 		_ = row.Scan(&twitchUserID)

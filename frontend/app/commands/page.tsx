@@ -176,7 +176,7 @@ function CommandsPage() {
   const [addCmdError, setAddCmdError] = useState<string | null>(null);
   const [addingCmd, setAddingCmd] = useState(false);
   const [sevenTVRole, setSevenTVRole] = useState<CustomCommandRole>("moderator");
-  const [sevenTVToken, setSevenTVToken] = useState("");
+  const [sevenTVBotConfigured, setSevenTVBotConfigured] = useState(false);
   const [showSevenTVModal, setShowSevenTVModal] = useState(false);
   const [sevenTVSaving, setSevenTVSaving] = useState(false);
   const [sevenTVSaveSuccess, setSevenTVSaveSuccess] = useState(false);
@@ -244,10 +244,9 @@ function CommandsPage() {
     if (!channelLogin) return;
     fetch(`${backendUrl}/commands/seventv-config?login=${encodeURIComponent(channelLogin)}`)
       .then((r) => r.json())
-      .then((d: { token?: string; role?: string }) => {
-        setSevenTVToken(d.token ?? "");
-        const r = (d.role ?? "moderator") as CustomCommandRole;
-        setSevenTVRole(r);
+      .then((d: { role?: string; bot_configured?: boolean }) => {
+        setSevenTVRole((d.role ?? "moderator") as CustomCommandRole);
+        setSevenTVBotConfigured(d.bot_configured ?? false);
       })
       .catch(() => {});
   }, [channelLogin]);
@@ -1155,6 +1154,20 @@ function CommandsPage() {
               </button>
             </div>
             <div className="flex flex-col gap-5">
+              {/* Bot status */}
+              <div className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs border ${sevenTVBotConfigured ? "border-emerald-800 bg-emerald-950/40 text-emerald-400" : "border-yellow-800 bg-yellow-950/40 text-yellow-400"}`}>
+                <span className={`h-2 w-2 rounded-full flex-shrink-0 ${sevenTVBotConfigured ? "bg-emerald-400" : "bg-yellow-400"}`} />
+                {sevenTVBotConfigured
+                  ? "Bot 7TV account is connected and ready."
+                  : "Bot 7TV token not configured — contact the bot owner."}
+              </div>
+              {/* Setup instructions */}
+              <div className="flex flex-col gap-1">
+                <p className="text-xs font-medium text-slate-300">Setup (one-time)</p>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Go to your <a href="https://7tv.app/" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">7tv.app</a> profile → <strong className="text-slate-200">Emote Sets</strong> → open your active set → <strong className="text-slate-200">Editors</strong> → add <strong className="text-slate-200">AxyraBot</strong> as an editor. The bot will then be able to add emotes on your behalf.
+                </p>
+              </div>
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-medium text-slate-300">Who can use !add7tv?</label>
                 <div className="flex gap-2 flex-wrap">
@@ -1169,20 +1182,6 @@ function CommandsPage() {
                     </button>
                   ))}
                 </div>
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-slate-300">7TV API Token</label>
-                <input
-                  type="password"
-                  placeholder="Paste your 7TV API token"
-                  value={sevenTVToken}
-                  onChange={(e) => setSevenTVToken(e.target.value)}
-                  className="rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-accent/60"
-                  autoComplete="new-password"
-                />
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Get your token at <a href="https://7tv.app/settings" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">7tv.app/settings</a> → API Access.
-                </p>
               </div>
               {sevenTVSaveError && <div className="text-xs text-red-400">{sevenTVSaveError}</div>}
               {sevenTVSaveSuccess && <div className="text-xs text-emerald-400">Settings saved!</div>}
@@ -1208,7 +1207,7 @@ function CommandsPage() {
                       const res = await fetch(`${backendUrl}/commands/seventv-config`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ login: channelLogin, role: sevenTVRole, token: sevenTVToken }),
+                        body: JSON.stringify({ login: channelLogin, role: sevenTVRole }),
                       });
                       if (!res.ok) {
                         setSevenTVSaveError("Failed to save. Please try again.");

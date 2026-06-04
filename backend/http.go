@@ -316,23 +316,17 @@ func handleSevenTVConfig(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "missing login", http.StatusBadRequest)
 			return
 		}
-		token, err := Get7TVToken(login)
-		if err != nil {
-			log.Println("failed to get 7TV token:", err)
-			http.Error(w, "db error", http.StatusInternalServerError)
-			return
-		}
 		role, err := GetDefaultCommandRole(login, "!add7tv")
 		if err != nil {
 			log.Println("failed to get 7TV role:", err)
 			role = "moderator"
 		}
+		botConfigured := strings.TrimSpace(os.Getenv("SEVENTV_BOT_TOKEN")) != ""
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]string{"token": token, "role": role})
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{"role": role, "bot_configured": botConfigured})
 	case http.MethodPost:
 		var body struct {
 			Login string `json:"login"`
-			Token string `json:"token"`
 			Role  string `json:"role"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -343,13 +337,6 @@ func handleSevenTVConfig(w http.ResponseWriter, r *http.Request) {
 		if login == "" {
 			http.Error(w, "missing login", http.StatusBadRequest)
 			return
-		}
-		if body.Token != "" {
-			if err := Set7TVToken(login, body.Token); err != nil {
-				log.Println("failed to save 7TV token:", err)
-				http.Error(w, "db error", http.StatusInternalServerError)
-				return
-			}
 		}
 		role := strings.TrimSpace(body.Role)
 		if role == "" {
