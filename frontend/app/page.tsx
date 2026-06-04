@@ -66,13 +66,15 @@ function DashboardCarousel({ slides }: { slides: { src: string; alt: string }[] 
       <div className="absolute -inset-4 rounded-3xl bg-accent/5 blur-3xl" />
       <div className="relative rounded-2xl border border-slate-700/60 overflow-hidden shadow-2xl shadow-black/60">
         {/* Images stacked; only the displayed one is visible */}
-        <div className="relative w-full" style={{ aspectRatio: "16/9" }}>
+        <div className="relative w-full">
+          {/* Invisible first image keeps the container height correct */}
+          <img src={slides[0].src} alt="" className="w-full h-auto block invisible" aria-hidden="true" />
           {slides.map((slide, i) => (
             <img
               key={slide.src}
               src={slide.src}
               alt={slide.alt}
-              className="absolute inset-0 w-full h-full object-cover transition-opacity duration-500"
+              className="absolute inset-0 w-full h-full object-contain transition-opacity duration-500"
               style={{ opacity: i === displayed ? (fading ? 0 : 1) : 0, pointerEvents: i === displayed ? "auto" : "none" }}
             />
           ))}
