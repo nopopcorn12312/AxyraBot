@@ -647,7 +647,7 @@ function CommandsPage() {
                     <th className="px-4 py-3 font-semibold w-36">Command</th>
                     <th className="px-4 py-3 font-semibold">Description</th>
                     <th className="px-4 py-3 font-semibold w-32 text-center">Enabled</th>
-                    <th className="px-4 py-3 font-semibold w-24 text-center">Actions</th>
+                    {view === "custom" && <th className="px-4 py-3 font-semibold w-24 text-center">Actions</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -683,20 +683,17 @@ function CommandsPage() {
                               <span className="text-slate-500 text-xs">—</span>
                             )}
                           </td>
-                          <td className="px-4 py-2 text-center">
-                            <span className="text-slate-500 text-xs">—</span>
-                          </td>
                         </tr>
                       ))}
                       {defaultCommands.length === 0 && (
                         <tr>
-                          <td colSpan={4} className="px-4 py-4 text-center text-slate-400">
+                          <td colSpan={3} className="px-4 py-4 text-center text-slate-400">
                             No commands to display yet.
                           </td>
                         </tr>
                       )}
                       {/* filler row — absorbs remaining height */}
-                      <tr className="h-full border-t border-slate-800"><td colSpan={4} /></tr>
+                      <tr className="h-full border-t border-slate-800"><td colSpan={3} /></tr>
                     </>
                   )}
                   {view === "custom" && (() => {
