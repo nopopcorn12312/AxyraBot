@@ -93,8 +93,8 @@ const defaultCommands: { name: string; label?: string; description: string; enab
   },
   {
     name: "!add7tv",
-    label: "!add7tv <7tv.app/emotes/EMOTE_ID>",
-    description: "Adds a 7TV emote to the channel's active emote set from a link.",
+    label: "!add7tv <emote name or 7tv link>",
+    description: "Adds a 7TV emote to the channel's active emote set by name or link.",
     enabled: true,
   },
 ];

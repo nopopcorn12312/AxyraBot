@@ -1386,7 +1386,7 @@ func handleChatMessageEvent(channelLogin, chatterLogin, chatterID, messageID, me
 		}
 		fields := strings.Fields(message)
 		if len(fields) < 2 {
-			if err := sendHelixChatMessage(channelLogin, "Usage: !add7tv <7tv.app/emotes/EMOTE_ID>"); err != nil {
+			if err := sendHelixChatMessage(channelLogin, "Usage: !add7tv <emote name or 7tv.app/emotes/ID>"); err != nil {
 				log.Println("failed to send !add7tv usage:", err)
 			}
 			return
@@ -2760,15 +2760,33 @@ func getFrontendBaseURL() string {
 // emoteInput may be a full URL (https://7tv.app/emotes/EMOTE_ID) or just the
 // emote ID. Returns a human-readable success message on success.
 func sevenTVAddEmote(channelLogin, emoteInput string) (string, error) {
-	// --- 1. Extract emote ID from input ---
-	emoteID := emoteInput
+	// --- 1. Resolve emote ID from input ---
+	// Input may be:
+	//   a) A full URL:  https://7tv.app/emotes/60aef6570e35477634a6f0a5
+	//   b) A raw 24-char hex ObjectID: 60aef6570e35477634a6f0a5
+	//   c) An emote name: OmegaLUL
+	emoteID := strings.TrimSpace(emoteInput)
 	if strings.Contains(emoteID, "/") {
+		// Extract the last path segment from the URL
 		parts := strings.Split(strings.TrimRight(emoteID, "/"), "/")
-		emoteID = parts[len(parts)-1]
+		emoteID = strings.TrimSpace(parts[len(parts)-1])
 	}
-	emoteID = strings.TrimSpace(emoteID)
+	// Strip any query string that may follow the ID in a URL
+	if idx := strings.IndexAny(emoteID, "?#"); idx != -1 {
+		emoteID = emoteID[:idx]
+	}
 	if emoteID == "" {
-		return "", fmt.Errorf("could not parse emote ID from %q", emoteInput)
+		return "", fmt.Errorf("could not parse emote from %q", emoteInput)
+	}
+
+	// If the string is not a valid 24-hex ObjectID, treat it as a name and
+	// search 7TV for an exact match.
+	if !isSevenTVObjectID(emoteID) {
+		found, err := sevenTVSearchEmoteByName(emoteID)
+		if err != nil {
+			return "", fmt.Errorf("could not find emote %q on 7TV: %w", emoteID, err)
+		}
+		emoteID = found
 	}
 
 	// --- 2. Use the shared bot 7TV token (set via SEVENTV_BOT_TOKEN env var).
@@ -2810,6 +2828,59 @@ func sevenTVAddEmote(channelLogin, emoteInput string) (string, error) {
 		return "", err
 	}
 	return fmt.Sprintf("Emote \"%s\" added to your 7TV set!", addedName), nil
+}
+
+// isSevenTVObjectID reports whether s looks like a valid 7TV ObjectID
+// (exactly 24 lowercase hex characters).
+func isSevenTVObjectID(s string) bool {
+	if len(s) != 24 {
+		return false
+	}
+	for _, c := range s {
+		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
+			return false
+		}
+	}
+	return true
+}
+
+// sevenTVSearchEmoteByName searches the 7TV emote catalogue for an emote
+// with exactly the given name (case-insensitive) and returns its ObjectID.
+func sevenTVSearchEmoteByName(name string) (string, error) {
+	apiURL := "https://7tv.io/v3/emotes?query=" + url.QueryEscape(name) + "&limit=20"
+	req, err := http.NewRequest("GET", apiURL, nil)
+	if err != nil {
+		return "", err
+	}
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		b, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("7TV search returned %s: %s", resp.Status, string(b))
+	}
+	var result struct {
+		Items []struct {
+			ID   string `json:"id"`
+			Name string `json:"name"`
+		} `json:"items"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", err
+	}
+	// Prefer exact case-insensitive name match
+	for _, item := range result.Items {
+		if strings.EqualFold(item.Name, name) {
+			return item.ID, nil
+		}
+	}
+	if len(result.Items) == 0 {
+		return "", fmt.Errorf("no emote named %q found on 7TV", name)
+	}
+	return "", fmt.Errorf("no emote with exact name %q found on 7TV (did you mean %q?)", name, result.Items[0].Name)
 }
 
 // sevenTVGetActiveEmoteSet queries the 7TV REST API to find the active
