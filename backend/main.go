@@ -2946,9 +2946,9 @@ func sevenTVGetActiveEmoteSet(twitchUserID string) (string, string, error) {
 // sevenTVGQLAddEmote calls the 7TV GraphQL API to add emoteID to setID.
 // Returns the name the emote was added under.
 func sevenTVGQLAddEmote(setID, emoteID, token string) (string, error) {
-	const gqlMutation = `mutation ChangeEmoteInSet($id: ObjectID!, $action: ListItemAction!, $emote_id: ObjectID!, $name: String) {
+	const gqlMutation = `mutation ChangeEmoteInSet($id: ObjectID!, $action: ListItemAction!, $emote_id: ObjectID!) {
   emoteSet(id: $id) {
-    emotes(id: $emote_id, action: $action, name: $name) {
+    emotes(id: $emote_id, action: $action) {
       id
       name
     }
@@ -2960,7 +2960,6 @@ func sevenTVGQLAddEmote(setID, emoteID, token string) (string, error) {
 			"id":       setID,
 			"action":   "ADD",
 			"emote_id": emoteID,
-			"name":     "",
 		},
 	}
 	bodyBytes, err := json.Marshal(body)
