@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -551,7 +552,8 @@ func handleChatMessageEvent(channelLogin, chatterLogin, chatterID, messageID, me
 		} else {
 			lowerMsg := strings.ToLower(message)
 			for _, bt := range terms {
-				if strings.Contains(lowerMsg, strings.ToLower(bt.Term)) {
+				termPattern := regexp.MustCompile(`(?i)\b` + regexp.QuoteMeta(bt.Term) + `\b`)
+				if termPattern.MatchString(lowerMsg) {
 					log.Printf("[BLOCKED TERM] channel=%s user=%s term=%q action=%s messageID=%q", channelLogin, chatterLogin, bt.Term, bt.Action, messageID)
 					switch bt.Action {
 					case "delete":
