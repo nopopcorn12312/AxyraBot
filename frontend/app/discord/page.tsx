@@ -239,6 +239,10 @@ export default function DiscordSettingsPage() {
   const [sendingPanel, setSendingPanel] = useState(false);
   const [sendPanelSuccess, setSendPanelSuccess] = useState(false);
   const [sendPanelError, setSendPanelError] = useState<string | null>(null);
+  const [editingTicketRoles, setEditingTicketRoles] = useState(false);
+  const [ticketRoleSaving, setTicketRoleSaving] = useState(false);
+  const [ticketRoleSaveSuccess, setTicketRoleSaveSuccess] = useState(false);
+  const [ticketRoleSaveError, setTicketRoleSaveError] = useState<string | null>(null);
   type GuildCategory = { id: string; name: string };
   const [guildCategories, setGuildCategories] = useState<GuildCategory[]>([]);
 
@@ -1139,6 +1143,13 @@ export default function DiscordSettingsPage() {
                               <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-300">
                                 <span>🎫</span> Ticket Panel
                               </label>
+                              <button
+                                type="button"
+                                onClick={() => { setEditingTicketRoles(true); setTicketRoleSaveSuccess(false); setTicketRoleSaveError(null); }}
+                                className="text-xs text-accent hover:underline"
+                              >
+                                Edit Roles
+                              </button>
                               {ticketPanelMessageId && ticketPanelChannelId && (
                                 <span className="text-xs text-emerald-400">● Active</span>
                               )}
@@ -1705,6 +1716,127 @@ export default function DiscordSettingsPage() {
         </div>
       );
     })()}
+
+    {/* ── Ticket roles / category modal ── */}
+    {editingTicketRoles && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setEditingTicketRoles(false)}>
+        <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+          {/* Header */}
+          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800">
+            <div className="flex flex-col gap-0.5">
+              <p className="text-sm font-semibold text-slate-100">🎫 Ticket Channel Settings</p>
+              <p className="text-xs text-slate-500">Choose the category and roles attached to every created ticket channel.</p>
+            </div>
+            <button type="button" onClick={() => setEditingTicketRoles(false)} className="rounded-lg p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition">
+              <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4"><path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" /></svg>
+            </button>
+          </div>
+
+          {/* Category picker */}
+          <div className="flex flex-col gap-4 px-5 pt-5">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold uppercase tracking-wide text-slate-300">Category</label>
+              <p className="text-xs text-slate-500">Ticket channels will be created inside this category. Leave blank for no category.</p>
+              <select
+                value={ticketCategoryId}
+                onChange={(e) => setTicketCategoryId(e.target.value)}
+                className="rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-accent/60 w-full"
+              >
+                <option value="">No category</option>
+                {guildCategories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+
+            {/* Support roles */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold uppercase tracking-wide text-slate-300">Support Roles</label>
+              <p className="text-xs text-slate-500">These roles can see and respond to every ticket channel. Toggle to select.</p>
+              {loadingRoles ? (
+                <span className="text-xs text-slate-500">Loading roles…</span>
+              ) : guildRoles.filter((r) => r.name !== "@everyone").length === 0 ? (
+                <span className="text-xs text-slate-500">No roles found.</span>
+              ) : (
+                <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto pb-1">
+                  {guildRoles.filter((r) => r.name !== "@everyone").map((r) => {
+                    const hex = r.color !== 0 ? `#${r.color.toString(16).padStart(6, "0")}` : undefined;
+                    const selected = ticketSupportRoleIds.includes(r.id);
+                    return (
+                      <button
+                        key={r.id}
+                        type="button"
+                        onClick={() => setTicketSupportRoleIds((prev) =>
+                          selected ? prev.filter((id) => id !== r.id) : [...prev, r.id]
+                        )}
+                        style={selected && hex ? { borderColor: hex, color: hex } : undefined}
+                        className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
+                          selected
+                            ? "border-accent bg-accent/10 text-accent"
+                            : "border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-500 hover:text-slate-300"
+                        }`}
+                      >
+                        {selected ? "✓ " : ""}{r.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="flex items-center justify-between gap-3 px-5 py-4 mt-4 border-t border-slate-800 bg-slate-950/40">
+            <div className="flex items-center gap-3">
+              {ticketRoleSaveSuccess && <span className="text-sm text-emerald-400">✓ Saved!</span>}
+              {ticketRoleSaveError && <span className="text-sm text-red-400">{ticketRoleSaveError}</span>}
+            </div>
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={() => setEditingTicketRoles(false)} className="rounded-lg border border-slate-700 px-4 py-1.5 text-sm text-slate-300 hover:bg-slate-800 transition">
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={ticketRoleSaving || !selectedGuildId}
+                onClick={async () => {
+                  if (!selectedGuildId) return;
+                  setTicketRoleSaving(true);
+                  setTicketRoleSaveError(null);
+                  setTicketRoleSaveSuccess(false);
+                  try {
+                    const res = await fetch(`${backendUrl}/discord/tickets/config`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        guild_id: selectedGuildId,
+                        panel_channel_id: ticketPanelChannelId,
+                        log_channel_id: ticketLogChannelId,
+                        category_id: ticketCategoryId,
+                        support_role_ids: ticketSupportRoleIds,
+                        panel_title: ticketPanelTitle,
+                        panel_body: ticketPanelBody,
+                        button_label: ticketButtonLabel,
+                      }),
+                    });
+                    if (!res.ok) {
+                      setTicketRoleSaveError("Failed to save.");
+                    } else {
+                      setTicketRoleSaveSuccess(true);
+                      setTimeout(() => { setTicketRoleSaveSuccess(false); setEditingTicketRoles(false); }, 1200);
+                    }
+                  } catch {
+                    setTicketRoleSaveError("Network error.");
+                  } finally {
+                    setTicketRoleSaving(false);
+                  }
+                }}
+                className="rounded-lg bg-accent px-4 py-1.5 text-sm font-medium text-white hover:bg-accent/90 transition disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {ticketRoleSaving ? "Saving…" : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
 
     {/* ── Notification template edit modal ── */}
     {editingNotif && (
