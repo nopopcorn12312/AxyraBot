@@ -407,13 +407,10 @@ export default function HomePage() {
           {(() => {
             const slides = [
               { src: "/AxyraDashboard.png",  alt: "AxyraBot Dashboard" },
-              { src: "/AxyraBlocked.png",    alt: "AxyraBot Blocked Terms" },
               { src: "/AxyraCommands.png",   alt: "AxyraBot Commands" },
               { src: "/AxyraDiscord.png",    alt: "AxyraBot Discord" },
               { src: "/AxyraGiveaway.png",   alt: "AxyraBot Giveaway" },
               { src: "/AxyraModule.png",     alt: "AxyraBot Modules" },
-              { src: "/AxyraRoles.png",      alt: "AxyraBot Roles" },
-              { src: "/AxyraSpam.png",       alt: "AxyraBot Spam Filters" },
             ];
             return <DashboardCarousel slides={slides} />;
           })()}
