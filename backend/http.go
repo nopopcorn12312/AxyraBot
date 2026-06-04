@@ -35,15 +35,15 @@ type GiveawayEntry struct {
 
 type GiveawayState struct {
 	mu            sync.Mutex
-	Active        bool             `json:"active"`
-	Type          string           `json:"type"` // "active" or "keyword"
-	Keyword       string           `json:"keyword"`
-	InactivitySec int              `json:"inactivitySec"`
-	SubMultiplier int              `json:"subMultiplier"`
-	ChatAnnounce  bool             `json:"chatAnnounce"`
-	StartedAt     time.Time        `json:"startedAt"`
+	Active        bool                      `json:"active"`
+	Type          string                    `json:"type"` // "active" or "keyword"
+	Keyword       string                    `json:"keyword"`
+	InactivitySec int                       `json:"inactivitySec"`
+	SubMultiplier int                       `json:"subMultiplier"`
+	ChatAnnounce  bool                      `json:"chatAnnounce"`
+	StartedAt     time.Time                 `json:"startedAt"`
 	Entries       map[string]*GiveawayEntry `json:"entries"`
-	Winner        *GiveawayEntry   `json:"winner"`
+	Winner        *GiveawayEntry            `json:"winner"`
 }
 
 var (
@@ -2749,6 +2749,7 @@ func handleSpamFiltersDelete(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, "ok")
 }
+
 // ---------------------------------------------------------------------------
 // Giveaway HTTP handlers
 // ---------------------------------------------------------------------------
@@ -3027,15 +3028,15 @@ func handleDiscordTicketConfig(w http.ResponseWriter, r *http.Request) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]any{
-			"guild_id":          cfg.GuildID,
-			"panel_channel_id":  cfg.PanelChannelID,
-			"log_channel_id":    cfg.LogChannelID,
-			"category_id":       cfg.CategoryID,
-			"support_role_ids":  cfg.SupportRoleIDs,
-			"panel_message_id":  cfg.PanelMessageID,
-			"panel_title":       cfg.PanelTitle,
-			"panel_body":        cfg.PanelBody,
-			"button_label":      cfg.ButtonLabel,
+			"guild_id":         cfg.GuildID,
+			"panel_channel_id": cfg.PanelChannelID,
+			"log_channel_id":   cfg.LogChannelID,
+			"category_id":      cfg.CategoryID,
+			"support_role_ids": cfg.SupportRoleIDs,
+			"panel_message_id": cfg.PanelMessageID,
+			"panel_title":      cfg.PanelTitle,
+			"panel_body":       cfg.PanelBody,
+			"button_label":     cfg.ButtonLabel,
 		})
 
 	case http.MethodPost:

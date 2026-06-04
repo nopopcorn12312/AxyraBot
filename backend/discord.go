@@ -63,11 +63,11 @@ func InitDiscord() {
 // bulk-overwrite call (instant). Called from the GuildCreate handler.
 func registerSlashCommands(s *discordgo.Session, appID, guildID string) {
 	var (
-		permBan     int64 = discordgo.PermissionBanMembers
-		permKick    int64 = discordgo.PermissionKickMembers
-		permTimeout int64 = discordgo.PermissionModerateMembers
-		permManMsg  int64 = discordgo.PermissionManageMessages
-		permManChan int64 = discordgo.PermissionManageChannels
+		permBan      int64 = discordgo.PermissionBanMembers
+		permKick     int64 = discordgo.PermissionKickMembers
+		permTimeout  int64 = discordgo.PermissionModerateMembers
+		permManMsg   int64 = discordgo.PermissionManageMessages
+		permManChan  int64 = discordgo.PermissionManageChannels
 		permManRoles int64 = discordgo.PermissionManageRoles
 		permManNick  int64 = discordgo.PermissionManageNicknames
 		permManEmoji int64 = discordgo.PermissionManageEmojis
@@ -1432,7 +1432,6 @@ func GetGuildRoles(guildID string) ([]GuildRole, error) {
 	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
 	return out, nil
 }
-
 
 // GetBotGuilds returns all Discord servers (guilds) the bot is currently in.
 func GetBotGuilds() []BotGuild {

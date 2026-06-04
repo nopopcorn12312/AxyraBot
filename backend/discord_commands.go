@@ -1667,10 +1667,10 @@ func handlePokemonSlash(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	}
 	defer resp.Body.Close()
 	var poke struct {
-		Name   string `json:"name"`
-		Height int    `json:"height"`
-		Weight int    `json:"weight"`
-		BaseXP int    `json:"base_experience"`
+		Name    string `json:"name"`
+		Height  int    `json:"height"`
+		Weight  int    `json:"weight"`
+		BaseXP  int    `json:"base_experience"`
 		Sprites struct {
 			Front string `json:"front_default"`
 		} `json:"sprites"`

@@ -25,6 +25,104 @@ function FAQItem({ question, answer }: { question: string; answer: string }) {
   );
 }
 
+function DashboardCarousel({ slides }: { slides: { src: string; alt: string }[] }) {
+  const [current, setCurrent] = useState(0);
+  const [displayed, setDisplayed] = useState(0);
+  const [fading, setFading] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const goTo = (index: number) => {
+    const next = (index + slides.length) % slides.length;
+    if (next === current || fading) return;
+    setFading(true);
+    timerRef.current = setTimeout(() => {
+      setDisplayed(next);
+      setCurrent(next);
+      setFading(false);
+    }, 400);
+  };
+
+  // Auto-advance every 5 seconds
+  useEffect(() => {
+    const id = setInterval(() => {
+      setCurrent((prev) => {
+        const next = (prev + 1) % slides.length;
+        setFading(true);
+        setTimeout(() => {
+          setDisplayed(next);
+          setCurrent(next);
+          setFading(false);
+        }, 400);
+        return prev; // real update happens inside timeout
+      });
+    }, 5000);
+    return () => clearInterval(id);
+  }, [slides.length]);
+
+  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+
+  return (
+    <div className="relative group">
+      <div className="absolute -inset-4 rounded-3xl bg-accent/5 blur-3xl" />
+      <div className="relative rounded-2xl border border-slate-700/60 overflow-hidden shadow-2xl shadow-black/60">
+        {/* Images stacked; only the displayed one is visible */}
+        <div className="relative w-full" style={{ aspectRatio: "16/9" }}>
+          {slides.map((slide, i) => (
+            <img
+              key={slide.src}
+              src={slide.src}
+              alt={slide.alt}
+              className="absolute inset-0 w-full h-full object-cover transition-opacity duration-500"
+              style={{ opacity: i === displayed ? (fading ? 0 : 1) : 0, pointerEvents: i === displayed ? "auto" : "none" }}
+            />
+          ))}
+        </div>
+
+        {/* Left arrow */}
+        <button
+          type="button"
+          aria-label="Previous"
+          onClick={() => goTo(current - 1)}
+          className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center justify-center w-9 h-9 rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 hover:bg-black/75 transition-all duration-200 focus:outline-none"
+        >
+          <svg viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+            <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
+          </svg>
+        </button>
+
+        {/* Right arrow */}
+        <button
+          type="button"
+          aria-label="Next"
+          onClick={() => goTo(current + 1)}
+          className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center w-9 h-9 rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 hover:bg-black/75 transition-all duration-200 focus:outline-none"
+        >
+          <svg viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+            <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
+          </svg>
+        </button>
+
+        {/* Dot indicators */}
+        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5">
+          {slides.map((_, i) => (
+            <button
+              key={i}
+              type="button"
+              aria-label={`Go to slide ${i + 1}`}
+              onClick={() => goTo(i)}
+              className={`rounded-full transition-all duration-300 ${
+                i === current
+                  ? "w-4 h-1.5 bg-white"
+                  : "w-1.5 h-1.5 bg-white/40 hover:bg-white/70"
+              }`}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://your-backend.onrender.com";
 const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL;
 
@@ -303,17 +401,20 @@ export default function HomePage() {
       {/* ── DASHBOARD SECTION ── */}
       <section className="py-24 px-6 bg-slate-950/50 border-y border-slate-800/60">
         <div className="max-w-6xl mx-auto flex flex-col gap-12">
-          {/* Image — full width */}
-          <div className="relative">
-            <div className="absolute -inset-4 rounded-3xl bg-accent/5 blur-3xl" />
-            <div className="relative rounded-2xl border border-slate-700/60 overflow-hidden shadow-2xl shadow-black/60">
-              <img
-                src="/AxyraBotDashboard.png"
-                alt="AxyraBot Dashboard"
-                className="w-full h-auto block"
-              />
-            </div>
-          </div>
+          {/* Carousel */}
+          {(() => {
+            const slides = [
+              { src: "/AxyraDashboard.png",  alt: "AxyraBot Dashboard" },
+              { src: "/AxyraBlocked.png",    alt: "AxyraBot Blocked Terms" },
+              { src: "/AxyraCommands.png",   alt: "AxyraBot Commands" },
+              { src: "/AxyraDiscord.png",    alt: "AxyraBot Discord" },
+              { src: "/AxyraGiveaway.png",   alt: "AxyraBot Giveaway" },
+              { src: "/AxyraModule.png",     alt: "AxyraBot Modules" },
+              { src: "/AxyraRoles.png",      alt: "AxyraBot Roles" },
+              { src: "/AxyraSpam.png",       alt: "AxyraBot Spam Filters" },
+            ];
+            return <DashboardCarousel slides={slides} />;
+          })()}
           {/* Text below */}
           <div className="flex flex-col lg:flex-row lg:items-center gap-10">
             <div className="flex-1">

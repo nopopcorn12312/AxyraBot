@@ -2532,15 +2532,15 @@ func DeleteSpamFilter(broadcasterLogin string, id int64) error {
 
 // DiscordTicketConfig stores per-guild ticket panel settings.
 type DiscordTicketConfig struct {
-	GuildID         string
-	PanelChannelID  string   // channel where the ticket open button is posted
-	LogChannelID    string   // optional channel to log ticket open/close
-	CategoryID      string   // optional category to create ticket channels under
-	SupportRoleIDs  []string // roles that can see and respond to tickets
-	PanelMessageID  string   // ID of the bot's panel message (for re-use)
-	PanelTitle      string
-	PanelBody       string
-	ButtonLabel     string
+	GuildID        string
+	PanelChannelID string   // channel where the ticket open button is posted
+	LogChannelID   string   // optional channel to log ticket open/close
+	CategoryID     string   // optional category to create ticket channels under
+	SupportRoleIDs []string // roles that can see and respond to tickets
+	PanelMessageID string   // ID of the bot's panel message (for re-use)
+	PanelTitle     string
+	PanelBody      string
+	ButtonLabel    string
 }
 
 // EnsureTicketTables creates tables if they don't exist.
