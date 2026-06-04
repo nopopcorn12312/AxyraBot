@@ -120,6 +120,8 @@ export default function ImportPage() {
 
   const handleLogout = () => {
     if (typeof window !== "undefined") {
+      const _prevLogin = window.localStorage.getItem("axyra.login") ?? "";
+      if (_prevLogin) window.localStorage.setItem("axyra.lastLogin", _prevLogin);
       window.localStorage.removeItem("axyra.login");
       window.localStorage.removeItem("axyra.avatar");
     }
@@ -127,10 +129,12 @@ export default function ImportPage() {
     setAvatarUrl(null);
     setLogin(null);
     setMenuOpen(false);
+    if (typeof window !== "undefined") window.location.href = "/";
   };
 
   const redirectTarget = frontendUrl || "https://axyrabot.com";
-  const connectUrl = `${backendUrl}/auth/start?redirect=${encodeURIComponent(redirectTarget)}`;
+  const _lastLogin = typeof window !== "undefined" ? (window.localStorage.getItem("axyra.lastLogin") ?? "") : "";
+  const connectUrl = `${backendUrl}/auth/start?redirect=${encodeURIComponent(redirectTarget)}${_lastLogin ? `&hint=${encodeURIComponent(_lastLogin)}` : ""}`;
   const primaryHref = isLoggedIn ? "/dashboard" : connectUrl;
   const primaryLabel = isLoggedIn ? "Dashboard" : "Login with Twitch";
 

@@ -951,6 +951,31 @@ func withCORS(h http.HandlerFunc) http.HandlerFunc {
 func handleAuthStart(clientID string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		redirect := r.URL.Query().Get("redirect")
+		hint := r.URL.Query().Get("hint")
+
+		// Quick re-login: if the frontend supplies a previously-used login name
+		// and that user's stored token is still valid, skip the OAuth consent
+		// screen entirely and redirect straight back to the frontend.
+		if hint != "" && db != nil {
+			if access, _, err := GetUserTokens(strings.ToLower(hint)); err == nil && access != "" {
+				if login, err := getLoginFromToken(access); err == nil && strings.EqualFold(login, hint) {
+					avatarURL, _ := getUserProfileImage(access, clientID)
+					if redirect != "" {
+						if dest, err := url.Parse(redirect); err == nil {
+							q := dest.Query()
+							q.Set("login", login)
+							if avatarURL != "" {
+								q.Set("avatar", avatarURL)
+							}
+							dest.RawQuery = q.Encode()
+							http.Redirect(w, r, dest.String(), http.StatusFound)
+							return
+						}
+					}
+				}
+			}
+		}
+
 		state := "state123" // TODO: generate/validate and include CSRF protection
 		// If the frontend provided a redirect target, encode it into the state
 		// parameter so it survives the Twitch OAuth roundtrip and can be used in

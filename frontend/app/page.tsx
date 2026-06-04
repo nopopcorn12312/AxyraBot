@@ -206,20 +206,24 @@ export default function HomePage() {
 
   const handleLogout = () => {
     if (typeof window !== "undefined") {
+      const _prevLogin = window.localStorage.getItem("axyra.login") ?? "";
+      if (_prevLogin) window.localStorage.setItem("axyra.lastLogin", _prevLogin);
       window.localStorage.removeItem("axyra.login");
       window.localStorage.removeItem("axyra.avatar");
     }
     setIsLoggedIn(false);
     setAvatarUrl(null);
     setMenuOpen(false);
+    if (typeof window !== "undefined") window.location.href = "/";
   };
 
   // After Twitch auth, send users back to the homepage so we can update
   // local state and show the Dashboard buttons/avatar.
   const redirectTarget = frontendUrl ? `${frontendUrl}` : "";
+  const _lastLogin = typeof window !== "undefined" ? (window.localStorage.getItem("axyra.lastLogin") ?? "") : "";
   const connectUrl = redirectTarget
-    ? `${backendUrl}/auth/start?redirect=${encodeURIComponent(redirectTarget)}`
-    : `${backendUrl}/auth/start`;
+    ? `${backendUrl}/auth/start?redirect=${encodeURIComponent(redirectTarget)}${_lastLogin ? `&hint=${encodeURIComponent(_lastLogin)}` : ""}`
+    : `${backendUrl}/auth/start${_lastLogin ? `?hint=${encodeURIComponent(_lastLogin)}` : ""}`;
 
   const primaryHref = isLoggedIn ? "/dashboard" : connectUrl;
   const primaryLabel = isLoggedIn ? "Dashboard" : "Connect Twitch";
