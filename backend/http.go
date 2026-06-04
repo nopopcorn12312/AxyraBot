@@ -154,6 +154,7 @@ func startHTTPServer(clientID, clientSecret string) {
 	mux.HandleFunc("/commands/custom/update", withCORS(handleCustomCommandsUpdate))
 	mux.HandleFunc("/commands/custom/delete", withCORS(handleCustomCommandsDelete))
 	mux.HandleFunc("/commands/import", withCORS(handleCustomCommandsImport))
+	mux.HandleFunc("/commands/seventv-config", withCORS(handleSevenTVConfig))
 	mux.HandleFunc("/moderation/blocked-terms", withCORS(handleBlockedTerms))
 	mux.HandleFunc("/moderation/blocked-terms/delete", withCORS(handleBlockedTermsDelete))
 	mux.HandleFunc("/moderation/spam-filters", withCORS(handleSpamFilters))
@@ -295,6 +296,69 @@ func handleDefaultCommandSettings(w http.ResponseWriter, r *http.Request) {
 					}
 				}
 			}
+		}
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "ok")
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
+}
+
+// handleSevenTVConfig handles GET and POST for a broadcaster's 7TV API token
+// and the role allowed to use !add7tv.
+// GET ?login=xxx  → {"token":"...", "role":"moderator"}
+// POST {"login":"...", "token":"...", "role":"..."}
+func handleSevenTVConfig(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		login := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("login")))
+		if login == "" {
+			http.Error(w, "missing login", http.StatusBadRequest)
+			return
+		}
+		token, err := Get7TVToken(login)
+		if err != nil {
+			log.Println("failed to get 7TV token:", err)
+			http.Error(w, "db error", http.StatusInternalServerError)
+			return
+		}
+		role, err := GetDefaultCommandRole(login, "!add7tv")
+		if err != nil {
+			log.Println("failed to get 7TV role:", err)
+			role = "moderator"
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]string{"token": token, "role": role})
+	case http.MethodPost:
+		var body struct {
+			Login string `json:"login"`
+			Token string `json:"token"`
+			Role  string `json:"role"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "bad json", http.StatusBadRequest)
+			return
+		}
+		login := strings.ToLower(strings.TrimSpace(body.Login))
+		if login == "" {
+			http.Error(w, "missing login", http.StatusBadRequest)
+			return
+		}
+		if body.Token != "" {
+			if err := Set7TVToken(login, body.Token); err != nil {
+				log.Println("failed to save 7TV token:", err)
+				http.Error(w, "db error", http.StatusInternalServerError)
+				return
+			}
+		}
+		role := strings.TrimSpace(body.Role)
+		if role == "" {
+			role = "moderator"
+		}
+		if err := SetDefaultCommandRole(login, "!add7tv", role); err != nil {
+			log.Println("failed to save 7TV role:", err)
+			http.Error(w, "db error", http.StatusInternalServerError)
+			return
 		}
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprint(w, "ok")

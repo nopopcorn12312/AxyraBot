@@ -73,6 +73,7 @@ var defaultCommandNames = func() []string {
 		"!watchtime",
 		"!uptime",
 		"!commands",
+		"!add7tv",
 	}
 	return append(base, birthdayCommandNames...)
 }()
@@ -252,6 +253,9 @@ func main() {
 				}
 				if err := EnsureTicketTables(); err != nil {
 					log.Println("failed to ensure ticket tables:", err)
+				}
+				if err := EnsureSevenTVColumns(); err != nil {
+					log.Println("failed to ensure 7TV columns:", err)
 				}
 				// start postgres notifier for dynamic joins
 				if err := StartNotifier(dbURL); err != nil {
@@ -1368,7 +1372,39 @@ func handleChatMessageEvent(channelLogin, chatterLogin, chatterID, messageID, me
 		return
 	}
 
-	// Custom commands: if the first token matches a stored trigger, send its response.
+	// !add7tv <url> - add a 7TV emote to the broadcaster's active emote set
+	if isChatCommand(message, "!add7tv") {
+		if !isDefaultCommandEnabled(channelLogin, "!add7tv") {
+			return
+		}
+		requiredRole, _ := GetDefaultCommandRole(channelLogin, "!add7tv")
+		if !canUseCustomCommand(channelLogin, chatterLogin, requiredRole) {
+			if err := sendHelixChatMessage(channelLogin, fmt.Sprintf("@%s you don't have permission to add 7TV emotes.", chatterLogin)); err != nil {
+				log.Println("failed to send !add7tv permission response:", err)
+			}
+			return
+		}
+		fields := strings.Fields(message)
+		if len(fields) < 2 {
+			if err := sendHelixChatMessage(channelLogin, "Usage: !add7tv <7tv.app/emotes/EMOTE_ID>"); err != nil {
+				log.Println("failed to send !add7tv usage:", err)
+			}
+			return
+		}
+		emoteURL := fields[1]
+		if msg, err := sevenTVAddEmote(channelLogin, emoteURL); err != nil {
+			log.Printf("[7TV] add emote error channel=%s: %v", channelLogin, err)
+			if err2 := sendHelixChatMessage(channelLogin, fmt.Sprintf("@%s Failed to add emote: %s", chatterLogin, err.Error())); err2 != nil {
+				log.Println("failed to send !add7tv error response:", err2)
+			}
+		} else {
+			if err2 := sendHelixChatMessage(channelLogin, fmt.Sprintf("@%s %s", chatterLogin, msg)); err2 != nil {
+				log.Println("failed to send !add7tv success response:", err2)
+			}
+		}
+		return
+	}
+
 	msgTrimmed := strings.TrimSpace(message)
 	if strings.HasPrefix(msgTrimmed, "!") && db != nil {
 		fields := strings.Fields(msgTrimmed)
@@ -2720,7 +2756,193 @@ func getFrontendBaseURL() string {
 	return "https://axyrabot.com"
 }
 
-// getAIResponse calls an external AI provider (such as OpenAI) to generate
+// sevenTVAddEmote adds a 7TV emote to the broadcaster's active emote set.
+// emoteInput may be a full URL (https://7tv.app/emotes/EMOTE_ID) or just the
+// emote ID. Returns a human-readable success message on success.
+func sevenTVAddEmote(channelLogin, emoteInput string) (string, error) {
+	// --- 1. Extract emote ID from input ---
+	emoteID := emoteInput
+	if strings.Contains(emoteID, "/") {
+		parts := strings.Split(strings.TrimRight(emoteID, "/"), "/")
+		emoteID = parts[len(parts)-1]
+	}
+	emoteID = strings.TrimSpace(emoteID)
+	if emoteID == "" {
+		return "", fmt.Errorf("could not parse emote ID from %q", emoteInput)
+	}
+
+	// --- 2. Get the broadcaster's 7TV token ---
+	token, err := Get7TVToken(channelLogin)
+	if err != nil || token == "" {
+		return "", fmt.Errorf("no 7TV token configured — set one in the Commands dashboard")
+	}
+
+	// --- 3. Get the broadcaster's Twitch user ID ---
+	var twitchUserID string
+	if db != nil {
+		row := db.QueryRow(`SELECT twitch_user_id FROM users WHERE login=$1`, strings.ToLower(channelLogin))
+		_ = row.Scan(&twitchUserID)
+	}
+	if twitchUserID == "" {
+		// Fall back to Helix lookup
+		clientID := os.Getenv("TWITCH_CLIENT_ID")
+		twitchUserID, err = getTwitchUserIDByLogin(channelLogin, clientID)
+		if err != nil {
+			return "", fmt.Errorf("could not resolve broadcaster Twitch ID: %w", err)
+		}
+	}
+
+	// --- 4. Resolve the broadcaster's active 7TV emote-set ID via REST ---
+	emoteSetID, emoteName, err := sevenTVGetActiveEmoteSet(twitchUserID)
+	if err != nil {
+		return "", fmt.Errorf("could not fetch 7TV emote set: %w", err)
+	}
+
+	// emoteName is empty here; we will get the emote's actual name from the
+	// GQL mutation response.
+	_ = emoteName
+
+	// --- 5. Add the emote via 7TV GraphQL mutation ---
+	addedName, err := sevenTVGQLAddEmote(emoteSetID, emoteID, token)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("Emote \"%s\" added to your 7TV set!", addedName), nil
+}
+
+// sevenTVGetActiveEmoteSet queries the 7TV REST API to find the active
+// emote set for the given Twitch user ID. Returns (setID, "", error).
+func sevenTVGetActiveEmoteSet(twitchUserID string) (string, string, error) {
+	apiURL := "https://7tv.io/v3/users/twitch/" + url.PathEscape(twitchUserID)
+	req, err := http.NewRequest("GET", apiURL, nil)
+	if err != nil {
+		return "", "", err
+	}
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == 404 {
+		return "", "", fmt.Errorf("broadcaster not found on 7TV — have them link their Twitch at 7tv.app")
+	}
+	if resp.StatusCode != 200 {
+		b, _ := io.ReadAll(resp.Body)
+		return "", "", fmt.Errorf("7TV user lookup failed (%s): %s", resp.Status, string(b))
+	}
+	var payload struct {
+		EmoteSet struct {
+			ID   string `json:"id"`
+			Name string `json:"name"`
+		} `json:"emote_set"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		return "", "", err
+	}
+	if payload.EmoteSet.ID == "" {
+		return "", "", fmt.Errorf("broadcaster has no active 7TV emote set")
+	}
+	return payload.EmoteSet.ID, payload.EmoteSet.Name, nil
+}
+
+// sevenTVGQLAddEmote calls the 7TV GraphQL API to add emoteID to setID.
+// Returns the name the emote was added under.
+func sevenTVGQLAddEmote(setID, emoteID, token string) (string, error) {
+	const gqlMutation = `mutation ChangeEmoteInSet($id: ObjectID!, $action: ListItemAction!, $emote_id: ObjectID!, $name: String) {
+  emoteSet(id: $id) {
+    emotes(id: $emote_id, action: $action, name: $name) {
+      id
+      name
+    }
+  }
+}`
+	body := map[string]interface{}{
+		"query": gqlMutation,
+		"variables": map[string]interface{}{
+			"id":       setID,
+			"action":   "ADD",
+			"emote_id": emoteID,
+			"name":     "",
+		},
+	}
+	bodyBytes, err := json.Marshal(body)
+	if err != nil {
+		return "", err
+	}
+	req, err := http.NewRequest("POST", "https://7tv.io/v3/gql", bytes.NewReader(bodyBytes))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	var gqlResp struct {
+		Data struct {
+			EmoteSet struct {
+				Emotes []struct {
+					ID   string `json:"id"`
+					Name string `json:"name"`
+				} `json:"emotes"`
+			} `json:"emoteSet"`
+		} `json:"data"`
+		Errors []struct {
+			Message string `json:"message"`
+		} `json:"errors"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&gqlResp); err != nil {
+		return "", err
+	}
+	if len(gqlResp.Errors) > 0 {
+		return "", fmt.Errorf("%s", gqlResp.Errors[0].Message)
+	}
+	if len(gqlResp.Data.EmoteSet.Emotes) > 0 {
+		return gqlResp.Data.EmoteSet.Emotes[0].Name, nil
+	}
+	return emoteID, nil
+}
+
+// getTwitchUserIDByLogin resolves a Twitch login name to a user ID using the
+// Helix /users endpoint. Used as a fallback when the users table doesn't
+// have the twitch_user_id column populated.
+func getTwitchUserIDByLogin(login, clientID string) (string, error) {
+	helixChatMu.Lock()
+	tok := appAccessToken
+	helixChatMu.Unlock()
+	if tok == "" {
+		return "", fmt.Errorf("no app access token available")
+	}
+	req, err := http.NewRequest("GET", "https://api.twitch.tv/helix/users?login="+url.QueryEscape(login), nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Client-ID", clientID)
+	req.Header.Set("Authorization", "Bearer "+tok)
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	var res struct {
+		Data []struct {
+			ID string `json:"id"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+		return "", err
+	}
+	if len(res.Data) == 0 {
+		return "", fmt.Errorf("user %q not found on Twitch", login)
+	}
+	return res.Data[0].ID, nil
+}
+
 // a short answer for the given prompt. It is used by the !ai default
 // command. If the provider is not configured or an error occurs, an error
 // is returned and the caller should handle a fallback message.

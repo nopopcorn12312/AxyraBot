@@ -91,6 +91,12 @@ const defaultCommands: { name: string; label?: string; description: string; enab
     description: "Change a user's saved birthday (mods only).",
     enabled: true,
   },
+  {
+    name: "!add7tv",
+    label: "!add7tv <7tv.app/emotes/EMOTE_ID>",
+    description: "Adds a 7TV emote to the channel's active emote set from a link.",
+    enabled: true,
+  },
 ];
 
 type CustomCommandRole = "all" | "broadcaster" | "moderator" | "vip";
@@ -169,6 +175,12 @@ function CommandsPage() {
   const [newCmdRole, setNewCmdRole] = useState<CustomCommandRole>("all");
   const [addCmdError, setAddCmdError] = useState<string | null>(null);
   const [addingCmd, setAddingCmd] = useState(false);
+  const [sevenTVRole, setSevenTVRole] = useState<CustomCommandRole>("moderator");
+  const [sevenTVToken, setSevenTVToken] = useState("");
+  const [showSevenTVModal, setShowSevenTVModal] = useState(false);
+  const [sevenTVSaving, setSevenTVSaving] = useState(false);
+  const [sevenTVSaveSuccess, setSevenTVSaveSuccess] = useState(false);
+  const [sevenTVSaveError, setSevenTVSaveError] = useState<string | null>(null);
   const addModalRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const pathname = usePathname();
@@ -226,6 +238,19 @@ function CommandsPage() {
     })();
     return () => controller.abort();
   }, [channelLogin, view]);
+
+  // Fetch 7TV config (role + token) for the !add7tv command.
+  useEffect(() => {
+    if (!channelLogin) return;
+    fetch(`${backendUrl}/commands/seventv-config?login=${encodeURIComponent(channelLogin)}`)
+      .then((r) => r.json())
+      .then((d: { token?: string; role?: string }) => {
+        setSevenTVToken(d.token ?? "");
+        const r = (d.role ?? "moderator") as CustomCommandRole;
+        setSevenTVRole(r);
+      })
+      .catch(() => {});
+  }, [channelLogin]);
 
   // Reset to page 1 whenever the commands list or search query changes
   useEffect(() => { setCustomPage(1); }, [customCommands.length, commandSearch]);
@@ -651,7 +676,7 @@ function CommandsPage() {
                     <th className="px-4 py-3 font-semibold w-36">Command</th>
                     <th className="px-4 py-3 font-semibold">Description</th>
                     <th className="px-4 py-3 font-semibold w-32 text-center">Enabled</th>
-                    {view === "custom" && <th className="px-4 py-3 font-semibold w-24 text-center">Actions</th>}
+                    <th className="px-4 py-3 font-semibold w-24 text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -687,17 +712,31 @@ function CommandsPage() {
                               <span className="text-slate-500 text-xs">—</span>
                             )}
                           </td>
+                          <td className="px-4 py-2 text-center">
+                            {row.name === "!add7tv" && channelLogin && loggedInLogin === channelLogin ? (
+                              <button
+                                type="button"
+                                title="Configure 7TV"
+                                onClick={() => { setSevenTVSaveSuccess(false); setSevenTVSaveError(null); setShowSevenTVModal(true); }}
+                                className="text-slate-400 hover:text-slate-100 transition-colors"
+                              >
+                                ⚙
+                              </button>
+                            ) : (
+                              <span className="text-slate-700">—</span>
+                            )}
+                          </td>
                         </tr>
                       ))}
                       {defaultCommands.length === 0 && (
                         <tr>
-                          <td colSpan={3} className="px-4 py-4 text-center text-slate-400">
+                          <td colSpan={4} className="px-4 py-4 text-center text-slate-400">
                             No commands to display yet.
                           </td>
                         </tr>
                       )}
                       {/* filler row — absorbs remaining height */}
-                      <tr className="h-full border-t border-slate-800"><td colSpan={3} /></tr>
+                      <tr className="h-full border-t border-slate-800"><td colSpan={4} /></tr>
                     </>
                   )}
                   {view === "custom" && (() => {
@@ -1098,6 +1137,97 @@ function CommandsPage() {
             }
           }}
         />
+      )}
+      {showSevenTVModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          onMouseDown={(e) => { if (e.target === e.currentTarget) setShowSevenTVModal(false); }}
+        >
+          <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-semibold text-slate-50">Configure !add7tv</h2>
+              <button
+                type="button"
+                onClick={() => setShowSevenTVModal(false)}
+                className="text-slate-400 hover:text-slate-200 transition"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5"><path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" /></svg>
+              </button>
+            </div>
+            <div className="flex flex-col gap-5">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-slate-300">Who can use !add7tv?</label>
+                <div className="flex gap-2 flex-wrap">
+                  {(["all", "vip", "moderator", "broadcaster"] as CustomCommandRole[]).map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => setSevenTVRole(r)}
+                      className={`rounded-full px-3 py-1 text-xs font-medium border transition ${sevenTVRole === r ? "bg-accent border-accent text-white" : "border-slate-600 text-slate-300 hover:border-slate-400"}`}
+                    >
+                      {r === "all" ? "Everyone" : r === "vip" ? "VIP+" : r === "moderator" ? "Mods+" : "Owner only"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-slate-300">7TV API Token</label>
+                <input
+                  type="password"
+                  placeholder="Paste your 7TV API token"
+                  value={sevenTVToken}
+                  onChange={(e) => setSevenTVToken(e.target.value)}
+                  className="rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-accent/60"
+                  autoComplete="new-password"
+                />
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Get your token at <a href="https://7tv.app/settings" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">7tv.app/settings</a> → API Access.
+                </p>
+              </div>
+              {sevenTVSaveError && <div className="text-xs text-red-400">{sevenTVSaveError}</div>}
+              {sevenTVSaveSuccess && <div className="text-xs text-emerald-400">Settings saved!</div>}
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowSevenTVModal(false)}
+                  className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800 transition"
+                  disabled={sevenTVSaving}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={sevenTVSaving}
+                  className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent/90 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  onClick={async () => {
+                    if (!channelLogin) return;
+                    setSevenTVSaving(true);
+                    setSevenTVSaveError(null);
+                    setSevenTVSaveSuccess(false);
+                    try {
+                      const res = await fetch(`${backendUrl}/commands/seventv-config`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ login: channelLogin, role: sevenTVRole, token: sevenTVToken }),
+                      });
+                      if (!res.ok) {
+                        setSevenTVSaveError("Failed to save. Please try again.");
+                      } else {
+                        setSevenTVSaveSuccess(true);
+                      }
+                    } catch {
+                      setSevenTVSaveError("Network error. Please try again.");
+                    } finally {
+                      setSevenTVSaving(false);
+                    }
+                  }}
+                >
+                  {sevenTVSaving ? "Saving..." : "Save"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </main>
   );
