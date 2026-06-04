@@ -650,7 +650,10 @@ function CommandsPage() {
                   <tr>
                     <th className="px-4 py-3 font-semibold w-36">Command</th>
                     <th className="px-4 py-3 font-semibold">Description</th>
-                    <th className="px-4 py-3 font-semibold w-32 text-center">Enabled</th>
+                    <th className="px-4 py-3 font-semibold w-28 text-center">Enabled</th>
+                    {view === "custom" && (
+                      <th className="px-4 py-3 font-semibold w-24 text-center">Actions</th>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
