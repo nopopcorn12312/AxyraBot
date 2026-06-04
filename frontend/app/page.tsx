@@ -290,7 +290,7 @@ export default function HomePage() {
               for <span className="text-accent">Twitch</span> &amp; <span className="text-violet-400">Discord</span>
             </h1>
             <p className="text-slate-400 text-lg mb-8 max-w-lg leading-relaxed">
-              Protect your community, automate moderation, and keep your chat safe 24/7 with AxyraBot.
+              Protect your community, automate moderation, and keep your chat safe 24/7 with AxyraBot
             </p>
             <div className="flex flex-wrap gap-3 mb-10">
               <a href={isDiscordConnected ? "/discord" : "https://discord.com"} className="inline-flex items-center gap-2 rounded-lg bg-[#5865f2] hover:bg-[#4752c4] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-violet-500/30 transition">
