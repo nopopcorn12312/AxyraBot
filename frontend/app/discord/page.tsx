@@ -1017,7 +1017,7 @@ export default function DiscordSettingsPage() {
         </div>
 
         {/* Main content */}
-        <div className="flex-1 flex flex-col gap-4 text-slate-50 min-h-0 overflow-auto">
+        <div className="flex-1 flex flex-col gap-4 text-slate-50 min-h-0">
 
           {/* ── No servers yet ── */}
           {!loadingGuilds && guilds.length === 0 && (
@@ -1053,7 +1053,7 @@ export default function DiscordSettingsPage() {
 
           {/* ── Bot is in at least one server ── */}
           {!loadingGuilds && guilds.length > 0 && (
-            <div className="w-full flex flex-col rounded-2xl border border-slate-800 bg-slate-900/80 overflow-hidden">
+            <div className="w-full flex flex-col rounded-2xl border border-slate-800 bg-slate-900/80 overflow-hidden flex-1 min-h-0">
 
               {/* Content header — Add to Discord button + server switcher */}
               <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-slate-800">
@@ -1139,7 +1139,7 @@ export default function DiscordSettingsPage() {
                 </div> {/* end flex items-center gap-3 */}
               </div> {/* end content header */}
 
-              <div className="flex flex-col gap-5 p-6">
+              <div className="flex flex-col gap-5 p-6 overflow-y-auto flex-1 min-h-0">
                 {/* ── Two-column layout when a guild is selected ── */}
                 {selectedGuildId ? (
                   <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-stretch">

@@ -245,7 +245,7 @@ export default function HomePage() {
             <a href="/dashboard" className="hover:text-white transition">Dashboard</a>
             <a href="/commands" className="hover:text-white transition">Commands</a>
             <a href="/api-docs" className="hover:text-white transition">Docs</a>
-            <a href="https://discord.gg/RmtMQaVxEU" target="_blank" rel="noopener noreferrer" className="hover:text-white transition">Support</a>
+            <a href="https://discord.gg/p4RbzDvnjA" target="_blank" rel="noopener noreferrer" className="hover:text-white transition">Support</a>
           </nav>
           <div ref={menuRef} className="relative flex items-center gap-3 flex-shrink-0">
             {isLoggedIn ? (
@@ -293,7 +293,7 @@ export default function HomePage() {
               Protect your community, automate moderation, and keep your chat safe 24/7 with AxyraBot
             </p>
             <div className="flex flex-wrap gap-3 mb-10">
-              <a href={isDiscordConnected ? "/discord" : "https://discord.com"} className="inline-flex items-center gap-2 rounded-lg bg-[#5865f2] hover:bg-[#4752c4] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-violet-500/30 transition">
+              <a href={isDiscordConnected ? "/discord" : "https://discord.gg/p4RbzDvnjA"} className="inline-flex items-center gap-2 rounded-lg bg-[#5865f2] hover:bg-[#4752c4] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-violet-500/30 transition">
                 <img src="/DiscordLogo.png" alt="Discord" className="w-5 h-5 brightness-0 invert" />
                 {isDiscordConnected ? "Discord Integration" : "Add to Discord"}
               </a>
@@ -516,7 +516,7 @@ export default function HomePage() {
             </div>
           </div>
           <div className="flex gap-3">
-            <a href={isDiscordConnected ? "/discord" : "https://discord.com"} className="inline-flex items-center gap-2 rounded-lg bg-[#5865f2] hover:bg-[#4752c4] px-4 py-2 text-sm font-bold text-white transition">
+            <a href={isDiscordConnected ? "/discord" : "https://discord.gg/p4RbzDvnjA"} className="inline-flex items-center gap-2 rounded-lg bg-[#5865f2] hover:bg-[#4752c4] px-4 py-2 text-sm font-bold text-white transition">
               <img src="/DiscordLogo.png" alt="Discord" className="w-5 h-5 brightness-0 invert" />
               {isDiscordConnected ? "Discord Integration" : "Add to Discord"}
             </a>
@@ -552,7 +552,7 @@ export default function HomePage() {
               <div>
                 <div className="font-semibold text-slate-200 mb-2">Support</div>
                 <div className="flex flex-col gap-1.5 text-slate-400">
-                  <a href="https://discord.gg/RmtMQaVxEU" target="_blank" rel="noopener noreferrer" className="hover:text-white transition">Discord</a>
+                  <a href="https://discord.gg/p4RbzDvnjA" target="_blank" rel="noopener noreferrer" className="hover:text-white transition">Discord</a>
                   <a href="/api-docs" className="hover:text-white transition">API Documentation</a>
                 </div>
               </div>
