@@ -179,6 +179,7 @@ func startHTTPServer(clientID, clientSecret string) {
 	mux.HandleFunc("/discord/guild-managers", withCORS(handleDiscordGuildManagers))
 	mux.HandleFunc("/discord/tickets/config", withCORS(handleDiscordTicketConfig))
 	mux.HandleFunc("/discord/tickets/send-panel", withCORS(handleDiscordSendTicketPanel))
+	mux.HandleFunc("/discord/welcome-settings", withCORS(handleDiscordWelcomeSettings))
 
 	// Optional Nightbot OAuth integration for importing commands without
 	// copy/paste. These handlers are only registered when all required
@@ -3162,4 +3163,75 @@ func handleDiscordSendTicketPanel(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{"panel_message_id": msgID})
+}
+
+// handleDiscordWelcomeSettings handles GET and POST for per-guild welcome
+// channel, welcome message, and auto-role assignment on member join.
+// GET  ?guild_id=  → {"welcome_channel_id":"...","welcome_message":"...","auto_role_ids":["...",...]}
+// POST {guild_id, welcome_channel_id, welcome_message, auto_role_ids:[...]}
+func handleDiscordWelcomeSettings(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		guildID := strings.TrimSpace(r.URL.Query().Get("guild_id"))
+		if guildID == "" {
+			http.Error(w, "missing guild_id", http.StatusBadRequest)
+			return
+		}
+		s, err := GetDiscordWelcomeSettings(guildID)
+		if err != nil {
+			// No row yet — return empty defaults
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]any{
+				"welcome_channel_id": "",
+				"welcome_message":    "",
+				"auto_role_ids":      []string{},
+			})
+			return
+		}
+		roleIDs := []string{}
+		for _, id := range strings.Split(s.AutoRoleIDs, ",") {
+			id = strings.TrimSpace(id)
+			if id != "" {
+				roleIDs = append(roleIDs, id)
+			}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{
+			"welcome_channel_id": s.WelcomeChannelID,
+			"welcome_message":    s.WelcomeMessage,
+			"auto_role_ids":      roleIDs,
+		})
+
+	case http.MethodPost:
+		var body struct {
+			GuildID          string   `json:"guild_id"`
+			WelcomeChannelID string   `json:"welcome_channel_id"`
+			WelcomeMessage   string   `json:"welcome_message"`
+			AutoRoleIDs      []string `json:"auto_role_ids"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "bad json", http.StatusBadRequest)
+			return
+		}
+		if body.GuildID == "" {
+			http.Error(w, "missing guild_id", http.StatusBadRequest)
+			return
+		}
+		autoRoleStr := strings.Join(body.AutoRoleIDs, ",")
+		if err := SaveDiscordWelcomeSettings(DiscordWelcomeSettings{
+			GuildID:          body.GuildID,
+			WelcomeChannelID: body.WelcomeChannelID,
+			WelcomeMessage:   body.WelcomeMessage,
+			AutoRoleIDs:      autoRoleStr,
+		}); err != nil {
+			log.Println("save discord welcome settings:", err)
+			http.Error(w, "db error", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "ok")
+
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
 }

@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import AxyraBotPFP from "../images/AxyraBotPFP.png";
 import ManagingChannelBadge from "../components/ManagingChannelBadge";
 import { usePersistentSectionState } from "../hooks/usePersistentSectionState";
+import { useRequireAuth } from "../hooks/useRequireAuth";
 
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://your-backend.onrender.com";
 const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL;
@@ -191,6 +192,7 @@ const discordModuleConfig: ModuleConfig[] = [
 ];
 
 export default function DiscordSettingsPage() {
+  useRequireAuth();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isEditor, setIsEditor] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -251,11 +253,19 @@ export default function DiscordSettingsPage() {
   const [guildRoles, setGuildRoles] = useState<GuildRole[]>([]);
   const [loadingRoles, setLoadingRoles] = useState(false);
   const [roleMap, setRoleMap] = useState<Record<string, string>>({
-    everyone: "", vip: "", moderator: "", owner: "",
+    vip: "", moderator: "", owner: "",
   });
   const [savingRoles, setSavingRoles] = useState(false);
   const [roleSaveSuccess, setRoleSaveSuccess] = useState(false);
   const [roleSaveError, setRoleSaveError] = useState<string | null>(null);
+
+  // Welcome settings state
+  const [welcomeChannelId, setWelcomeChannelId] = useState("");
+  const [welcomeMessage, setWelcomeMessage] = useState("");
+  const [autoRoleIds, setAutoRoleIds] = useState<string[]>([]);
+  const [savingWelcome, setSavingWelcome] = useState(false);
+  const [welcomeSaveSuccess, setWelcomeSaveSuccess] = useState(false);
+  const [welcomeSaveError, setWelcomeSaveError] = useState<string | null>(null);
 
   // Discord guild module state
   const [guildModules, setGuildModules] = useState<Record<string, boolean>>({});
@@ -405,17 +415,36 @@ export default function DiscordSettingsPage() {
       .then((data) => {
         if (data) {
           setRoleMap({
-            everyone: data.everyone?.discord_role_id ?? "",
             vip: data.vip?.discord_role_id ?? "",
             moderator: data.moderator?.discord_role_id ?? "",
             owner: data.owner?.discord_role_id ?? "",
           });
         } else {
-          setRoleMap({ everyone: "", vip: "", moderator: "", owner: "" });
+          setRoleMap({ vip: "", moderator: "", owner: "" });
         }
       })
       .catch(() => {});
   }, [channelLogin, selectedGuildId]);
+
+  // Load welcome settings when guild changes
+  useEffect(() => {
+    if (!selectedGuildId) {
+      setWelcomeChannelId("");
+      setWelcomeMessage("");
+      setAutoRoleIds([]);
+      return;
+    }
+    fetch(`${backendUrl}/discord/welcome-settings?guild_id=${encodeURIComponent(selectedGuildId)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data) {
+          setWelcomeChannelId(data.welcome_channel_id ?? "");
+          setWelcomeMessage(data.welcome_message ?? "");
+          setAutoRoleIds(data.auto_role_ids ?? []);
+        }
+      })
+      .catch(() => {});
+  }, [selectedGuildId]);
 
   // Load saved notification templates when channelLogin is set
   useEffect(() => {
@@ -612,6 +641,35 @@ export default function DiscordSettingsPage() {
       setRoleSaveError("Network error. Please try again.");
     } finally {
       setSavingRoles(false);
+    }
+  };
+
+  const handleSaveWelcome = async () => {
+    if (!selectedGuildId) return;
+    setSavingWelcome(true);
+    setWelcomeSaveError(null);
+    setWelcomeSaveSuccess(false);
+    try {
+      const res = await fetch(`${backendUrl}/discord/welcome-settings`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          guild_id: selectedGuildId,
+          welcome_channel_id: welcomeChannelId,
+          welcome_message: welcomeMessage,
+          auto_role_ids: autoRoleIds,
+        }),
+      });
+      if (!res.ok) {
+        setWelcomeSaveError("Failed to save welcome settings.");
+      } else {
+        setWelcomeSaveSuccess(true);
+        setTimeout(() => setWelcomeSaveSuccess(false), 3000);
+      }
+    } catch {
+      setWelcomeSaveError("Network error. Please try again.");
+    } finally {
+      setSavingWelcome(false);
     }
   };
 
@@ -1207,12 +1265,11 @@ export default function DiscordSettingsPage() {
                         </div>
                       ) : (
                         <div className="flex flex-col gap-3">
-                          {(["owner", "moderator", "vip", "everyone"] as const).map((level) => {
+                          {(["owner", "moderator", "vip"] as const).map((level) => {
                             const labels: Record<string, { label: string; desc: string; color: string }> = {
-                              owner:     { label: "Owner",     desc: "Full broadcaster access",      color: "bg-red-500" },
-                              moderator: { label: "Mods",      desc: "Moderator-level commands",     color: "bg-blue-500" },
-                              vip:       { label: "VIP",       desc: "VIP-level commands",           color: "bg-purple-500" },
-                              everyone:  { label: "Everyone",  desc: "All users (default baseline)", color: "bg-slate-500" },
+                              owner:     { label: "Owner",     desc: "Full broadcaster access",  color: "bg-red-500" },
+                              moderator: { label: "Mods",      desc: "Moderator-level commands", color: "bg-blue-500" },
+                              vip:       { label: "VIP",       desc: "VIP-level commands",       color: "bg-purple-500" },
                             };
                             const meta = labels[level];
                             const selectedRole = guildRoles.find((r) => r.id === roleMap[level]);
@@ -1259,6 +1316,94 @@ export default function DiscordSettingsPage() {
                         </button>
                         {roleSaveSuccess && <span className="text-sm text-emerald-400">✓ Saved!</span>}
                         {roleSaveError && <span className="text-sm text-red-400">{roleSaveError}</span>}
+                      </div>
+
+                      {/* ── Welcome & Auto-Roles ── */}
+                      <div className="mt-4 flex flex-col gap-3 rounded-xl border border-slate-700/60 bg-slate-950/40 p-4">
+                        <div className="flex flex-col gap-0.5">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Welcome & Auto-Roles</p>
+                          <p className="text-xs text-slate-500">Send a message and/or assign roles to new members when they join the server.</p>
+                        </div>
+
+                        {/* Welcome channel */}
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-medium text-slate-300">Welcome channel</label>
+                          <select
+                            value={welcomeChannelId}
+                            onChange={(e) => setWelcomeChannelId(e.target.value)}
+                            className={channelSelectClass + " w-full"}
+                          >
+                            <option value="">— No welcome message —</option>
+                            {guildChannels.map((c) => (
+                              <option key={c.id} value={c.id}>#{c.name}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Welcome message */}
+                        {welcomeChannelId && (
+                          <div className="flex flex-col gap-1">
+                            <label className="text-xs font-medium text-slate-300">Welcome message</label>
+                            <textarea
+                              value={welcomeMessage}
+                              onChange={(e) => setWelcomeMessage(e.target.value)}
+                              rows={2}
+                              placeholder="Welcome $(user) to $(server)!"
+                              className="w-full rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-accent/60 resize-y"
+                            />
+                            <p className="text-xs text-slate-600">Variables: <code className="text-slate-500">$(user)</code> mention, <code className="text-slate-500">$(username)</code> plain name, <code className="text-slate-500">$(server)</code> server name.</p>
+                          </div>
+                        )}
+
+                        {/* Auto-assign roles */}
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-medium text-slate-300">Auto-assign roles on join</label>
+                          {loadingRoles ? (
+                            <div className="text-xs text-slate-500">Loading roles…</div>
+                          ) : guildRoles.length === 0 ? (
+                            <div className="text-xs text-slate-600">No roles found in this server.</div>
+                          ) : (
+                            <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto">
+                              {guildRoles.map((role) => {
+                                const checked = autoRoleIds.includes(role.id);
+                                const hex = role.color !== 0 ? `#${role.color.toString(16).padStart(6, "0")}` : undefined;
+                                return (
+                                  <button
+                                    key={role.id}
+                                    type="button"
+                                    onClick={() =>
+                                      setAutoRoleIds((prev) =>
+                                        checked ? prev.filter((id) => id !== role.id) : [...prev, role.id]
+                                      )
+                                    }
+                                    className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium transition ${
+                                      checked
+                                        ? "border-accent bg-accent/20 text-white"
+                                        : "border-slate-700 bg-slate-800/60 text-slate-300 hover:border-slate-500"
+                                    }`}
+                                  >
+                                    {hex && <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: hex }} />}
+                                    {role.name}
+                                    {checked && <span className="text-accent">✓</span>}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-4 pt-1">
+                          <button
+                            type="button"
+                            onClick={handleSaveWelcome}
+                            disabled={savingWelcome || !selectedGuildId}
+                            className="rounded-lg bg-accent px-5 py-2 text-sm font-medium text-white hover:bg-accent/90 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            {savingWelcome ? "Saving…" : "Save Welcome"}
+                          </button>
+                          {welcomeSaveSuccess && <span className="text-sm text-emerald-400">✓ Saved!</span>}
+                          {welcomeSaveError && <span className="text-sm text-red-400">{welcomeSaveError}</span>}
+                        </div>
                       </div>
                     </div>
 

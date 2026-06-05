@@ -485,7 +485,30 @@ func handleAnnounceSlash(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	opts := optMap(i.ApplicationCommandData().Options)
 	ch := opts["channel"].ChannelValue(s)
 	message := opts["message"].StringValue()
-	if _, err := s.ChannelMessageSend(ch.ID, message); err != nil {
+
+	var title string
+	if opt, ok := opts["title"]; ok {
+		title = opt.StringValue()
+	}
+
+	// Parse optional hex color; default to white (0xFFFFFF).
+	color := 0xFFFFFF
+	if opt, ok := opts["color"]; ok {
+		hexStr := strings.TrimPrefix(strings.TrimSpace(opt.StringValue()), "#")
+		if v, err := strconv.ParseInt(hexStr, 16, 32); err == nil {
+			color = int(v)
+		}
+	}
+
+	embed := &discordgo.MessageEmbed{
+		Description: message,
+		Color:       color,
+	}
+	if title != "" {
+		embed.Title = title
+	}
+
+	if _, err := s.ChannelMessageSendEmbed(ch.ID, embed); err != nil {
 		respondEphemeral(s, i, fmt.Sprintf("❌ Failed to send: %s", err))
 		return
 	}
@@ -2023,13 +2046,50 @@ func discordGuildMemberAddHandler(s *discordgo.Session, e *discordgo.GuildMember
 	if e.User == nil {
 		return
 	}
+
+	// 1. Re-apply any persistent roles (e.g. from temprole).
 	roleIDs, err := GetDiscordRolePersist(e.GuildID, e.User.ID)
-	if err != nil || len(roleIDs) == 0 {
+	if err == nil {
+		for _, roleID := range roleIDs {
+			if err := s.GuildMemberRoleAdd(e.GuildID, e.User.ID, roleID); err != nil {
+				log.Printf("[Discord] failed to re-apply persistent role %s to %s: %v", roleID, e.User.ID, err)
+			}
+		}
+	}
+
+	// 2. Apply welcome settings: auto-roles + welcome message.
+	ws, err := GetDiscordWelcomeSettings(e.GuildID)
+	if err != nil {
+		// No settings configured — nothing to do.
 		return
 	}
-	for _, roleID := range roleIDs {
-		if err := s.GuildMemberRoleAdd(e.GuildID, e.User.ID, roleID); err != nil {
-			log.Printf("[Discord] failed to re-apply persistent role %s to %s: %v", roleID, e.User.ID, err)
+
+	// Auto-assign roles.
+	for _, rid := range strings.Split(ws.AutoRoleIDs, ",") {
+		rid = strings.TrimSpace(rid)
+		if rid == "" {
+			continue
+		}
+		if err := s.GuildMemberRoleAdd(e.GuildID, e.User.ID, rid); err != nil {
+			log.Printf("[Discord] failed to assign auto-role %s to %s: %v", rid, e.User.ID, err)
+		}
+	}
+
+	// Send welcome message.
+	if ws.WelcomeChannelID != "" && ws.WelcomeMessage != "" {
+		// Resolve server name for $(server) variable.
+		serverName := e.GuildID
+		if g, err := s.State.Guild(e.GuildID); err == nil {
+			serverName = g.Name
+		} else if g, err := s.Guild(e.GuildID); err == nil {
+			serverName = g.Name
+		}
+		msg := ws.WelcomeMessage
+		msg = strings.ReplaceAll(msg, "$(user)", "<@"+e.User.ID+">")
+		msg = strings.ReplaceAll(msg, "$(username)", e.User.Username)
+		msg = strings.ReplaceAll(msg, "$(server)", serverName)
+		if _, err := s.ChannelMessageSend(ws.WelcomeChannelID, msg); err != nil {
+			log.Printf("[Discord] failed to send welcome message: %v", err)
 		}
 	}
 }

@@ -5,6 +5,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { usePersistentSectionState } from "../../hooks/usePersistentSectionState";
+import { useRequireAuth } from "../../hooks/useRequireAuth";
 
 import AxyraLogo from "../../images/AxyraBotPFP.png";
 import ManagingChannelBadge from "../../components/ManagingChannelBadge";
@@ -20,6 +21,7 @@ type BlockedTerm = {
 };
 
 export default function BlockedTermsPage() {
+  useRequireAuth();
   const pathname = usePathname();
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);

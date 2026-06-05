@@ -843,6 +843,13 @@ func EnsureSchema() error {
 	 added_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
 	 PRIMARY KEY (guild_id, twitch_login)
 	);
+	CREATE TABLE IF NOT EXISTS discord_welcome_settings (
+	 guild_id           TEXT NOT NULL PRIMARY KEY,
+	 welcome_channel_id TEXT NOT NULL DEFAULT '',
+	 welcome_message    TEXT NOT NULL DEFAULT '',
+	 auto_role_ids      TEXT NOT NULL DEFAULT '',
+	 updated_at         TIMESTAMPTZ NOT NULL DEFAULT now()
+	);
 	`)
 	if err != nil {
 		return err
@@ -2711,4 +2718,48 @@ func HasOpenTicket(guildID, userID string) (bool, error) {
 	var count int
 	err := db.QueryRow(`SELECT COUNT(*) FROM discord_tickets WHERE guild_id=$1 AND user_id=$2 AND status='open'`, guildID, userID).Scan(&count)
 	return count > 0, err
+}
+
+// ─── Discord Welcome Settings ─────────────────────────────────────────────────
+
+type DiscordWelcomeSettings struct {
+	GuildID          string
+	WelcomeChannelID string
+	WelcomeMessage   string
+	// Comma-separated Discord role IDs to auto-assign on join.
+	AutoRoleIDs string
+}
+
+// GetDiscordWelcomeSettings returns the welcome settings for a guild.
+func GetDiscordWelcomeSettings(guildID string) (*DiscordWelcomeSettings, error) {
+	if db == nil {
+		return nil, fmt.Errorf("db not initialized")
+	}
+	row := db.QueryRow(`
+		SELECT guild_id, welcome_channel_id, welcome_message, auto_role_ids
+		FROM discord_welcome_settings
+		WHERE guild_id = $1
+	`, guildID)
+	s := &DiscordWelcomeSettings{}
+	if err := row.Scan(&s.GuildID, &s.WelcomeChannelID, &s.WelcomeMessage, &s.AutoRoleIDs); err != nil {
+		return nil, err
+	}
+	return s, nil
+}
+
+// SaveDiscordWelcomeSettings upserts welcome settings for a guild.
+func SaveDiscordWelcomeSettings(s DiscordWelcomeSettings) error {
+	if db == nil {
+		return fmt.Errorf("db not initialized")
+	}
+	_, err := db.Exec(`
+		INSERT INTO discord_welcome_settings (guild_id, welcome_channel_id, welcome_message, auto_role_ids, updated_at)
+		VALUES ($1, $2, $3, $4, NOW())
+		ON CONFLICT (guild_id) DO UPDATE SET
+			welcome_channel_id = EXCLUDED.welcome_channel_id,
+			welcome_message    = EXCLUDED.welcome_message,
+			auto_role_ids      = EXCLUDED.auto_role_ids,
+			updated_at         = NOW()
+	`, s.GuildID, s.WelcomeChannelID, s.WelcomeMessage, s.AutoRoleIDs)
+	return err
 }

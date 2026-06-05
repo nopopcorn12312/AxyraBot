@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import AxyraBotPFP from "../images/AxyraBotPFP.png";
 import ManagingChannelBadge from "../components/ManagingChannelBadge";
 import { usePersistentSectionState } from "../hooks/usePersistentSectionState";
+import { useRequireAuth } from "../hooks/useRequireAuth";
 
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://your-backend.onrender.com";
 const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL;
@@ -51,6 +52,7 @@ function ModuleToggle({ enabled, onChange }: ToggleProps) {
 }
 
 export default function ModulesPage() {
+  useRequireAuth();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isEditor, setIsEditor] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);

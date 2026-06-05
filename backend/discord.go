@@ -328,11 +328,13 @@ func registerSlashCommands(s *discordgo.Session, appID, guildID string) {
 		// ── Manager ─────────────────────────────────────────────────────────────
 		{
 			Name:                     "announce",
-			Description:              "Send a message as the bot to a channel",
+			Description:              "Send an announcement embed to a channel",
 			DefaultMemberPermissions: &permManMsg,
 			Options: []*discordgo.ApplicationCommandOption{
 				{Type: discordgo.ApplicationCommandOptionChannel, Name: "channel", Description: "Target channel", Required: true},
-				{Type: discordgo.ApplicationCommandOptionString, Name: "message", Description: "Message to send", Required: true},
+				{Type: discordgo.ApplicationCommandOptionString, Name: "message", Description: "Message body", Required: true},
+				{Type: discordgo.ApplicationCommandOptionString, Name: "title", Description: "Optional title shown above the message", Required: false},
+				{Type: discordgo.ApplicationCommandOptionString, Name: "color", Description: "Hex color for the embed border (e.g. FF0000). Defaults to white.", Required: false},
 			},
 		},
 		{
@@ -1274,7 +1276,7 @@ func PostDiscordLiveNotification(broadcasterLogin, title, game string) {
 	if game == "" {
 		game = "Just Chatting"
 	}
-	const defaultLiveTmpl = "🔴 **$(channel) is now live!**\n🎮 $(game)\n📺 $(title)\nhttps://twitch.tv/$(channel)"
+	const defaultLiveTmpl = "🔴 **$(channel) is now live!**\n🎮 $(title)\n📺 $(game)\nhttps://twitch.tv/$(channel)"
 	msg := renderDiscordTemplate(broadcasterLogin, "live", defaultLiveTmpl, map[string]string{
 		"channel": broadcasterLogin,
 		"title":   title,

@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import AxyraBotPFP from "../images/AxyraBotPFP.png";
 import ManagingChannelBadge from "../components/ManagingChannelBadge";
 import { usePersistentSectionState } from "../hooks/usePersistentSectionState";
+import { useRequireAuth } from "../hooks/useRequireAuth";
 import NightbotPFP from "../images/NightbotPFP.png";
 import NightbotBanner from "../images/NightbotBanner.png";
 import SteamelementsBanner from "../images/SteamelementsBanner.png";
@@ -25,6 +26,7 @@ const providerDisplay: Record<Provider, string> = {
 };
 
 export default function ImportPage() {
+  useRequireAuth();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isEditor, setIsEditor] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);

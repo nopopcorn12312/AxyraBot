@@ -552,7 +552,7 @@ export default function HomePage() {
               <div>
                 <div className="font-semibold text-slate-200 mb-2">Support</div>
                 <div className="flex flex-col gap-1.5 text-slate-400">
-                  <a href="#" className="hover:text-white transition">Discord (coming soon)</a>
+                  <a href="https://discord.gg/RmtMQaVxEU" target="_blank" rel="noopener noreferrer" className="hover:text-white transition">Discord</a>
                   <a href="/api-docs" className="hover:text-white transition">API Documentation</a>
                 </div>
               </div>

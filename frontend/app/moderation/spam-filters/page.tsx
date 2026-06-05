@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { usePersistentSectionState } from "../../hooks/usePersistentSectionState";
+import { useRequireAuth } from "../../hooks/useRequireAuth";
 import { useEffect, useRef, useState } from "react";
 
 import AxyraLogo from "../../images/AxyraBotPFP.png";
@@ -27,6 +28,7 @@ const FILTER_LABELS: Record<SpamFilter["type"], string> = {
 };
 
 export default function SpamFiltersPage() {
+  useRequireAuth();
   const pathname = usePathname();
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
