@@ -464,9 +464,20 @@ func startEventSubWS() {
 											channelLogin, _ := event["broadcaster_user_login"].(string)
 											if channelLogin != "" && isModuleEnabled(channelLogin, "live_announcement") {
 												go func(ch string) {
-													title, game, err := getChannelTitleAndGame(ch)
-													if err != nil {
-														log.Println("failed to fetch title/game for stream.online:", err)
+													// Twitch's API can lag behind the stream.online event by a few
+													// seconds. Retry fetching title/game up to 5 times with a 3s
+													// delay between attempts so we get the broadcaster's actual
+													// current title and category rather than empty values.
+													var title, game string
+													for attempt := 0; attempt < 5; attempt++ {
+														time.Sleep(3 * time.Second)
+														t, g, err := getChannelTitleAndGame(ch)
+														if err != nil {
+															log.Printf("stream.online: fetch title/game attempt %d failed for %s: %v", attempt+1, ch, err)
+															continue
+														}
+														title, game = t, g
+														break
 													}
 													msg := renderLiveAnnouncementMessage(ch, title, game)
 													if err := sendHelixChatMessage(ch, msg); err != nil {
@@ -2285,52 +2296,111 @@ func getFollowAgeString(broadcasterLogin, followerLogin string) (string, error) 
 }
 
 // getChannelTitleAndGame fetches the current title and category (game name)
-// for the given broadcaster login using their stored user access token.
+// for the given broadcaster login. It uses the app access token and queries
+// GET /helix/streams (live stream data) first; if the stream isn't yet
+// visible it falls back to GET /helix/channels (stored channel settings).
 func getChannelTitleAndGame(login string) (string, string, error) {
 	login = strings.ToLower(login)
 	clientID := os.Getenv("TWITCH_CLIENT_ID")
+	clientSecret := os.Getenv("TWITCH_CLIENT_SECRET")
 	if clientID == "" {
 		return "", "", fmt.Errorf("TWITCH_CLIENT_ID not set")
 	}
-	if db == nil {
-		return "", "", fmt.Errorf("db not initialized")
+
+	// Prefer the cached app access token; obtain one if missing.
+	helixChatMu.Lock()
+	token := appAccessToken
+	helixChatMu.Unlock()
+	if token == "" {
+		var err error
+		token, err = getAppAccessToken(clientID, clientSecret)
+		if err != nil {
+			return "", "", fmt.Errorf("failed to get app access token: %w", err)
+		}
+		helixChatMu.Lock()
+		appAccessToken = token
+		helixChatMu.Unlock()
 	}
-	access, err := GetUserAccessToken(login)
-	if err != nil || access == "" {
-		return "", "", fmt.Errorf("no user token for channel %s: %w", login, err)
-	}
-	userID, err := getUserIDFromToken(access)
-	if err != nil {
-		return "", "", fmt.Errorf("getUserIDFromToken failed: %w", err)
-	}
-	req, err := http.NewRequest("GET", "https://api.twitch.tv/helix/channels?broadcaster_id="+url.QueryEscape(userID), nil)
+
+	client := &http.Client{Timeout: 10 * time.Second}
+
+	// 1. Try GET /helix/streams?user_login={login} — returns live stream
+	//    data which reflects the broadcaster's current title/game in real time.
+	streamsURL := "https://api.twitch.tv/helix/streams?user_login=" + url.QueryEscape(login)
+	reqS, err := http.NewRequest("GET", streamsURL, nil)
 	if err != nil {
 		return "", "", err
 	}
-	req.Header.Set("Client-ID", clientID)
-	req.Header.Set("Authorization", "Bearer "+access)
-	resp, err := http.DefaultClient.Do(req)
+	reqS.Header.Set("Client-ID", clientID)
+	reqS.Header.Set("Authorization", "Bearer "+token)
+	respS, err := client.Do(reqS)
 	if err != nil {
 		return "", "", err
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode/100 != 2 {
-		b, _ := io.ReadAll(resp.Body)
-		return "", "", fmt.Errorf("helix channels status %s: %s", resp.Status, string(b))
+	defer respS.Body.Close()
+	if respS.StatusCode/100 == 2 {
+		var sData struct {
+			Data []struct {
+				Title    string `json:"title"`
+				GameName string `json:"game_name"`
+			} `json:"data"`
+		}
+		if err := json.NewDecoder(respS.Body).Decode(&sData); err == nil && len(sData.Data) > 0 {
+			return sData.Data[0].Title, sData.Data[0].GameName, nil
+		}
 	}
-	var data struct {
+
+	// 2. Fall back to GET /helix/channels (offline channel settings) — needs
+	//    the broadcaster's user ID first.
+	reqU, err := http.NewRequest("GET", "https://api.twitch.tv/helix/users?login="+url.QueryEscape(login), nil)
+	if err != nil {
+		return "", "", err
+	}
+	reqU.Header.Set("Client-ID", clientID)
+	reqU.Header.Set("Authorization", "Bearer "+token)
+	respU, err := client.Do(reqU)
+	if err != nil {
+		return "", "", err
+	}
+	defer respU.Body.Close()
+	var uData struct {
+		Data []struct {
+			ID string `json:"id"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(respU.Body).Decode(&uData); err != nil || len(uData.Data) == 0 {
+		return "", "", fmt.Errorf("could not resolve user ID for %s", login)
+	}
+	userID := uData.Data[0].ID
+
+	reqC, err := http.NewRequest("GET", "https://api.twitch.tv/helix/channels?broadcaster_id="+url.QueryEscape(userID), nil)
+	if err != nil {
+		return "", "", err
+	}
+	reqC.Header.Set("Client-ID", clientID)
+	reqC.Header.Set("Authorization", "Bearer "+token)
+	respC, err := client.Do(reqC)
+	if err != nil {
+		return "", "", err
+	}
+	defer respC.Body.Close()
+	if respC.StatusCode/100 != 2 {
+		b, _ := io.ReadAll(respC.Body)
+		return "", "", fmt.Errorf("helix channels status %s: %s", respC.Status, string(b))
+	}
+	var cData struct {
 		Data []struct {
 			Title    string `json:"title"`
 			GameName string `json:"game_name"`
 		} `json:"data"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+	if err := json.NewDecoder(respC.Body).Decode(&cData); err != nil {
 		return "", "", err
 	}
-	if len(data.Data) == 0 {
+	if len(cData.Data) == 0 {
 		return "", "", nil
 	}
-	return data.Data[0].Title, data.Data[0].GameName, nil
+	return cData.Data[0].Title, cData.Data[0].GameName, nil
 }
 
 // getStreamUptimeString returns how long the broadcaster has been live this

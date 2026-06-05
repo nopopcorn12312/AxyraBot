@@ -1898,6 +1898,35 @@ export default function DiscordSettingsPage() {
             </div>
           </div>
 
+          {/* Role mentions */}
+          {guildRoles.length > 0 && (
+            <div className="px-5 pt-2 pb-1">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Mention a role</p>
+              <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
+                {guildRoles.map((role) => {
+                  const hex = role.color ? `#${role.color.toString(16).padStart(6, "0")}` : undefined;
+                  return (
+                    <button
+                      key={role.id}
+                      type="button"
+                      title={`Insert <@&${role.id}>`}
+                      onClick={() => setEditDraft((d) => d + `<@&${role.id}>`)}
+                      className="inline-flex items-center gap-1 rounded-full border border-slate-700 bg-slate-800/70 px-2.5 py-0.5 text-xs font-medium text-slate-200 hover:bg-slate-700 transition"
+                    >
+                      {hex && (
+                        <span
+                          className="inline-block h-2 w-2 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: hex }}
+                        />
+                      )}
+                      @{role.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Discord markdown tip */}
           <div className="px-5 py-3">
             <p className="text-xs text-slate-600">
