@@ -1899,11 +1899,19 @@ export default function DiscordSettingsPage() {
           </div>
 
           {/* Role mentions */}
-          {guildRoles.length > 0 && (
-            <div className="px-5 pt-2 pb-1">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Mention a role</p>
-              <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
-                {guildRoles.map((role) => {
+          <div className="px-5 pt-2 pb-1">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Mention a role</p>
+            <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
+              {/* @everyone is always available */}
+              <button
+                type="button"
+                title="Insert @everyone"
+                onClick={() => setEditDraft((d) => d + "@everyone")}
+                className="inline-flex items-center gap-1 rounded-full border border-slate-600 bg-slate-800/70 px-2.5 py-0.5 text-xs font-medium text-slate-200 hover:bg-slate-700 transition"
+              >
+                @everyone
+              </button>
+              {guildRoles.map((role) => {
                   const hex = role.color ? `#${role.color.toString(16).padStart(6, "0")}` : undefined;
                   return (
                     <button
@@ -1925,7 +1933,6 @@ export default function DiscordSettingsPage() {
                 })}
               </div>
             </div>
-          )}
 
           {/* Discord markdown tip */}
           <div className="px-5 py-3">
