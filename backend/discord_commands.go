@@ -484,11 +484,12 @@ func handleAnnounceSlash(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	}
 	opts := optMap(i.ApplicationCommandData().Options)
 	ch := opts["channel"].ChannelValue(s)
-	message := opts["message"].StringValue()
+	// Replace literal \n with real newlines so users can format rules, etc.
+	message := strings.ReplaceAll(opts["message"].StringValue(), `\n`, "\n")
 
 	var title string
 	if opt, ok := opts["title"]; ok {
-		title = opt.StringValue()
+		title = strings.ReplaceAll(opt.StringValue(), `\n`, "\n")
 	}
 
 	// Parse optional hex color; default to white (0xFFFFFF).
