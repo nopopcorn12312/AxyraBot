@@ -1218,48 +1218,6 @@ export default function DiscordSettingsPage() {
                             </select>
                           </div>
 
-                          <div className="flex flex-col gap-1.5">
-                            <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-300">
-                              <span>🚪</span> Leave Logs
-                            </label>
-                            <p className="text-xs text-slate-500">Posted when a member leaves the server.</p>
-                            <select value={leaveChannelId} onChange={(e) => setLeaveChannelId(e.target.value)} className={channelSelectClass}>
-                              <option value="">Disabled</option>
-                              {guildChannels.map((c) => <option key={c.id} value={c.id}>#{c.name}</option>)}
-                            </select>
-                          </div>
-
-                          <div className="flex flex-col gap-1.5">
-                            <div className="flex items-center gap-2">
-                              <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-300">
-                                <span>🎫</span> Ticket Panel
-                              </label>
-                              <button
-                                type="button"
-                                onClick={() => { setEditingTicketRoles(true); setTicketRoleSaveSuccess(false); setTicketRoleSaveError(null); }}
-                                className="text-xs text-accent hover:underline"
-                              >
-                                Edit Roles
-                              </button>
-                              {ticketPanelMessageId && ticketPanelChannelId && (
-                                <span className="text-xs text-emerald-400">● Active</span>
-                              )}
-                            </div>
-                            <p className="text-xs text-slate-500">
-                              The bot will post an &ldquo;Open a Ticket&rdquo; button here. Changing this channel and saving will post a new panel.
-                            </p>
-                            <select
-                              value={ticketPanelChannelId}
-                              onChange={(e) => setTicketPanelChannelId(e.target.value)}
-                              className={channelSelectClass}
-                            >
-                              <option value="">Disabled</option>
-                              {guildChannels.map((c) => <option key={c.id} value={c.id}>#{c.name}</option>)}
-                            </select>
-                            {ticketPanelChannelId && ticketPanelChannelId !== lastSentTicketChannelRef.current && (
-                              <p className="text-xs text-amber-400">⚠ A new panel will be posted to this channel when you save.</p>
-                            )}
-                          </div>
                         </div>
                       )}
 
