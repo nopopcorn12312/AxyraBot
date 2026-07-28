@@ -606,6 +606,20 @@ export default function DiscordSettingsPage() {
           lastSentTicketChannelRef.current = ticketPanelChannelId;
         }
       }
+      // Also persist leave channel alongside the other channel settings.
+      if (selectedGuildId) {
+        await fetch(`${backendUrl}/discord/welcome-settings`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            guild_id: selectedGuildId,
+            welcome_channel_id: welcomeChannelId,
+            welcome_message: welcomeMessage,
+            auto_role_ids: autoRoleIds,
+            leave_channel_id: leaveChannelId,
+          }),
+        });
+      }
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch {
@@ -1199,6 +1213,17 @@ export default function DiscordSettingsPage() {
                             </div>
                             <p className="text-xs text-slate-500">Posted at midnight in your configured timezone when there are birthdays today.</p>
                             <select value={bdayChannelId} onChange={(e) => setBdayChannelId(e.target.value)} className={channelSelectClass}>
+                              <option value="">Disabled</option>
+                              {guildChannels.map((c) => <option key={c.id} value={c.id}>#{c.name}</option>)}
+                            </select>
+                          </div>
+
+                          <div className="flex flex-col gap-1.5">
+                            <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-300">
+                              <span>🚪</span> Leave Logs
+                            </label>
+                            <p className="text-xs text-slate-500">Posted when a member leaves the server.</p>
+                            <select value={leaveChannelId} onChange={(e) => setLeaveChannelId(e.target.value)} className={channelSelectClass}>
                               <option value="">Disabled</option>
                               {guildChannels.map((c) => <option key={c.id} value={c.id}>#{c.name}</option>)}
                             </select>
