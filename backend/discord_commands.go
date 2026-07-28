@@ -2101,7 +2101,7 @@ func discordGuildMemberAddHandler(s *discordgo.Session, e *discordgo.GuildMember
 
 		if ws.WelcomeBannerEnabled {
 			// Generate and send the image banner (with optional text above it).
-			imgData, err := GenerateWelcomeBanner(e.User.AvatarURL("256"), e.User.Username, memberCount)
+			imgData, err := GenerateWelcomeBanner(e.User.AvatarURL("256"), e.User.Username, serverName, memberCount)
 			if err != nil {
 				log.Printf("[Discord] failed to generate welcome banner: %v", err)
 			} else {

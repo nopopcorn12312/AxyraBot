@@ -25,18 +25,22 @@ const (
 	wbHeight = 175
 
 	// Avatar circle
-	avatarSize = 100   // diameter in px
-	avatarR    = 50.0  // radius
-	avatarCX   = 80.0  // centre x
-	avatarCY   = 87    // centre y  (wbHeight / 2, truncated)
+	avatarSize = 100  // diameter in px
+	avatarR    = 50.0 // radius
+	avatarCX   = 80.0 // centre x
+	avatarCY   = 87   // centre y  (wbHeight / 2, truncated)
 
 	// Text column starts to the right of the avatar ring + gap
 	textX = avatarCX + avatarR + 22 // = 152
+
+	// Horizontal centre of the right-hand text region
+	// so all lines appear centred in the available space.
+	textCX = (textX + (wbWidth - 20)) / 2 // = 416
 )
 
 // GenerateWelcomeBanner creates a PNG welcome card styled to match the site
 // colour scheme (background #020617, accent #38bdf8 sky-blue).
-func GenerateWelcomeBanner(avatarURL, username string, memberCount int) ([]byte, error) {
+func GenerateWelcomeBanner(avatarURL, username, serverName string, memberCount int) ([]byte, error) {
 	dc := gg.NewContext(wbWidth, wbHeight)
 
 	// ── Background ──────────────────────────────────────────────────────────
@@ -78,27 +82,39 @@ func GenerateWelcomeBanner(avatarURL, username string, memberCount int) ([]byte,
 	dc.DrawCircle(avatarCX, avatarCY, avatarR+2)
 	dc.Stroke()
 
-	// ── Text ────────────────────────────────────────────────────────────────
+	// Subtle vertical separator between avatar and text area
+	dc.SetRGBA(0.22, 0.75, 0.98, 0.25)
+	dc.SetLineWidth(1)
+	dc.DrawLine(textX-10, 28, textX-10, wbHeight-28)
+	dc.Stroke()
+
+	// ── Text (each line centred in the right region at textCX) ──────────────
 	// Username — gobold 26pt, near-white (#f1f5f9)
 	if face, err := parseTTFFace(gobold.TTF, 26); err == nil {
 		dc.SetFontFace(face)
 	}
 	dc.SetHexColor("f1f5f9")
-	dc.DrawString(username, textX, 73)
+	dc.DrawStringAnchored(username, textCX, 72, 0.5, 1)
 
-	// "just joined the server" — goregular 17pt, slate-400 (#94a3b8)
+	// Truncate server name if very long
+	displayServer := serverName
+	if len([]rune(displayServer)) > 22 {
+		displayServer = string([]rune(displayServer)[:20]) + "…"
+	}
+
+	// "Welcome to [Server]!" — goregular 17pt, accent sky-blue (#38bdf8)
 	if face, err := parseTTFFace(goregular.TTF, 17); err == nil {
 		dc.SetFontFace(face)
 	}
-	dc.SetHexColor("94a3b8")
-	dc.DrawString("just joined the server", textX, 99)
+	dc.SetHexColor("38bdf8")
+	dc.DrawStringAnchored("Welcome to "+displayServer+"!", textCX, 99, 0.5, 1)
 
 	// Member count — goregular 13pt, slate-500 (#64748b)
 	if face, err := parseTTFFace(goregular.TTF, 13); err == nil {
 		dc.SetFontFace(face)
 	}
 	dc.SetHexColor("64748b")
-	dc.DrawString(fmt.Sprintf("Member #%d", memberCount), textX, 120)
+	dc.DrawStringAnchored(fmt.Sprintf("Member #%d", memberCount), textCX, 120, 0.5, 1)
 
 	var buf bytes.Buffer
 	if err := dc.EncodePNG(&buf); err != nil {
