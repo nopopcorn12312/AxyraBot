@@ -3182,10 +3182,11 @@ func handleDiscordWelcomeSettings(w http.ResponseWriter, r *http.Request) {
 			// No row yet — return empty defaults
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(map[string]any{
-				"welcome_channel_id": "",
-				"welcome_message":    "",
-				"auto_role_ids":      []string{},
-				"leave_channel_id":   "",
+				"welcome_channel_id":     "",
+				"welcome_message":        "",
+				"auto_role_ids":          []string{},
+				"leave_channel_id":       "",
+				"welcome_banner_enabled": false,
 			})
 			return
 		}
@@ -3198,19 +3199,21 @@ func handleDiscordWelcomeSettings(w http.ResponseWriter, r *http.Request) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]any{
-			"welcome_channel_id": s.WelcomeChannelID,
-			"welcome_message":    s.WelcomeMessage,
-			"auto_role_ids":      roleIDs,
-			"leave_channel_id":   s.LeaveChannelID,
+			"welcome_channel_id":     s.WelcomeChannelID,
+			"welcome_message":        s.WelcomeMessage,
+			"auto_role_ids":          roleIDs,
+			"leave_channel_id":       s.LeaveChannelID,
+			"welcome_banner_enabled": s.WelcomeBannerEnabled,
 		})
 
 	case http.MethodPost:
 		var body struct {
-			GuildID          string   `json:"guild_id"`
-			WelcomeChannelID string   `json:"welcome_channel_id"`
-			WelcomeMessage   string   `json:"welcome_message"`
-			AutoRoleIDs      []string `json:"auto_role_ids"`
-			LeaveChannelID   string   `json:"leave_channel_id"`
+			GuildID              string   `json:"guild_id"`
+			WelcomeChannelID     string   `json:"welcome_channel_id"`
+			WelcomeMessage       string   `json:"welcome_message"`
+			AutoRoleIDs          []string `json:"auto_role_ids"`
+			LeaveChannelID       string   `json:"leave_channel_id"`
+			WelcomeBannerEnabled bool     `json:"welcome_banner_enabled"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			http.Error(w, "bad json", http.StatusBadRequest)
@@ -3222,11 +3225,12 @@ func handleDiscordWelcomeSettings(w http.ResponseWriter, r *http.Request) {
 		}
 		autoRoleStr := strings.Join(body.AutoRoleIDs, ",")
 		if err := SaveDiscordWelcomeSettings(DiscordWelcomeSettings{
-			GuildID:          body.GuildID,
-			WelcomeChannelID: body.WelcomeChannelID,
-			WelcomeMessage:   body.WelcomeMessage,
-			AutoRoleIDs:      autoRoleStr,
-			LeaveChannelID:   body.LeaveChannelID,
+			GuildID:              body.GuildID,
+			WelcomeChannelID:     body.WelcomeChannelID,
+			WelcomeMessage:       body.WelcomeMessage,
+			AutoRoleIDs:          autoRoleStr,
+			LeaveChannelID:       body.LeaveChannelID,
+			WelcomeBannerEnabled: body.WelcomeBannerEnabled,
 		}); err != nil {
 			log.Println("save discord welcome settings:", err)
 			http.Error(w, "db error", http.StatusInternalServerError)

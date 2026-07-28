@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -2058,7 +2059,7 @@ func discordGuildMemberAddHandler(s *discordgo.Session, e *discordgo.GuildMember
 		}
 	}
 
-	// 2. Apply welcome settings: auto-roles + welcome message.
+	// 2. Apply welcome settings: auto-roles + welcome message/banner.
 	ws, err := GetDiscordWelcomeSettings(e.GuildID)
 	if err != nil {
 		// No settings configured — nothing to do.
@@ -2076,21 +2077,51 @@ func discordGuildMemberAddHandler(s *discordgo.Session, e *discordgo.GuildMember
 		}
 	}
 
-	// Send welcome message.
-	if ws.WelcomeChannelID != "" && ws.WelcomeMessage != "" {
-		// Resolve server name for $(server) variable.
+	// Send welcome banner or welcome message.
+	if ws.WelcomeChannelID != "" {
+		// Resolve guild name and member count.
 		serverName := e.GuildID
+		memberCount := 0
 		if g, err := s.State.Guild(e.GuildID); err == nil {
 			serverName = g.Name
+			memberCount = g.MemberCount
 		} else if g, err := s.Guild(e.GuildID); err == nil {
 			serverName = g.Name
+			memberCount = g.MemberCount
 		}
-		msg := ws.WelcomeMessage
-		msg = strings.ReplaceAll(msg, "$(user)", "<@"+e.User.ID+">")
-		msg = strings.ReplaceAll(msg, "$(username)", e.User.Username)
-		msg = strings.ReplaceAll(msg, "$(server)", serverName)
-		if _, err := s.ChannelMessageSend(ws.WelcomeChannelID, msg); err != nil {
-			log.Printf("[Discord] failed to send welcome message: %v", err)
+
+		// Build the optional text content (welcome message with variable substitution).
+		var welcomeText string
+		if ws.WelcomeMessage != "" {
+			welcomeText = ws.WelcomeMessage
+			welcomeText = strings.ReplaceAll(welcomeText, "$(user)", "<@"+e.User.ID+">")
+			welcomeText = strings.ReplaceAll(welcomeText, "$(username)", e.User.Username)
+			welcomeText = strings.ReplaceAll(welcomeText, "$(server)", serverName)
+		}
+
+		if ws.WelcomeBannerEnabled {
+			// Generate and send the image banner (with optional text above it).
+			imgData, err := GenerateWelcomeBanner(e.User.AvatarURL("256"), e.User.Username, memberCount)
+			if err != nil {
+				log.Printf("[Discord] failed to generate welcome banner: %v", err)
+			} else {
+				send := &discordgo.MessageSend{
+					Content: welcomeText,
+					Files: []*discordgo.File{{
+						Name:        "welcome.png",
+						ContentType: "image/png",
+						Reader:      bytes.NewReader(imgData),
+					}},
+				}
+				if _, err := s.ChannelMessageSendComplex(ws.WelcomeChannelID, send); err != nil {
+					log.Printf("[Discord] failed to send welcome banner: %v", err)
+				}
+			}
+		} else if welcomeText != "" {
+			// Text-only welcome message.
+			if _, err := s.ChannelMessageSend(ws.WelcomeChannelID, welcomeText); err != nil {
+				log.Printf("[Discord] failed to send welcome message: %v", err)
+			}
 		}
 	}
 }

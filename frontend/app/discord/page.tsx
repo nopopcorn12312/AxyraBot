@@ -264,6 +264,7 @@ export default function DiscordSettingsPage() {
   const [welcomeMessage, setWelcomeMessage] = useState("");
   const [autoRoleIds, setAutoRoleIds] = useState<string[]>([]);
   const [leaveChannelId, setLeaveChannelId] = useState("");
+  const [welcomeBannerEnabled, setWelcomeBannerEnabled] = useState(false);
   const [savingWelcome, setSavingWelcome] = useState(false);
   const [welcomeSaveSuccess, setWelcomeSaveSuccess] = useState(false);
   const [welcomeSaveError, setWelcomeSaveError] = useState<string | null>(null);
@@ -434,6 +435,7 @@ export default function DiscordSettingsPage() {
       setWelcomeMessage("");
       setAutoRoleIds([]);
       setLeaveChannelId("");
+      setWelcomeBannerEnabled(false);
       return;
     }
     fetch(`${backendUrl}/discord/welcome-settings?guild_id=${encodeURIComponent(selectedGuildId)}`)
@@ -444,6 +446,7 @@ export default function DiscordSettingsPage() {
           setWelcomeMessage(data.welcome_message ?? "");
           setAutoRoleIds(data.auto_role_ids ?? []);
           setLeaveChannelId(data.leave_channel_id ?? "");
+          setWelcomeBannerEnabled(data.welcome_banner_enabled ?? false);
         }
       })
       .catch(() => {});
@@ -617,6 +620,7 @@ export default function DiscordSettingsPage() {
             welcome_message: welcomeMessage,
             auto_role_ids: autoRoleIds,
             leave_channel_id: leaveChannelId,
+            welcome_banner_enabled: welcomeBannerEnabled,
           }),
         });
       }
@@ -676,6 +680,7 @@ export default function DiscordSettingsPage() {
           welcome_message: welcomeMessage,
           auto_role_ids: autoRoleIds,
           leave_channel_id: leaveChannelId,
+          welcome_banner_enabled: welcomeBannerEnabled,
         }),
       });
       if (!res.ok) {
@@ -1339,6 +1344,24 @@ export default function DiscordSettingsPage() {
                               className="w-full rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-accent/60 resize-y"
                             />
                             <p className="text-xs text-slate-600">Variables: <code className="text-slate-500">$(user)</code> mention, <code className="text-slate-500">$(username)</code> plain name, <code className="text-slate-500">$(server)</code> server name.</p>
+                          </div>
+                        )}
+
+                        {/* Welcome banner toggle */}
+                        {welcomeChannelId && (
+                          <div className="flex items-center justify-between rounded-lg border border-slate-700/60 bg-slate-900/60 px-3 py-2.5">
+                            <div className="flex flex-col gap-0.5">
+                              <span className="text-xs font-medium text-slate-200">🖼️ Welcome banner</span>
+                              <span className="text-xs text-slate-500">Send a graphic card with the user's avatar when they join.</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setWelcomeBannerEnabled((v) => !v)}
+                              aria-label={welcomeBannerEnabled ? "Disable banner" : "Enable banner"}
+                              className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${welcomeBannerEnabled ? "bg-accent" : "bg-slate-600"}`}
+                            >
+                              <span className={`inline-block h-4 w-4 transform rounded-full bg-slate-950 shadow transition-transform ${welcomeBannerEnabled ? "translate-x-4" : "translate-x-1"}`} />
+                            </button>
                           </div>
                         )}
 
