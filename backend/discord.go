@@ -49,6 +49,7 @@ func InitDiscord() {
 	discordSession.AddHandler(discordMessageHandler)
 	discordSession.AddHandler(discordExtendedMessageHandler)
 	discordSession.AddHandler(discordGuildMemberAddHandler)
+	discordSession.AddHandler(discordGuildMemberRemoveHandler)
 
 	if err = discordSession.Open(); err != nil {
 		log.Println("[Discord] failed to open connection:", err)

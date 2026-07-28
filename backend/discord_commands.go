@@ -2095,6 +2095,22 @@ func discordGuildMemberAddHandler(s *discordgo.Session, e *discordgo.GuildMember
 	}
 }
 
+// discordGuildMemberRemoveHandler sends a leave message to the configured
+// channel when a member leaves the server.
+func discordGuildMemberRemoveHandler(s *discordgo.Session, e *discordgo.GuildMemberRemove) {
+	if e.User == nil {
+		return
+	}
+	ws, err := GetDiscordWelcomeSettings(e.GuildID)
+	if err != nil || ws.LeaveChannelID == "" {
+		return
+	}
+	msg := fmt.Sprintf("**%s** has left the server", e.User.Username)
+	if _, err := s.ChannelMessageSend(ws.LeaveChannelID, msg); err != nil {
+		log.Printf("[Discord] failed to send leave message: %v", err)
+	}
+}
+
 // ── Ticket system ─────────────────────────────────────────────────────────────
 
 // sendTicketPanel posts (or re-posts) the ticket panel embed+button to the

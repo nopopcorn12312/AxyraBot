@@ -894,6 +894,11 @@ func EnsureSchema() error {
 		return err
 	}
 
+	// Backfill: add leave_channel_id to discord_welcome_settings for member-leave logs.
+	if _, err := db.Exec(`ALTER TABLE discord_welcome_settings ADD COLUMN IF NOT EXISTS leave_channel_id TEXT NOT NULL DEFAULT ''`); err != nil {
+		return err
+	}
+
 	// create a trigger function to notify on changes
 	_, err = db.Exec(`
 	CREATE OR REPLACE FUNCTION notify_channels_changed() RETURNS trigger AS $$
@@ -2727,7 +2732,8 @@ type DiscordWelcomeSettings struct {
 	WelcomeChannelID string
 	WelcomeMessage   string
 	// Comma-separated Discord role IDs to auto-assign on join.
-	AutoRoleIDs string
+	AutoRoleIDs    string
+	LeaveChannelID string
 }
 
 // GetDiscordWelcomeSettings returns the welcome settings for a guild.
@@ -2736,12 +2742,12 @@ func GetDiscordWelcomeSettings(guildID string) (*DiscordWelcomeSettings, error) 
 		return nil, fmt.Errorf("db not initialized")
 	}
 	row := db.QueryRow(`
-		SELECT guild_id, welcome_channel_id, welcome_message, auto_role_ids
+		SELECT guild_id, welcome_channel_id, welcome_message, auto_role_ids, leave_channel_id
 		FROM discord_welcome_settings
 		WHERE guild_id = $1
 	`, guildID)
 	s := &DiscordWelcomeSettings{}
-	if err := row.Scan(&s.GuildID, &s.WelcomeChannelID, &s.WelcomeMessage, &s.AutoRoleIDs); err != nil {
+	if err := row.Scan(&s.GuildID, &s.WelcomeChannelID, &s.WelcomeMessage, &s.AutoRoleIDs, &s.LeaveChannelID); err != nil {
 		return nil, err
 	}
 	return s, nil
@@ -2753,13 +2759,14 @@ func SaveDiscordWelcomeSettings(s DiscordWelcomeSettings) error {
 		return fmt.Errorf("db not initialized")
 	}
 	_, err := db.Exec(`
-		INSERT INTO discord_welcome_settings (guild_id, welcome_channel_id, welcome_message, auto_role_ids, updated_at)
-		VALUES ($1, $2, $3, $4, NOW())
+		INSERT INTO discord_welcome_settings (guild_id, welcome_channel_id, welcome_message, auto_role_ids, leave_channel_id, updated_at)
+		VALUES ($1, $2, $3, $4, $5, NOW())
 		ON CONFLICT (guild_id) DO UPDATE SET
 			welcome_channel_id = EXCLUDED.welcome_channel_id,
 			welcome_message    = EXCLUDED.welcome_message,
 			auto_role_ids      = EXCLUDED.auto_role_ids,
+			leave_channel_id   = EXCLUDED.leave_channel_id,
 			updated_at         = NOW()
-	`, s.GuildID, s.WelcomeChannelID, s.WelcomeMessage, s.AutoRoleIDs)
+	`, s.GuildID, s.WelcomeChannelID, s.WelcomeMessage, s.AutoRoleIDs, s.LeaveChannelID)
 	return err
 }

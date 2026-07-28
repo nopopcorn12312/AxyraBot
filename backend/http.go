@@ -3185,6 +3185,7 @@ func handleDiscordWelcomeSettings(w http.ResponseWriter, r *http.Request) {
 				"welcome_channel_id": "",
 				"welcome_message":    "",
 				"auto_role_ids":      []string{},
+				"leave_channel_id":   "",
 			})
 			return
 		}
@@ -3200,6 +3201,7 @@ func handleDiscordWelcomeSettings(w http.ResponseWriter, r *http.Request) {
 			"welcome_channel_id": s.WelcomeChannelID,
 			"welcome_message":    s.WelcomeMessage,
 			"auto_role_ids":      roleIDs,
+			"leave_channel_id":   s.LeaveChannelID,
 		})
 
 	case http.MethodPost:
@@ -3208,6 +3210,7 @@ func handleDiscordWelcomeSettings(w http.ResponseWriter, r *http.Request) {
 			WelcomeChannelID string   `json:"welcome_channel_id"`
 			WelcomeMessage   string   `json:"welcome_message"`
 			AutoRoleIDs      []string `json:"auto_role_ids"`
+			LeaveChannelID   string   `json:"leave_channel_id"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			http.Error(w, "bad json", http.StatusBadRequest)
@@ -3223,6 +3226,7 @@ func handleDiscordWelcomeSettings(w http.ResponseWriter, r *http.Request) {
 			WelcomeChannelID: body.WelcomeChannelID,
 			WelcomeMessage:   body.WelcomeMessage,
 			AutoRoleIDs:      autoRoleStr,
+			LeaveChannelID:   body.LeaveChannelID,
 		}); err != nil {
 			log.Println("save discord welcome settings:", err)
 			http.Error(w, "db error", http.StatusInternalServerError)

@@ -263,6 +263,7 @@ export default function DiscordSettingsPage() {
   const [welcomeChannelId, setWelcomeChannelId] = useState("");
   const [welcomeMessage, setWelcomeMessage] = useState("");
   const [autoRoleIds, setAutoRoleIds] = useState<string[]>([]);
+  const [leaveChannelId, setLeaveChannelId] = useState("");
   const [savingWelcome, setSavingWelcome] = useState(false);
   const [welcomeSaveSuccess, setWelcomeSaveSuccess] = useState(false);
   const [welcomeSaveError, setWelcomeSaveError] = useState<string | null>(null);
@@ -432,6 +433,7 @@ export default function DiscordSettingsPage() {
       setWelcomeChannelId("");
       setWelcomeMessage("");
       setAutoRoleIds([]);
+      setLeaveChannelId("");
       return;
     }
     fetch(`${backendUrl}/discord/welcome-settings?guild_id=${encodeURIComponent(selectedGuildId)}`)
@@ -441,6 +443,7 @@ export default function DiscordSettingsPage() {
           setWelcomeChannelId(data.welcome_channel_id ?? "");
           setWelcomeMessage(data.welcome_message ?? "");
           setAutoRoleIds(data.auto_role_ids ?? []);
+          setLeaveChannelId(data.leave_channel_id ?? "");
         }
       })
       .catch(() => {});
@@ -658,6 +661,7 @@ export default function DiscordSettingsPage() {
           welcome_channel_id: welcomeChannelId,
           welcome_message: welcomeMessage,
           auto_role_ids: autoRoleIds,
+          leave_channel_id: leaveChannelId,
         }),
       });
       if (!res.ok) {
@@ -1389,6 +1393,25 @@ export default function DiscordSettingsPage() {
                                 );
                               })}
                             </div>
+                          )}
+                        </div>
+
+                        {/* Leave logs channel */}
+                        <div className="flex flex-col gap-1 border-t border-slate-800/60 pt-3 mt-1">
+                          <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">Leave Logs</label>
+                          <p className="text-xs text-slate-500">When a member leaves, post a message in this channel.</p>
+                          <select
+                            value={leaveChannelId}
+                            onChange={(e) => setLeaveChannelId(e.target.value)}
+                            className={channelSelectClass + " w-full mt-1"}
+                          >
+                            <option value="">— Disabled —</option>
+                            {guildChannels.map((c) => (
+                              <option key={c.id} value={c.id}>#{c.name}</option>
+                            ))}
+                          </select>
+                          {leaveChannelId && (
+                            <p className="text-xs text-slate-600">Message format: <code className="text-slate-500">USERNAME has left the server</code></p>
                           )}
                         </div>
 

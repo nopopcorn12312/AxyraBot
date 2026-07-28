@@ -22,3 +22,5 @@ backend/tokens.json.*.bak
 .DS_Store
 Thumbs.db
 .vscode/
+
+ThingsToAdd.txt
