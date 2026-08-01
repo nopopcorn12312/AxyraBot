@@ -74,6 +74,7 @@ func GenerateWelcomeBanner(avatarURL, username, serverName string, memberCount i
 		dc.Clip()
 		dc.DrawImageAnchored(avatarImg, int(avatarCX), int(avatarCY), 0.5, 0.5)
 		dc.Pop()
+		dc.ResetClip() // gg.Pop() keeps the mask; reset so text isn't clipped to the circle
 	}
 
 	// Avatar ring
