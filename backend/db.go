@@ -904,6 +904,29 @@ func EnsureSchema() error {
 		return err
 	}
 
+	// Backfill: add guild_id to notification templates for per-server custom messages.
+	if _, err := db.Exec(`ALTER TABLE discord_notification_templates ADD COLUMN IF NOT EXISTS guild_id TEXT NOT NULL DEFAULT ''`); err != nil {
+		return err
+	}
+	// Migrate PK to include guild_id (only runs if the old PK doesn't already have it).
+	if _, err := db.Exec(`
+	DO $$
+	BEGIN
+		IF NOT EXISTS (
+			SELECT 1 FROM pg_constraint c
+			JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = ANY(c.conkey)
+			WHERE c.conrelid = 'discord_notification_templates'::regclass
+			  AND c.contype = 'p' AND a.attname = 'guild_id'
+		) THEN
+			ALTER TABLE discord_notification_templates DROP CONSTRAINT IF EXISTS discord_notification_templates_pkey;
+			ALTER TABLE discord_notification_templates ADD PRIMARY KEY (broadcaster_login, guild_id, notification_type);
+		END IF;
+	END
+	$$;
+	`); err != nil {
+		return err
+	}
+
 	// create a trigger function to notify on changes
 	_, err = db.Exec(`
 	CREATE OR REPLACE FUNCTION notify_channels_changed() RETURNS trigger AS $$
@@ -1431,16 +1454,16 @@ func SaveDiscordRoleMapping(m DiscordRoleMapping) error {
 }
 
 // GetDiscordNotificationTemplate returns the stored custom template for a
-// notification type ("live", "mod", "birthday"), or "" if none is set.
-func GetDiscordNotificationTemplate(broadcasterLogin, notificationType string) (string, error) {
+// notification type ("live", "mod", "birthday") scoped to a specific guild.
+func GetDiscordNotificationTemplate(broadcasterLogin, guildID, notificationType string) (string, error) {
 	if db == nil {
 		return "", nil
 	}
 	broadcasterLogin = strings.ToLower(strings.TrimSpace(broadcasterLogin))
 	var tmpl string
 	err := db.QueryRowContext(context.Background(),
-		`SELECT template FROM discord_notification_templates WHERE broadcaster_login=$1 AND notification_type=$2`,
-		broadcasterLogin, notificationType,
+		`SELECT template FROM discord_notification_templates WHERE broadcaster_login=$1 AND guild_id=$2 AND notification_type=$3`,
+		broadcasterLogin, guildID, notificationType,
 	).Scan(&tmpl)
 	if err == sql.ErrNoRows {
 		return "", nil
@@ -1448,20 +1471,19 @@ func GetDiscordNotificationTemplate(broadcasterLogin, notificationType string) (
 	return tmpl, err
 }
 
-// SaveDiscordNotificationTemplate upserts a custom template for a
-// notification type. Pass an empty string to reset to the default.
-func SaveDiscordNotificationTemplate(broadcasterLogin, notificationType, template string) error {
+// SaveDiscordNotificationTemplate upserts a custom template for a guild.
+func SaveDiscordNotificationTemplate(broadcasterLogin, guildID, notificationType, template string) error {
 	if db == nil {
 		return fmt.Errorf("db not initialized")
 	}
 	broadcasterLogin = strings.ToLower(strings.TrimSpace(broadcasterLogin))
 	_, err := db.ExecContext(context.Background(), `
-		INSERT INTO discord_notification_templates (broadcaster_login, notification_type, template, updated_at)
-		VALUES ($1, $2, $3, NOW())
-		ON CONFLICT (broadcaster_login, notification_type) DO UPDATE SET
+		INSERT INTO discord_notification_templates (broadcaster_login, guild_id, notification_type, template, updated_at)
+		VALUES ($1, $2, $3, $4, NOW())
+		ON CONFLICT (broadcaster_login, guild_id, notification_type) DO UPDATE SET
 			template   = EXCLUDED.template,
 			updated_at = NOW()
-	`, broadcasterLogin, notificationType, template)
+	`, broadcasterLogin, guildID, notificationType, template)
 	return err
 }
 

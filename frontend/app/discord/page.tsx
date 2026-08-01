@@ -466,16 +466,17 @@ export default function DiscordSettingsPage() {
       .catch(() => {});
   }, [selectedGuildId]);
 
-  // Load saved notification templates when channelLogin is set
+  // Load saved notification templates when channelLogin + selectedGuildId are set
   useEffect(() => {
-    if (!channelLogin) return;
-    fetch(`${backendUrl}/discord/notification-templates?login=${encodeURIComponent(channelLogin)}`)
+    setTemplates({ live: "", mod: "", birthday: "" });
+    if (!channelLogin || !selectedGuildId) return;
+    fetch(`${backendUrl}/discord/notification-templates?login=${encodeURIComponent(channelLogin)}&guild_id=${encodeURIComponent(selectedGuildId)}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data) setTemplates({ live: data.live ?? "", mod: data.mod ?? "", birthday: data.birthday ?? "" });
       })
       .catch(() => {});
-  }, [channelLogin]);
+  }, [channelLogin, selectedGuildId]);
 
   // Load guild module settings when selected guild changes
   useEffect(() => {
@@ -954,7 +955,7 @@ export default function DiscordSettingsPage() {
       const res = await fetch(`${backendUrl}/discord/notification-templates`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ login: channelLogin, templates: { [editingNotif as string]: editDraft } }),
+        body: JSON.stringify({ login: channelLogin, guild_id: selectedGuildId, templates: { [editingNotif as string]: editDraft } }),
       });
       if (!res.ok) {
         setTemplateSaveError("Failed to save.");

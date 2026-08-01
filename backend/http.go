@@ -2143,24 +2143,25 @@ func handleDiscordChannels(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]any{"channels": channels})
 }
 
-// handleDiscordNotificationTemplates handles GET and POST for per-broadcaster
+// handleDiscordNotificationTemplates handles GET and POST for per-guild
 // custom Discord notification message templates.
-// GET  ?login=   → {"live":"...","mod":"...","birthday":"..."}
-// POST {login, templates:{live,mod,birthday}}
+// GET  ?login=&guild_id=   → {"live":"...","mod":"...","birthday":"..."}
+// POST {login, guild_id, templates:{live,mod,birthday}}
 func handleDiscordNotificationTemplates(w http.ResponseWriter, r *http.Request) {
 	validTypes := map[string]bool{"live": true, "mod": true, "birthday": true}
 	switch r.Method {
 	case http.MethodGet:
 		login := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("login")))
-		if login == "" {
-			http.Error(w, "missing login", http.StatusBadRequest)
+		guildID := strings.TrimSpace(r.URL.Query().Get("guild_id"))
+		if login == "" || guildID == "" {
+			http.Error(w, "missing login or guild_id", http.StatusBadRequest)
 			return
 		}
 		out := map[string]string{}
 		for t := range validTypes {
-			tmpl, err := GetDiscordNotificationTemplate(login, t)
+			tmpl, err := GetDiscordNotificationTemplate(login, guildID, t)
 			if err != nil {
-				log.Printf("get discord notification template (%s/%s): %v", login, t, err)
+				log.Printf("get discord notification template (%s/%s/%s): %v", login, guildID, t, err)
 			}
 			out[t] = tmpl
 		}
@@ -2170,6 +2171,7 @@ func handleDiscordNotificationTemplates(w http.ResponseWriter, r *http.Request) 
 	case http.MethodPost:
 		var body struct {
 			Login     string            `json:"login"`
+			GuildID   string            `json:"guild_id"`
 			Templates map[string]string `json:"templates"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -2177,16 +2179,16 @@ func handleDiscordNotificationTemplates(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 		login := strings.ToLower(strings.TrimSpace(body.Login))
-		if login == "" {
-			http.Error(w, "missing login", http.StatusBadRequest)
+		if login == "" || body.GuildID == "" {
+			http.Error(w, "missing login or guild_id", http.StatusBadRequest)
 			return
 		}
 		for t, tmpl := range body.Templates {
 			if !validTypes[t] {
 				continue
 			}
-			if err := SaveDiscordNotificationTemplate(login, t, tmpl); err != nil {
-				log.Printf("save discord notification template (%s/%s): %v", login, t, err)
+			if err := SaveDiscordNotificationTemplate(login, body.GuildID, t, tmpl); err != nil {
+				log.Printf("save discord notification template (%s/%s/%s): %v", login, body.GuildID, t, err)
 				http.Error(w, "db error", http.StatusInternalServerError)
 				return
 			}
