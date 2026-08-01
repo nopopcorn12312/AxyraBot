@@ -2142,6 +2142,86 @@ func discordGuildMemberRemoveHandler(s *discordgo.Session, e *discordgo.GuildMem
 	}
 }
 
+// discordReactionAddHandler assigns a role when a user reacts to a reaction-role panel.
+func discordReactionAddHandler(s *discordgo.Session, r *discordgo.MessageReactionAdd) {
+	if s.State.User != nil && r.UserID == s.State.User.ID {
+		return // ignore bot's own reactions
+	}
+	panel, err := GetReactionRolePanelByMessage(r.MessageID)
+	if err != nil || panel == nil {
+		return
+	}
+	emojiKey := r.Emoji.Name
+	if r.Emoji.ID != "" {
+		emojiKey = r.Emoji.ID
+	}
+	for _, entry := range panel.Entries {
+		if entry.Emoji == emojiKey || entry.Emoji == r.Emoji.Name {
+			if err := s.GuildMemberRoleAdd(r.GuildID, r.UserID, entry.RoleID); err != nil {
+				log.Printf("[Discord] reaction role add error (panel %d): %v", panel.ID, err)
+			}
+			return
+		}
+	}
+}
+
+// discordReactionRemoveHandler removes a role when a user un-reacts from a reaction-role panel.
+func discordReactionRemoveHandler(s *discordgo.Session, r *discordgo.MessageReactionRemove) {
+	if s.State.User != nil && r.UserID == s.State.User.ID {
+		return
+	}
+	panel, err := GetReactionRolePanelByMessage(r.MessageID)
+	if err != nil || panel == nil {
+		return
+	}
+	emojiKey := r.Emoji.Name
+	if r.Emoji.ID != "" {
+		emojiKey = r.Emoji.ID
+	}
+	for _, entry := range panel.Entries {
+		if entry.Emoji == emojiKey || entry.Emoji == r.Emoji.Name {
+			if err := s.GuildMemberRoleRemove(r.GuildID, r.UserID, entry.RoleID); err != nil {
+				log.Printf("[Discord] reaction role remove error (panel %d): %v", panel.ID, err)
+			}
+			return
+		}
+	}
+}
+
+// sendReactionRolePanel posts the reaction-role embed to the given channel and
+// adds bot reactions for each entry. It returns the sent message ID.
+func sendReactionRolePanel(s *discordgo.Session, channelID, title, description string, entries []*ReactionRoleEntry) (string, error) {
+	embedDesc := description + "\n\n"
+	for _, e := range entries {
+		name := e.RoleName
+		if name == "" {
+			name = "<@&" + e.RoleID + ">"
+		}
+		embedDesc += e.Emoji + "  —  **" + name + "**\n"
+	}
+
+	embed := &discordgo.MessageEmbed{
+		Title:       title,
+		Description: embedDesc,
+		Color:       0x38bdf8,
+		Footer:      &discordgo.MessageEmbedFooter{Text: "React to get a role · Remove reaction to lose it"},
+	}
+
+	msg, err := s.ChannelMessageSendComplex(channelID, &discordgo.MessageSend{
+		Embeds: []*discordgo.MessageEmbed{embed},
+	})
+	if err != nil {
+		return "", err
+	}
+
+	for _, e := range entries {
+		if err := s.MessageReactionAdd(channelID, msg.ID, e.Emoji); err != nil {
+			log.Printf("[Discord] failed to add panel reaction %q: %v", e.Emoji, err)
+		}
+	}
+	return msg.ID, nil
+}
+
 // ── Ticket system ─────────────────────────────────────────────────────────────
 
 // sendTicketPanel posts (or re-posts) the ticket panel embed+button to the

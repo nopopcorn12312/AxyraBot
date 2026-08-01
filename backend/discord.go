@@ -31,7 +31,7 @@ func InitDiscord() {
 		return
 	}
 
-	discordSession.Identify.Intents = discordgo.IntentsGuilds | discordgo.IntentsGuildMessages | discordgo.IntentsGuildMembers | discordgo.IntentsMessageContent
+	discordSession.Identify.Intents = discordgo.IntentsGuilds | discordgo.IntentsGuildMessages | discordgo.IntentsGuildMembers | discordgo.IntentsMessageContent | discordgo.IntentsGuildMessageReactions
 
 	discordSession.AddHandler(func(s *discordgo.Session, r *discordgo.Ready) {
 		log.Printf("[Discord] logged in as %s\n", r.User.Username)
@@ -50,6 +50,8 @@ func InitDiscord() {
 	discordSession.AddHandler(discordExtendedMessageHandler)
 	discordSession.AddHandler(discordGuildMemberAddHandler)
 	discordSession.AddHandler(discordGuildMemberRemoveHandler)
+	discordSession.AddHandler(discordReactionAddHandler)
+	discordSession.AddHandler(discordReactionRemoveHandler)
 
 	if err = discordSession.Open(); err != nil {
 		log.Println("[Discord] failed to open connection:", err)

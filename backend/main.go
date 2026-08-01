@@ -253,6 +253,9 @@ func main() {
 				if err := EnsureTicketTables(); err != nil {
 					log.Println("failed to ensure ticket tables:", err)
 				}
+				if err := EnsureReactionRoleTables(); err != nil {
+					log.Println("failed to ensure reaction role tables:", err)
+				}
 				// start postgres notifier for dynamic joins
 				if err := StartNotifier(dbURL); err != nil {
 					log.Println("failed to start notifier:", err)

@@ -2730,12 +2730,201 @@ func HasOpenTicket(guildID, userID string) (bool, error) {
 	return count > 0, err
 }
 
+// ─── Reaction Role Panels ─────────────────────────────────────────────────────
+
+// ReactionRolePanel is a bot-posted message that users react to for role assignment.
+type ReactionRolePanel struct {
+	ID          int64
+	GuildID     string
+	ChannelID   string
+	MessageID   string
+	Title       string
+	Description string
+	Entries     []*ReactionRoleEntry
+}
+
+// ReactionRoleEntry maps an emoji to a Discord role within a panel.
+type ReactionRoleEntry struct {
+	ID       int64
+	PanelID  int64
+	GuildID  string
+	Emoji    string
+	RoleID   string
+	RoleName string
+}
+
+// EnsureReactionRoleTables creates the reaction role tables if they don't exist.
+func EnsureReactionRoleTables() error {
+	if db == nil {
+		return nil
+	}
+	_, err := db.Exec(`
+	CREATE TABLE IF NOT EXISTS discord_reaction_role_panels (
+		id          BIGSERIAL PRIMARY KEY,
+		guild_id    TEXT        NOT NULL,
+		channel_id  TEXT        NOT NULL DEFAULT '',
+		message_id  TEXT        NOT NULL DEFAULT '',
+		title       TEXT        NOT NULL DEFAULT 'React for Roles',
+		description TEXT        NOT NULL DEFAULT 'React below to assign yourself a role.',
+		created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+		updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+	);
+	CREATE TABLE IF NOT EXISTS discord_reaction_role_entries (
+		id        BIGSERIAL PRIMARY KEY,
+		panel_id  BIGINT NOT NULL,
+		guild_id  TEXT   NOT NULL,
+		emoji     TEXT   NOT NULL,
+		role_id   TEXT   NOT NULL,
+		role_name TEXT   NOT NULL DEFAULT ''
+	);
+	CREATE INDEX IF NOT EXISTS idx_rrp_guild   ON discord_reaction_role_panels(guild_id);
+	CREATE INDEX IF NOT EXISTS idx_rre_panel   ON discord_reaction_role_entries(panel_id);
+	`)
+	return err
+}
+
+// CreateOrUpdateReactionRolePanel upserts a panel record and returns its ID.
+// Pass panelID=0 to create a new panel.
+func CreateOrUpdateReactionRolePanel(guildID, channelID, title, description string, panelID int64) (int64, error) {
+	if db == nil {
+		return 0, fmt.Errorf("db not initialized")
+	}
+	if panelID > 0 {
+		if _, err := db.Exec(`
+			UPDATE discord_reaction_role_panels
+			SET channel_id=$2, title=$3, description=$4, updated_at=NOW()
+			WHERE id=$1 AND guild_id=$5
+		`, panelID, channelID, title, description, guildID); err != nil {
+			return 0, err
+		}
+		return panelID, nil
+	}
+	var id int64
+	if err := db.QueryRow(`
+		INSERT INTO discord_reaction_role_panels (guild_id, channel_id, title, description)
+		VALUES ($1, $2, $3, $4) RETURNING id
+	`, guildID, channelID, title, description).Scan(&id); err != nil {
+		return 0, err
+	}
+	return id, nil
+}
+
+// SetReactionRoleEntries replaces all entries for a panel atomically.
+func SetReactionRoleEntries(panelID int64, guildID string, entries []*ReactionRoleEntry) error {
+	if db == nil {
+		return fmt.Errorf("db not initialized")
+	}
+	if _, err := db.Exec(`DELETE FROM discord_reaction_role_entries WHERE panel_id=$1`, panelID); err != nil {
+		return err
+	}
+	for _, e := range entries {
+		if _, err := db.Exec(`
+			INSERT INTO discord_reaction_role_entries (panel_id, guild_id, emoji, role_id, role_name)
+			VALUES ($1, $2, $3, $4, $5)
+		`, panelID, guildID, e.Emoji, e.RoleID, e.RoleName); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// UpdateReactionRolePanelMessageID saves the Discord message ID after posting the panel.
+func UpdateReactionRolePanelMessageID(panelID int64, messageID string) error {
+	if db == nil {
+		return nil
+	}
+	_, err := db.Exec(`UPDATE discord_reaction_role_panels SET message_id=$2 WHERE id=$1`, panelID, messageID)
+	return err
+}
+
+// GetReactionRolePanels returns all panels for a guild with their entries loaded.
+func GetReactionRolePanels(guildID string) ([]*ReactionRolePanel, error) {
+	if db == nil {
+		return nil, fmt.Errorf("db not initialized")
+	}
+	rows, err := db.Query(`
+		SELECT id, guild_id, channel_id, message_id, title, description
+		FROM discord_reaction_role_panels WHERE guild_id=$1 ORDER BY id DESC
+	`, guildID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var panels []*ReactionRolePanel
+	for rows.Next() {
+		p := &ReactionRolePanel{}
+		if err := rows.Scan(&p.ID, &p.GuildID, &p.ChannelID, &p.MessageID, &p.Title, &p.Description); err != nil {
+			return nil, err
+		}
+		panels = append(panels, p)
+	}
+	for _, p := range panels {
+		if p.Entries, err = getReactionRoleEntries(p.ID); err != nil {
+			return nil, err
+		}
+	}
+	return panels, nil
+}
+
+func getReactionRoleEntries(panelID int64) ([]*ReactionRoleEntry, error) {
+	rows, err := db.Query(`
+		SELECT id, panel_id, guild_id, emoji, role_id, role_name
+		FROM discord_reaction_role_entries WHERE panel_id=$1 ORDER BY id
+	`, panelID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var entries []*ReactionRoleEntry
+	for rows.Next() {
+		e := &ReactionRoleEntry{}
+		if err := rows.Scan(&e.ID, &e.PanelID, &e.GuildID, &e.Emoji, &e.RoleID, &e.RoleName); err != nil {
+			return nil, err
+		}
+		entries = append(entries, e)
+	}
+	return entries, nil
+}
+
+// GetReactionRolePanelByMessage looks up a panel by its Discord message ID.
+// Returns nil, nil when not found.
+func GetReactionRolePanelByMessage(messageID string) (*ReactionRolePanel, error) {
+	if db == nil || messageID == "" {
+		return nil, nil
+	}
+	p := &ReactionRolePanel{}
+	err := db.QueryRow(`
+		SELECT id, guild_id, channel_id, message_id, title, description
+		FROM discord_reaction_role_panels WHERE message_id=$1
+	`, messageID).Scan(&p.ID, &p.GuildID, &p.ChannelID, &p.MessageID, &p.Title, &p.Description)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	p.Entries, err = getReactionRoleEntries(p.ID)
+	return p, err
+}
+
+// DeleteReactionRolePanel removes a panel and all its entries.
+func DeleteReactionRolePanel(guildID string, panelID int64) error {
+	if db == nil {
+		return nil
+	}
+	if _, err := db.Exec(`DELETE FROM discord_reaction_role_entries WHERE panel_id=$1`, panelID); err != nil {
+		return err
+	}
+	_, err := db.Exec(`DELETE FROM discord_reaction_role_panels WHERE id=$1 AND guild_id=$2`, panelID, guildID)
+	return err
+}
+
 // ─── Discord Welcome Settings ─────────────────────────────────────────────────
 
 type DiscordWelcomeSettings struct {
-	GuildID              string
-	WelcomeChannelID     string
-	WelcomeMessage       string
+	GuildID          string
+	WelcomeChannelID string
+	WelcomeMessage   string
 	// Comma-separated Discord role IDs to auto-assign on join.
 	AutoRoleIDs          string
 	LeaveChannelID       string

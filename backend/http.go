@@ -179,6 +179,8 @@ func startHTTPServer(clientID, clientSecret string) {
 	mux.HandleFunc("/discord/guild-managers", withCORS(handleDiscordGuildManagers))
 	mux.HandleFunc("/discord/tickets/config", withCORS(handleDiscordTicketConfig))
 	mux.HandleFunc("/discord/tickets/send-panel", withCORS(handleDiscordSendTicketPanel))
+	mux.HandleFunc("/discord/reaction-roles", withCORS(handleDiscordReactionRoles))
+	mux.HandleFunc("/discord/reaction-roles/send", withCORS(handleDiscordReactionRolesSend))
 	mux.HandleFunc("/discord/welcome-settings", withCORS(handleDiscordWelcomeSettings))
 
 	// Optional Nightbot OAuth integration for importing commands without
@@ -3163,6 +3165,151 @@ func handleDiscordSendTicketPanel(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{"panel_message_id": msgID})
+}
+
+// handleDiscordReactionRoles handles GET (list) and DELETE (remove) for reaction-role panels.
+// GET  ?guild_id=
+// DELETE ?guild_id=&id=
+func handleDiscordReactionRoles(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		guildID := strings.TrimSpace(r.URL.Query().Get("guild_id"))
+		if guildID == "" {
+			http.Error(w, "missing guild_id", http.StatusBadRequest)
+			return
+		}
+		panels, err := GetReactionRolePanels(guildID)
+		if err != nil {
+			log.Println("get reaction role panels:", err)
+			http.Error(w, "db error", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		// Normalise nil slices to empty arrays for JSON.
+		type entryOut struct {
+			ID       int64  `json:"id"`
+			Emoji    string `json:"emoji"`
+			RoleID   string `json:"role_id"`
+			RoleName string `json:"role_name"`
+		}
+		type panelOut struct {
+			ID          int64      `json:"id"`
+			ChannelID   string     `json:"channel_id"`
+			MessageID   string     `json:"message_id"`
+			Title       string     `json:"title"`
+			Description string     `json:"description"`
+			Entries     []entryOut `json:"entries"`
+		}
+		out := []panelOut{}
+		for _, p := range panels {
+			po := panelOut{
+				ID: p.ID, ChannelID: p.ChannelID, MessageID: p.MessageID,
+				Title: p.Title, Description: p.Description, Entries: []entryOut{},
+			}
+			for _, e := range p.Entries {
+				po.Entries = append(po.Entries, entryOut{ID: e.ID, Emoji: e.Emoji, RoleID: e.RoleID, RoleName: e.RoleName})
+			}
+			out = append(out, po)
+		}
+		json.NewEncoder(w).Encode(map[string]any{"panels": out})
+
+	case http.MethodDelete:
+		guildID := strings.TrimSpace(r.URL.Query().Get("guild_id"))
+		idStr := r.URL.Query().Get("id")
+		id, err := strconv.ParseInt(idStr, 10, 64)
+		if err != nil || guildID == "" {
+			http.Error(w, "missing guild_id or id", http.StatusBadRequest)
+			return
+		}
+		if err := DeleteReactionRolePanel(guildID, id); err != nil {
+			log.Println("delete reaction role panel:", err)
+			http.Error(w, "db error", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
+}
+
+// handleDiscordReactionRolesSend creates/updates a panel in the DB, posts the
+// embed to Discord, and adds bot reactions for each emoji.
+// POST { guild_id, panel_id?, channel_id, title, description, entries:[{emoji,role_id,role_name}] }
+func handleDiscordReactionRolesSend(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	var body struct {
+		GuildID     string `json:"guild_id"`
+		PanelID     int64  `json:"panel_id"`
+		ChannelID   string `json:"channel_id"`
+		Title       string `json:"title"`
+		Description string `json:"description"`
+		Entries     []struct {
+			Emoji    string `json:"emoji"`
+			RoleID   string `json:"role_id"`
+			RoleName string `json:"role_name"`
+		} `json:"entries"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "bad json", http.StatusBadRequest)
+		return
+	}
+	if body.GuildID == "" || body.ChannelID == "" {
+		http.Error(w, "missing guild_id or channel_id", http.StatusBadRequest)
+		return
+	}
+	if len(body.Entries) == 0 {
+		http.Error(w, "at least one entry required", http.StatusBadRequest)
+		return
+	}
+	if discordSession == nil {
+		http.Error(w, "discord not connected", http.StatusServiceUnavailable)
+		return
+	}
+
+	title := body.Title
+	if title == "" {
+		title = "React for Roles"
+	}
+	desc := body.Description
+	if desc == "" {
+		desc = "React below to assign yourself a role."
+	}
+
+	// Save panel config to DB.
+	panelID, err := CreateOrUpdateReactionRolePanel(body.GuildID, body.ChannelID, title, desc, body.PanelID)
+	if err != nil {
+		log.Println("create reaction role panel:", err)
+		http.Error(w, "db error", http.StatusInternalServerError)
+		return
+	}
+	entries := make([]*ReactionRoleEntry, 0, len(body.Entries))
+	for _, e := range body.Entries {
+		entries = append(entries, &ReactionRoleEntry{Emoji: e.Emoji, RoleID: e.RoleID, RoleName: e.RoleName})
+	}
+	if err := SetReactionRoleEntries(panelID, body.GuildID, entries); err != nil {
+		log.Println("set reaction role entries:", err)
+		http.Error(w, "db error", http.StatusInternalServerError)
+		return
+	}
+
+	// Post the embed to Discord (helper in discord_commands.go uses discordgo types).
+	msgID, err := sendReactionRolePanel(discordSession, body.ChannelID, title, desc, entries)
+	if err != nil {
+		log.Println("send reaction role panel:", err)
+		http.Error(w, "failed to post message: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err := UpdateReactionRolePanelMessageID(panelID, msgID); err != nil {
+		log.Println("update panel message id:", err)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{"panel_id": panelID, "message_id": msgID})
 }
 
 // handleDiscordWelcomeSettings handles GET and POST for per-guild welcome

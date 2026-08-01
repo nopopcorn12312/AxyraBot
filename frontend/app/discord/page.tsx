@@ -259,6 +259,20 @@ export default function DiscordSettingsPage() {
   const [roleSaveSuccess, setRoleSaveSuccess] = useState(false);
   const [roleSaveError, setRoleSaveError] = useState<string | null>(null);
 
+  // Reaction roles state
+  type RREntry = { emoji: string; role_id: string; role_name: string };
+  type RRPanel = { id: number; channel_id: string; message_id: string; title: string; description: string; entries: RREntry[] };
+  const [rrPanels, setRrPanels] = useState<RRPanel[]>([]);
+  const [rrEditing, setRrEditing] = useState<RRPanel | null>(null);
+  const [rrChannelId, setRrChannelId] = useState("");
+  const [rrTitle, setRrTitle] = useState("React for Roles");
+  const [rrDescription, setRrDescription] = useState("React below to get a role!");
+  const [rrEntries, setRrEntries] = useState<RREntry[]>([{ emoji: "", role_id: "", role_name: "" }]);
+  const [rrSending, setRrSending] = useState(false);
+  const [rrSendSuccess, setRrSendSuccess] = useState(false);
+  const [rrSendError, setRrSendError] = useState<string | null>(null);
+  const [rrFormOpen, setRrFormOpen] = useState(false);
+
   // Welcome settings state
   const [welcomeChannelId, setWelcomeChannelId] = useState("");
   const [welcomeMessage, setWelcomeMessage] = useState("");
@@ -528,6 +542,15 @@ export default function DiscordSettingsPage() {
       .finally(() => setLoadingTicketConfig(false));
   }, [selectedGuildId]);
 
+  // Load reaction role panels when guild changes
+  useEffect(() => {
+    if (!selectedGuildId) { setRrPanels([]); setRrFormOpen(false); return; }
+    fetch(`${backendUrl}/discord/reaction-roles?guild_id=${encodeURIComponent(selectedGuildId)}`)
+      .then((r) => (r.ok ? r.json() : { panels: [] }))
+      .then((data) => setRrPanels(data.panels ?? []))
+      .catch(() => setRrPanels([]));
+  }, [selectedGuildId]);
+
   // Fetch guild categories (type=4) for ticket category selector
   useEffect(() => {
     if (!selectedGuildId) { setGuildCategories([]); return; }
@@ -754,6 +777,74 @@ export default function DiscordSettingsPage() {
     } finally {
       setSendingPanel(false);
     }
+  };
+
+  const handleSendReactionPanel = async () => {
+    if (!selectedGuildId || !rrChannelId) return;
+    const validEntries = rrEntries.filter((e) => e.emoji.trim() && e.role_id);
+    if (validEntries.length === 0) { setRrSendError("Add at least one emoji + role entry."); return; }
+    setRrSending(true);
+    setRrSendError(null);
+    setRrSendSuccess(false);
+    try {
+      const res = await fetch(`${backendUrl}/discord/reaction-roles/send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          guild_id: selectedGuildId,
+          panel_id: rrEditing?.id ?? 0,
+          channel_id: rrChannelId,
+          title: rrTitle,
+          description: rrDescription,
+          entries: validEntries,
+        }),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        setRrSendError(text || "Failed to send panel.");
+        return;
+      }
+      // Refresh panels list
+      const r2 = await fetch(`${backendUrl}/discord/reaction-roles?guild_id=${encodeURIComponent(selectedGuildId)}`);
+      const d2 = await r2.json();
+      setRrPanels(d2.panels ?? []);
+      setRrFormOpen(false);
+      setRrEditing(null);
+      setRrSendSuccess(true);
+      setTimeout(() => setRrSendSuccess(false), 3000);
+    } catch {
+      setRrSendError("Network error. Please try again.");
+    } finally {
+      setRrSending(false);
+    }
+  };
+
+  const handleDeleteReactionPanel = async (panelId: number) => {
+    if (!selectedGuildId) return;
+    await fetch(`${backendUrl}/discord/reaction-roles?guild_id=${encodeURIComponent(selectedGuildId)}&id=${panelId}`, {
+      method: "DELETE",
+    });
+    setRrPanels((prev) => prev.filter((p) => p.id !== panelId));
+  };
+
+  const openNewReactionPanel = () => {
+    setRrEditing(null);
+    setRrChannelId("");
+    setRrTitle("React for Roles");
+    setRrDescription("React below to get a role!");
+    setRrEntries([{ emoji: "", role_id: "", role_name: "" }]);
+    setRrSendError(null);
+    setRrFormOpen(true);
+  };
+
+  const openEditReactionPanel = (panel: RRPanel) => {
+    setRrEditing(panel);
+    setRrChannelId(panel.channel_id);
+    setRrTitle(panel.title);
+    setRrDescription(panel.description);
+    setRrEntries(panel.entries.length > 0 ? panel.entries : [{ emoji: "", role_id: "", role_name: "" }]);
+    setRrSendError(null);
+    setRrFormOpen(true);
   };
 
   const handleModuleToggle = async (moduleName: string, next: boolean) => {
@@ -1730,6 +1821,178 @@ export default function DiscordSettingsPage() {
                             {" "}&mdash; sending a new panel posts a fresh message to the channel.
                           </p>
                         )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ── Reaction Roles ── */}
+                {selectedGuildId && (
+                  <div className="border-t border-slate-800 pt-5 flex flex-col gap-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">🎭 Reaction Roles</p>
+                        <p className="text-xs text-slate-500 mt-0.5">Post a panel — members react to gain or lose roles automatically.</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={openNewReactionPanel}
+                        className="rounded-lg bg-accent/10 border border-accent/30 px-3 py-1.5 text-xs font-medium text-accent hover:bg-accent/20 transition"
+                      >
+                        + New Panel
+                      </button>
+                    </div>
+
+                    {/* Existing panels */}
+                    {rrPanels.length > 0 && (
+                      <div className="flex flex-col gap-2">
+                        {rrPanels.map((panel) => (
+                          <div key={panel.id} className="flex items-start justify-between rounded-lg bg-slate-800/60 border border-slate-700/60 px-4 py-3 gap-3">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-slate-200 truncate">{panel.title}</p>
+                              <p className="text-xs text-slate-500 mt-0.5">{panel.entries.length} role{panel.entries.length !== 1 ? "s" : ""} · channel <span className="font-mono text-slate-400">{panel.channel_id}</span></p>
+                              {panel.entries.map((e, i) => (
+                                <span key={i} className="inline-flex items-center gap-1 mr-2 mt-1 text-xs text-slate-400">
+                                  {e.emoji} <span className="text-slate-500">{e.role_name || e.role_id}</span>
+                                </span>
+                              ))}
+                            </div>
+                            <div className="flex gap-2 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => openEditReactionPanel(panel)}
+                                className="text-xs text-accent hover:text-accent/80 transition"
+                              >
+                                Edit / Resend
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteReactionPanel(panel.id)}
+                                className="text-xs text-red-400 hover:text-red-300 transition"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {rrSendSuccess && <p className="text-sm text-emerald-400">✓ Panel sent successfully!</p>}
+
+                    {/* Panel editor form */}
+                    {rrFormOpen && (
+                      <div className="rounded-xl border border-slate-700/60 bg-slate-800/40 p-5 flex flex-col gap-4">
+                        <p className="text-sm font-semibold text-slate-200">{rrEditing ? "Edit Panel" : "New Panel"}</p>
+
+                        {/* Title */}
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs text-slate-400">Panel Title</label>
+                          <input
+                            type="text"
+                            value={rrTitle}
+                            onChange={(e) => setRrTitle(e.target.value)}
+                            placeholder="React for Roles"
+                            className="rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-accent/60"
+                          />
+                        </div>
+
+                        {/* Description */}
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs text-slate-400">Description</label>
+                          <textarea
+                            rows={2}
+                            value={rrDescription}
+                            onChange={(e) => setRrDescription(e.target.value)}
+                            placeholder="React below to get a role!"
+                            className="rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-accent/60 resize-none"
+                          />
+                        </div>
+
+                        {/* Channel */}
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs text-slate-400">Post to Channel</label>
+                          <select
+                            value={rrChannelId}
+                            onChange={(e) => setRrChannelId(e.target.value)}
+                            className="rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-accent/60"
+                          >
+                            <option value="">— Select channel —</option>
+                            {guildChannels.map((ch) => (
+                              <option key={ch.id} value={ch.id}>#{ch.name}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Entries */}
+                        <div className="flex flex-col gap-2">
+                          <label className="text-xs text-slate-400">Emoji → Role Entries</label>
+                          {rrEntries.map((entry, i) => (
+                            <div key={i} className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={entry.emoji}
+                                onChange={(e) => {
+                                  const next = [...rrEntries];
+                                  next[i] = { ...next[i], emoji: e.target.value };
+                                  setRrEntries(next);
+                                }}
+                                placeholder="🎮"
+                                className="w-20 rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-accent/60 text-center"
+                              />
+                              <select
+                                value={entry.role_id}
+                                onChange={(e) => {
+                                  const selected = guildRoles.find((r) => r.id === e.target.value);
+                                  const next = [...rrEntries];
+                                  next[i] = { ...next[i], role_id: e.target.value, role_name: selected?.name ?? "" };
+                                  setRrEntries(next);
+                                }}
+                                className="flex-1 rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-accent/60"
+                              >
+                                <option value="">— Select role —</option>
+                                {guildRoles.map((role) => (
+                                  <option key={role.id} value={role.id}>{role.name}</option>
+                                ))}
+                              </select>
+                              <button
+                                type="button"
+                                onClick={() => setRrEntries((prev) => prev.filter((_, idx) => idx !== i))}
+                                className="text-slate-500 hover:text-red-400 transition text-base leading-none"
+                                aria-label="Remove entry"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ))}
+                          <button
+                            type="button"
+                            onClick={() => setRrEntries((prev) => [...prev, { emoji: "", role_id: "", role_name: "" }])}
+                            className="self-start text-xs text-accent hover:text-accent/80 transition mt-1"
+                          >
+                            + Add Entry
+                          </button>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex items-center gap-3 flex-wrap pt-1">
+                          <button
+                            type="button"
+                            onClick={handleSendReactionPanel}
+                            disabled={rrSending || !rrChannelId}
+                            className="rounded-lg bg-accent px-5 py-2 text-sm font-medium text-white hover:bg-accent/90 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            {rrSending ? "Sending…" : rrEditing ? "Resend Panel" : "Send Panel"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setRrFormOpen(false); setRrEditing(null); setRrSendError(null); }}
+                            className="rounded-lg border border-slate-600 px-5 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700/40 transition"
+                          >
+                            Cancel
+                          </button>
+                          {rrSendError && <span className="text-sm text-red-400">{rrSendError}</span>}
+                        </div>
                       </div>
                     )}
                   </div>
