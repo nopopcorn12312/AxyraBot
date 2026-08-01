@@ -92,30 +92,30 @@ func GenerateWelcomeBanner(avatarURL, username, serverName string, memberCount i
 	// ── Text (each line centred in the right region at textCX) ──────────────
 	// Truncate server name if very long
 	displayServer := serverName
-	if len([]rune(displayServer)) > 22 {
-		displayServer = string([]rune(displayServer)[:20]) + "…"
+	if len([]rune(displayServer)) > 18 {
+		displayServer = string([]rune(displayServer)[:16]) + "…"
 	}
 
-	// "Welcome to [Server]!" — headline, gobold 30pt, accent sky-blue
-	if face, err := parseTTFFace(gobold.TTF, 30); err == nil {
+	// "Welcome to [Server]!" — headline, gobold 40pt, accent sky-blue
+	if face, err := parseTTFFace(gobold.TTF, 40); err == nil {
 		dc.SetFontFace(face)
 	}
 	dc.SetHexColor("38bdf8")
-	dc.DrawStringAnchored("Welcome to "+displayServer+"!", textCX, 78, 0.5, 1)
+	dc.DrawStringAnchored("Welcome to "+displayServer+"!", textCX, 76, 0.5, 1)
 
-	// Username — goregular 22pt, near-white (#f1f5f9)
-	if face, err := parseTTFFace(goregular.TTF, 22); err == nil {
+	// Username — goregular 26pt, near-white (#f1f5f9)
+	if face, err := parseTTFFace(goregular.TTF, 26); err == nil {
 		dc.SetFontFace(face)
 	}
 	dc.SetHexColor("f1f5f9")
-	dc.DrawStringAnchored(username, textCX, 110, 0.5, 1)
+	dc.DrawStringAnchored(username, textCX, 114, 0.5, 1)
 
-	// Member count — goregular 14pt, slate-500 (#64748b)
-	if face, err := parseTTFFace(goregular.TTF, 14); err == nil {
+	// Member count — goregular 15pt, slate-500 (#64748b)
+	if face, err := parseTTFFace(goregular.TTF, 15); err == nil {
 		dc.SetFontFace(face)
 	}
 	dc.SetHexColor("64748b")
-	dc.DrawStringAnchored(fmt.Sprintf("Member #%d", memberCount), textCX, 132, 0.5, 1)
+	dc.DrawStringAnchored(fmt.Sprintf("Member #%d", memberCount), textCX, 138, 0.5, 1)
 
 	var buf bytes.Buffer
 	if err := dc.EncodePNG(&buf); err != nil {
