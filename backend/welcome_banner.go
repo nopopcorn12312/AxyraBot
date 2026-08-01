@@ -108,14 +108,14 @@ func GenerateWelcomeBanner(avatarURL, username, serverName string, memberCount i
 		dc.SetFontFace(face)
 	}
 	dc.SetHexColor("f1f5f9")
-	dc.DrawStringAnchored(username, textCX, 88, 0.5, 1)
+	dc.DrawStringAnchored(username, textCX, 102, 0.5, 1)
 
 	// Member count — goregular 16pt, slate-500 (#64748b)
 	if face, err := parseTTFFace(goregular.TTF, 16); err == nil {
 		dc.SetFontFace(face)
 	}
 	dc.SetHexColor("64748b")
-	dc.DrawStringAnchored(fmt.Sprintf("Member #%d", memberCount), textCX, 112, 0.5, 1)
+	dc.DrawStringAnchored(fmt.Sprintf("Member #%d", memberCount), textCX, 132, 0.5, 1)
 
 	var buf bytes.Buffer
 	if err := dc.EncodePNG(&buf); err != nil {
