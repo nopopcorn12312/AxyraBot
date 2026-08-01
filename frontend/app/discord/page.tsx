@@ -1256,10 +1256,10 @@ export default function DiscordSettingsPage() {
               <div className="flex flex-col gap-5 p-6 overflow-y-auto flex-1 min-h-0">
                 {/* ── Two-column layout when a guild is selected ── */}
                 {selectedGuildId ? (
-                  <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-stretch">
+                  <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
 
                     {/* LEFT — Channel Notifications */}
-                    <div className="flex flex-col gap-5 justify-between">
+                    <div className="flex flex-col gap-4">
                       <div className="flex flex-col gap-1">
                         <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Channel Notifications</p>
                         <p className="text-xs text-slate-500">Choose which Discord channels receive each type of notification.</p>
@@ -1271,8 +1271,8 @@ export default function DiscordSettingsPage() {
                           <span className="text-sm text-slate-500">Loading channels…</span>
                         </div>
                       ) : (
-                          <div className="flex flex-col gap-5">
-                          <div className="flex flex-col gap-1.5">
+                          <div className="flex flex-col gap-3">
+                          <div className="flex flex-col gap-1">
                             <div className="flex items-center gap-2">
                               <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-300">
                                 <span className="h-2 w-2 rounded-full bg-red-400" /> Live Notification
@@ -1286,7 +1286,7 @@ export default function DiscordSettingsPage() {
                             </select>
                           </div>
 
-                          <div className="flex flex-col gap-1.5">
+                          <div className="flex flex-col gap-1">
                             <div className="flex items-center gap-2">
                               <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-300">
                                 <span>🔨</span> Mod Alerts
@@ -1300,7 +1300,7 @@ export default function DiscordSettingsPage() {
                             </select>
                           </div>
 
-                          <div className="flex flex-col gap-1.5">
+                          <div className="flex flex-col gap-1">
                             <div className="flex items-center gap-2">
                               <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-300">
                                 <span>🎂</span> Birthday Announcements
@@ -1318,7 +1318,7 @@ export default function DiscordSettingsPage() {
                       )}
 
                       {/* Save row */}
-                      <div className="flex items-center gap-4 pt-1">
+                      <div className="flex items-center gap-4">
                         <button
                           type="button"
                           onClick={handleSave}
