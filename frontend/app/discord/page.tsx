@@ -425,6 +425,7 @@ export default function DiscordSettingsPage() {
 
   // Load saved role mappings when (channelLogin + selectedGuildId) both set
   useEffect(() => {
+    setRoleMap({ vip: "", moderator: "", owner: "" });
     if (!channelLogin || !selectedGuildId) return;
     fetch(`${backendUrl}/discord/role-mappings?login=${encodeURIComponent(channelLogin)}&guild_id=${encodeURIComponent(selectedGuildId)}`)
       .then((r) => (r.ok ? r.json() : null))
@@ -444,14 +445,13 @@ export default function DiscordSettingsPage() {
 
   // Load welcome settings when guild changes
   useEffect(() => {
-    if (!selectedGuildId) {
-      setWelcomeChannelId("");
-      setWelcomeMessage("");
-      setAutoRoleIds([]);
-      setLeaveChannelId("");
-      setWelcomeBannerEnabled(false);
-      return;
-    }
+    // Clear immediately so stale data from the previous guild never leaks
+    setWelcomeChannelId("");
+    setWelcomeMessage("");
+    setAutoRoleIds([]);
+    setLeaveChannelId("");
+    setWelcomeBannerEnabled(false);
+    if (!selectedGuildId) return;
     fetch(`${backendUrl}/discord/welcome-settings?guild_id=${encodeURIComponent(selectedGuildId)}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
@@ -519,9 +519,16 @@ export default function DiscordSettingsPage() {
 
   // Load ticket config when guild changes
   useEffect(() => {
+    setTicketPanelChannelId("");
+    setTicketLogChannelId("");
+    setTicketCategoryId("");
+    setTicketSupportRoleIds([]);
+    setTicketPanelTitle("Support Tickets");
+    setTicketPanelBody("Click the button below to open a support ticket.");
+    setTicketButtonLabel("🎫 Open Ticket");
+    setTicketPanelMessageId("");
     if (!selectedGuildId) return;
     setLoadingTicketConfig(true);
-    setTicketPanelMessageId("");
     fetch(`${backendUrl}/discord/tickets/config?guild_id=${encodeURIComponent(selectedGuildId)}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
