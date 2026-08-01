@@ -1929,17 +1929,31 @@ export default function DiscordSettingsPage() {
                           <label className="text-xs text-slate-400">Emoji → Role Entries</label>
                           {rrEntries.map((entry, i) => (
                             <div key={i} className="flex items-center gap-2">
-                              <input
-                                type="text"
+                              <select
                                 value={entry.emoji}
                                 onChange={(e) => {
                                   const next = [...rrEntries];
                                   next[i] = { ...next[i], emoji: e.target.value };
                                   setRrEntries(next);
                                 }}
-                                placeholder="🎮"
-                                className="w-20 rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-accent/60 text-center"
-                              />
+                                className="w-32 rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-accent/60"
+                              >
+                                <option value="">— Emoji —</option>
+                                {[
+                                  ["✅","✅ Check"],["❌","❌ X"],["⭐","⭐ Star"],["🔥","🔥 Fire"],
+                                  ["🎮","🎮 Gaming"],["🎵","🎵 Music"],["🎨","🎨 Art"],["📸","📸 Photo"],
+                                  ["📺","📺 TV / Stream"],["🏆","🏆 Trophy"],["💎","💎 Diamond"],["👑","👑 Crown"],
+                                  ["🐺","🐺 Wolf"],["🦊","🦊 Fox"],["🐱","🐱 Cat"],["🐸","🐸 Frog"],
+                                  ["🌙","🌙 Moon"],["☀️","☀️ Sun"],["❄️","❄️ Ice"],["⚡","⚡ Lightning"],
+                                  ["🎲","🎲 Dice"],["🎭","🎭 Theatre"],["🎯","🎯 Target"],["🚀","🚀 Rocket"],
+                                  ["💬","💬 Chat"],["📢","📢 Announce"],["🔔","🔔 Bell"],["🔇","🔇 Muted"],
+                                  ["👋","👋 Wave"],["🤝","🤝 Handshake"],["💪","💪 Flex"],["🙌","🙌 Hands"],
+                                  ["1️⃣","1️⃣ One"],["2️⃣","2️⃣ Two"],["3️⃣","3️⃣ Three"],["4️⃣","4️⃣ Four"],
+                                  ["🅰️","🅰️ A"],["🅱️","🅱️ B"],["🆒","🆒 Cool"],["🆕","🆕 New"],
+                                ].map(([val, label]) => (
+                                  <option key={val} value={val}>{label}</option>
+                                ))}
+                              </select>
                               <select
                                 value={entry.role_id}
                                 onChange={(e) => {
