@@ -96,26 +96,26 @@ func GenerateWelcomeBanner(avatarURL, username, serverName string, memberCount i
 		displayServer = string([]rune(displayServer)[:20]) + "…"
 	}
 
-	// "Welcome to [Server]!" — headline, gobold 24pt, accent sky-blue
-	if face, err := parseTTFFace(gobold.TTF, 24); err == nil {
+	// "Welcome to [Server]!" — headline, gobold 30pt, accent sky-blue
+	if face, err := parseTTFFace(gobold.TTF, 30); err == nil {
 		dc.SetFontFace(face)
 	}
 	dc.SetHexColor("38bdf8")
-	dc.DrawStringAnchored("Welcome to "+displayServer+"!", textCX, 76, 0.5, 1)
+	dc.DrawStringAnchored("Welcome to "+displayServer+"!", textCX, 78, 0.5, 1)
 
-	// Username — goregular 18pt, near-white (#f1f5f9)
-	if face, err := parseTTFFace(goregular.TTF, 18); err == nil {
+	// Username — goregular 22pt, near-white (#f1f5f9)
+	if face, err := parseTTFFace(goregular.TTF, 22); err == nil {
 		dc.SetFontFace(face)
 	}
 	dc.SetHexColor("f1f5f9")
-	dc.DrawStringAnchored(username, textCX, 103, 0.5, 1)
+	dc.DrawStringAnchored(username, textCX, 110, 0.5, 1)
 
-	// Member count — goregular 13pt, slate-500 (#64748b)
-	if face, err := parseTTFFace(goregular.TTF, 13); err == nil {
+	// Member count — goregular 14pt, slate-500 (#64748b)
+	if face, err := parseTTFFace(goregular.TTF, 14); err == nil {
 		dc.SetFontFace(face)
 	}
 	dc.SetHexColor("64748b")
-	dc.DrawStringAnchored(fmt.Sprintf("Member #%d", memberCount), textCX, 122, 0.5, 1)
+	dc.DrawStringAnchored(fmt.Sprintf("Member #%d", memberCount), textCX, 132, 0.5, 1)
 
 	var buf bytes.Buffer
 	if err := dc.EncodePNG(&buf); err != nil {
