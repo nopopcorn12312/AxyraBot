@@ -219,6 +219,7 @@ export default function DiscordSettingsPage() {
   const [liveChannelId, setLiveChannelId] = useState("");
   const [modChannelId, setModChannelId] = useState("");
   const [bdayChannelId, setBdayChannelId] = useState("");
+  const [bdaySourceLogin, setBdaySourceLogin] = useState("");
   const [loadingSettings, setLoadingSettings] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -369,6 +370,7 @@ export default function DiscordSettingsPage() {
     setLiveChannelId("");
     setModChannelId("");
     setBdayChannelId("");
+    setBdaySourceLogin("");
     fetch(`${backendUrl}/discord/settings?login=${encodeURIComponent(channelLogin)}&guild_id=${encodeURIComponent(selectedGuildId)}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
@@ -376,6 +378,7 @@ export default function DiscordSettingsPage() {
           setLiveChannelId(data.live_channel_id ?? "");
           setModChannelId(data.mod_channel_id ?? "");
           setBdayChannelId(data.bday_channel_id ?? "");
+          setBdaySourceLogin(data.bday_source_login ?? "");
         }
       })
       .catch(() => {})
@@ -605,6 +608,7 @@ export default function DiscordSettingsPage() {
           live_channel_id: liveChannelId,
           mod_channel_id: modChannelId,
           bday_channel_id: bdayChannelId,
+          bday_source_login: bdaySourceLogin,
         }),
       });
       if (!res.ok) {
@@ -1320,6 +1324,15 @@ export default function DiscordSettingsPage() {
                               <option value="">Disabled</option>
                               {guildChannels.map((c) => <option key={c.id} value={c.id}>#{c.name}</option>)}
                             </select>
+                            <label className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Birthday list source</label>
+                            <p className="text-xs text-slate-500">Leave blank to use your own saved list, or enter a friend&apos;s Twitch login to announce their list here instead.</p>
+                            <input
+                              type="text"
+                              value={bdaySourceLogin}
+                              onChange={(e) => setBdaySourceLogin(e.target.value.toLowerCase())}
+                              placeholder={channelLogin || "your Twitch login"}
+                              className={channelSelectClass}
+                            />
                           </div>
 
                         </div>

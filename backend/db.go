@@ -908,6 +908,12 @@ func EnsureSchema() error {
 	if _, err := db.Exec(`ALTER TABLE discord_notification_templates ADD COLUMN IF NOT EXISTS guild_id TEXT NOT NULL DEFAULT ''`); err != nil {
 		return err
 	}
+
+	// Backfill: add bday_source_login to discord_settings so a guild can
+	// announce birthdays from a different broadcaster's saved list.
+	if _, err := db.Exec(`ALTER TABLE discord_settings ADD COLUMN IF NOT EXISTS bday_source_login TEXT NOT NULL DEFAULT ''`); err != nil {
+		return err
+	}
 	// Migrate PK to include guild_id (only runs if the old PK doesn't already have it).
 	if _, err := db.Exec(`
 	DO $$
@@ -1242,6 +1248,9 @@ type DiscordSettings struct {
 	LiveChannelID    string
 	ModChannelID     string
 	BdayChannelID    string
+	// BdaySourceLogin, when set, overrides whose saved birthday list is
+	// announced in this guild (e.g. a friend's channel instead of your own).
+	BdaySourceLogin string
 }
 
 // GetDiscordSettings returns the Discord settings for a specific
@@ -1253,11 +1262,11 @@ func GetDiscordSettings(broadcasterLogin, guildID string) (*DiscordSettings, err
 	broadcasterLogin = strings.ToLower(strings.TrimSpace(broadcasterLogin))
 	guildID = strings.TrimSpace(guildID)
 	row := db.QueryRowContext(context.Background(), `
-		SELECT broadcaster_login, guild_id, live_channel_id, mod_channel_id, bday_channel_id
+		SELECT broadcaster_login, guild_id, live_channel_id, mod_channel_id, bday_channel_id, bday_source_login
 		FROM discord_settings WHERE broadcaster_login = $1 AND guild_id = $2
 	`, broadcasterLogin, guildID)
 	var s DiscordSettings
-	if err := row.Scan(&s.BroadcasterLogin, &s.GuildID, &s.LiveChannelID, &s.ModChannelID, &s.BdayChannelID); err != nil {
+	if err := row.Scan(&s.BroadcasterLogin, &s.GuildID, &s.LiveChannelID, &s.ModChannelID, &s.BdayChannelID, &s.BdaySourceLogin); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
@@ -1274,7 +1283,7 @@ func GetAllDiscordSettingsForBroadcaster(broadcasterLogin string) ([]DiscordSett
 	}
 	broadcasterLogin = strings.ToLower(strings.TrimSpace(broadcasterLogin))
 	rows, err := db.QueryContext(context.Background(), `
-		SELECT broadcaster_login, guild_id, live_channel_id, mod_channel_id, bday_channel_id
+		SELECT broadcaster_login, guild_id, live_channel_id, mod_channel_id, bday_channel_id, bday_source_login
 		FROM discord_settings WHERE broadcaster_login = $1
 	`, broadcasterLogin)
 	if err != nil {
@@ -1284,7 +1293,7 @@ func GetAllDiscordSettingsForBroadcaster(broadcasterLogin string) ([]DiscordSett
 	var out []DiscordSettings
 	for rows.Next() {
 		var s DiscordSettings
-		if err := rows.Scan(&s.BroadcasterLogin, &s.GuildID, &s.LiveChannelID, &s.ModChannelID, &s.BdayChannelID); err != nil {
+		if err := rows.Scan(&s.BroadcasterLogin, &s.GuildID, &s.LiveChannelID, &s.ModChannelID, &s.BdayChannelID, &s.BdaySourceLogin); err != nil {
 			return nil, err
 		}
 		out = append(out, s)
@@ -1302,13 +1311,13 @@ func GetDiscordSettingsByGuild(guildID string) (*DiscordSettings, error) {
 	// Prefer an explicit guild-level row (broadcaster_login = '') when present,
 	// otherwise fall back to any existing per-broadcaster row for the guild.
 	row := db.QueryRowContext(context.Background(), `
-		SELECT broadcaster_login, guild_id, live_channel_id, mod_channel_id, bday_channel_id
+		SELECT broadcaster_login, guild_id, live_channel_id, mod_channel_id, bday_channel_id, bday_source_login
 		FROM discord_settings WHERE guild_id = $1
 		ORDER BY (broadcaster_login = '') DESC
 		LIMIT 1
 	`, guildID)
 	var s DiscordSettings
-	if err := row.Scan(&s.BroadcasterLogin, &s.GuildID, &s.LiveChannelID, &s.ModChannelID, &s.BdayChannelID); err != nil {
+	if err := row.Scan(&s.BroadcasterLogin, &s.GuildID, &s.LiveChannelID, &s.ModChannelID, &s.BdayChannelID, &s.BdaySourceLogin); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
@@ -1323,15 +1332,17 @@ func SaveDiscordSettings(s DiscordSettings) error {
 		return fmt.Errorf("db not initialized")
 	}
 	s.BroadcasterLogin = strings.ToLower(strings.TrimSpace(s.BroadcasterLogin))
+	s.BdaySourceLogin = strings.ToLower(strings.TrimSpace(s.BdaySourceLogin))
 	_, err := db.ExecContext(context.Background(), `
-		INSERT INTO discord_settings (broadcaster_login, guild_id, live_channel_id, mod_channel_id, bday_channel_id, updated_at)
-		VALUES ($1, $2, $3, $4, $5, NOW())
+		INSERT INTO discord_settings (broadcaster_login, guild_id, live_channel_id, mod_channel_id, bday_channel_id, bday_source_login, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, NOW())
 		ON CONFLICT (broadcaster_login, guild_id) DO UPDATE SET
-			live_channel_id = EXCLUDED.live_channel_id,
-			mod_channel_id  = EXCLUDED.mod_channel_id,
-			bday_channel_id = EXCLUDED.bday_channel_id,
-			updated_at      = NOW()
-	`, s.BroadcasterLogin, s.GuildID, s.LiveChannelID, s.ModChannelID, s.BdayChannelID)
+			live_channel_id   = EXCLUDED.live_channel_id,
+			mod_channel_id    = EXCLUDED.mod_channel_id,
+			bday_channel_id   = EXCLUDED.bday_channel_id,
+			bday_source_login = EXCLUDED.bday_source_login,
+			updated_at        = NOW()
+	`, s.BroadcasterLogin, s.GuildID, s.LiveChannelID, s.ModChannelID, s.BdayChannelID, s.BdaySourceLogin)
 	return err
 }
 

@@ -1335,7 +1335,9 @@ func PostDiscordModAlert(broadcasterLogin, moderator, target, action, reason str
 }
 
 // PostDiscordBirthdayAnnouncement sends a birthday message to every Discord
-// server the broadcaster has configured for birthday announcements.
+// server the broadcaster has configured for birthday announcements. Guilds
+// with a BdaySourceLogin override announce a different broadcaster's saved
+// birthday list instead of the caller's own.
 func PostDiscordBirthdayAnnouncement(broadcasterLogin, names string) {
 	if discordSession == nil {
 		return
@@ -1345,11 +1347,22 @@ func PostDiscordBirthdayAnnouncement(broadcasterLogin, names string) {
 		return
 	}
 	const defaultBdayTmpl = "🎂 Happy Birthday to **$(names)** in **$(channel)**'s community! 🎉"
-	bdayVars := map[string]string{"names": names, "channel": broadcasterLogin}
 	for _, settings := range all {
 		if settings.BdayChannelID == "" {
 			continue
 		}
+		announceNames := names
+		announceChannel := broadcasterLogin
+		sourceLogin := strings.ToLower(strings.TrimSpace(settings.BdaySourceLogin))
+		if sourceLogin != "" && sourceLogin != strings.ToLower(broadcasterLogin) {
+			overrideNames, count := computeTodaysBirthdayNames(sourceLogin)
+			if count == 0 {
+				continue
+			}
+			announceNames = overrideNames
+			announceChannel = sourceLogin
+		}
+		bdayVars := map[string]string{"names": announceNames, "channel": announceChannel}
 		msg := renderDiscordTemplate(broadcasterLogin, settings.GuildID, "birthday", defaultBdayTmpl, bdayVars)
 		if _, err := discordSession.ChannelMessageSend(settings.BdayChannelID, msg); err != nil {
 			log.Println("[Discord] failed to post birthday announcement:", err)

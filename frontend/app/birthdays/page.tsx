@@ -451,6 +451,9 @@ export default function BirthdaysPage() {
   const [isEditor, setIsEditor] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [login, setLogin] = useState<string | null>(null);
+  const [ownLogin, setOwnLogin] = useState<string | null>(null);
+  const [selectedList, setSelectedList] = useState<string | null>(null);
+  const [listOptions, setListOptions] = useState<string[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mainSectionOpen, setMainSectionOpen] = usePersistentSectionState(
@@ -501,22 +504,49 @@ export default function BirthdaysPage() {
       setIsLoggedIn(true);
       const activeChannel = window.localStorage.getItem("axyra.activeChannel");
       if (activeChannel && activeChannel.toLowerCase() !== storedLogin.toLowerCase()) setIsEditor(true);
-      setLogin((activeChannel || storedLogin).toLowerCase());
+      const resolvedLogin = (activeChannel || storedLogin).toLowerCase();
+      setLogin(resolvedLogin);
+      setOwnLogin(storedLogin.toLowerCase());
+      setSelectedList(resolvedLogin);
     }
     if (storedAvatar) {
       setAvatarUrl(storedAvatar);
     }
   }, []);
 
-  // Load current module state for the birthdays module so we can show an
-  // enable/disable toggle on this page.
+  // Load the list of birthday lists this user can view/edit: their own
+  // channel plus any channel they've been granted Editor access to.
   useEffect(() => {
-    if (!login) return;
+    if (!ownLogin) return;
     let cancelled = false;
     (async () => {
       try {
         const res = await fetch(
-          `${backendUrl}/modules/settings?login=${encodeURIComponent(login)}`,
+          `${backendUrl}/roles/editor-channels?login=${encodeURIComponent(ownLogin)}`,
+        );
+        if (!res.ok) return;
+        const data: { channels?: string[] } = await res.json();
+        const editorChannels = (data.channels ?? []).map((c) => c.toLowerCase());
+        const opts = Array.from(new Set([ownLogin, ...editorChannels]));
+        if (!cancelled) setListOptions(opts);
+      } catch {
+        // ignore; default list options stays as just the own channel
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [ownLogin]);
+
+  // Load current module state for the birthdays module so we can show an
+  // enable/disable toggle on this page.
+  useEffect(() => {
+    if (!selectedList) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(
+          `${backendUrl}/modules/settings?login=${encodeURIComponent(selectedList)}`,
         );
         if (!res.ok) return;
         const data: { modules?: { name: string; enabled: boolean }[] } = await res.json();
@@ -556,12 +586,12 @@ export default function BirthdaysPage() {
   // Load timezone settings for the broadcaster and default to the browser
   // timezone when none is set yet.
   useEffect(() => {
-    if (!login) return;
+    if (!selectedList) return;
     let cancelled = false;
     (async () => {
       try {
         const res = await fetch(
-          `${backendUrl}/birthdays/settings?login=${encodeURIComponent(login)}`,
+          `${backendUrl}/birthdays/settings?login=${encodeURIComponent(selectedList)}`,
         );
         if (!res.ok) return;
         const data: { timezone?: string } = await res.json();
@@ -584,18 +614,18 @@ export default function BirthdaysPage() {
     return () => {
       cancelled = true;
     };
-  }, [login]);
+  }, [selectedList]);
 
   // Load all stored birthdays for this broadcaster.
   useEffect(() => {
-    if (!login) return;
+    if (!selectedList) return;
     const controller = new AbortController();
     setLoadingBirthdays(true);
     setBirthdaysError(null);
     (async () => {
       try {
         const res = await fetch(
-          `${backendUrl}/birthdays/list?login=${encodeURIComponent(login)}`,
+          `${backendUrl}/birthdays/list?login=${encodeURIComponent(selectedList)}`,
           { signal: controller.signal },
         );
         if (!res.ok) {
@@ -615,7 +645,7 @@ export default function BirthdaysPage() {
       }
     })();
     return () => controller.abort();
-  }, [login]);
+  }, [selectedList]);
 
   const handleLogout = () => {
     if (typeof window !== "undefined") {
@@ -627,6 +657,8 @@ export default function BirthdaysPage() {
     setIsLoggedIn(false);
     setAvatarUrl(null);
     setLogin(null);
+    setOwnLogin(null);
+    setSelectedList(null);
     setMenuOpen(false);
     if (typeof window !== "undefined") window.location.href = "/";
   };
@@ -638,7 +670,7 @@ export default function BirthdaysPage() {
   const primaryLabel = isLoggedIn ? "Dashboard" : "Login with Twitch";
 
   const handleToggleModule = async () => {
-    if (!login) return;
+    if (!selectedList) return;
     const next = !moduleEnabled;
     setModuleSaving(true);
     setModuleError(null);
@@ -647,7 +679,7 @@ export default function BirthdaysPage() {
       const res = await fetch(`${backendUrl}/modules/settings`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ login, module: "birthdays", enabled: next }),
+        body: JSON.stringify({ login: selectedList, module: "birthdays", enabled: next }),
       });
       if (!res.ok) {
         throw new Error("save failed");
@@ -661,14 +693,14 @@ export default function BirthdaysPage() {
   };
 
   const handleAddBirthdays = async () => {
-    if (!login || !addEntries.trim()) return;
+    if (!selectedList || !addEntries.trim()) return;
     setAdding(true);
     setAddError(null);
     try {
       const res = await fetch(`${backendUrl}/birthdays/add`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ login, entries: addEntries }),
+        body: JSON.stringify({ login: selectedList, entries: addEntries }),
       });
       if (!res.ok) throw new Error("Request failed");
       const data = await res.json();
@@ -679,7 +711,7 @@ export default function BirthdaysPage() {
         setShowAddModal(false);
         setAddEntries("");
         // Refresh the birthday list
-        const listRes = await fetch(`${backendUrl}/birthdays/list?login=${encodeURIComponent(login)}`);
+        const listRes = await fetch(`${backendUrl}/birthdays/list?login=${encodeURIComponent(selectedList)}`);
         if (listRes.ok) {
           const listData = await listRes.json();
           setBirthdays(listData.birthdays ?? []);
@@ -693,13 +725,13 @@ export default function BirthdaysPage() {
   };
 
   const handleDeleteBirthday = async (userLogin: string) => {
-    if (!login) return;
+    if (!selectedList) return;
     setDeletingBirthday(userLogin);
     try {
       const res = await fetch(`${backendUrl}/birthdays/delete`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ login, userLogin }),
+        body: JSON.stringify({ login: selectedList, userLogin }),
       });
       if (!res.ok) throw new Error("delete failed");
       setBirthdays((prev) => prev.filter((b) => b.userLogin !== userLogin));
@@ -711,7 +743,7 @@ export default function BirthdaysPage() {
   };
 
   const handleSaveTimezone = async () => {
-    if (!login) return;
+    if (!selectedList) return;
     const trimmed = timezone.trim();
     if (!trimmed) {
       setTimezoneError("Timezone cannot be empty.");
@@ -725,7 +757,7 @@ export default function BirthdaysPage() {
       const res = await fetch(`${backendUrl}/birthdays/settings`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ login, timezone: trimmed }),
+        body: JSON.stringify({ login: selectedList, timezone: trimmed }),
       });
       if (!res.ok) {
         if (res.status === 400) {
@@ -1036,7 +1068,7 @@ export default function BirthdaysPage() {
           <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-6">
             <div className="mb-2 flex items-center justify-between gap-4">
               <h1 className="text-2xl font-semibold">Birthdays</h1>
-              {login && (
+              {selectedList && (
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
@@ -1060,6 +1092,25 @@ export default function BirthdaysPage() {
                 </div>
               )}
             </div>
+            {listOptions.length > 1 && (
+              <div className="mb-4 flex items-center gap-2">
+                <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                  Editing list:
+                </label>
+                <select
+                  value={selectedList ?? ""}
+                  onChange={(e) => setSelectedList(e.target.value)}
+                  className="rounded-md border border-slate-700 bg-slate-900/80 px-2 py-1.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-accent/60"
+                >
+                  {listOptions.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                      {opt === ownLogin ? " (mine)" : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             {/* Add Birthdays modal */}
             {showAddModal && (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
@@ -1106,18 +1157,19 @@ export default function BirthdaysPage() {
               </div>
             )}
             <p className="mb-4 text-sm text-slate-400">
-              View birthdays saved for your channel and choose the timezone the bot
-              should use when announcing birthdays.
+              View birthdays saved for {selectedList ?? "your channel"} and choose the
+              timezone the bot should use when announcing birthdays. Ask a friend to
+              grant you Editor access from their Roles page to manage their list too.
             </p>
             {moduleError && (
               <p className="-mt-2 mb-2 text-xs text-red-400">{moduleError}</p>
             )}
-            {!login && (
+            {!selectedList && (
               <p className="text-sm text-slate-400">
                 Log in on the homepage to manage birthdays for your channel.
               </p>
             )}
-            {login && (
+            {selectedList && (
               <div className="space-y-6 mt-2">
                 <section className="rounded-xl border border-slate-800 bg-slate-950/50 px-4 py-3">
                   <h2 className="text-sm font-semibold text-slate-100 mb-2">

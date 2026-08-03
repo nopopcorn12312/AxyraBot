@@ -2328,18 +2328,20 @@ func handleDiscordSettings(w http.ResponseWriter, r *http.Request) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{
-			"guild_id":        settings.GuildID,
-			"live_channel_id": settings.LiveChannelID,
-			"mod_channel_id":  settings.ModChannelID,
-			"bday_channel_id": settings.BdayChannelID,
+			"guild_id":          settings.GuildID,
+			"live_channel_id":   settings.LiveChannelID,
+			"mod_channel_id":    settings.ModChannelID,
+			"bday_channel_id":   settings.BdayChannelID,
+			"bday_source_login": settings.BdaySourceLogin,
 		})
 	case http.MethodPost:
 		var body struct {
-			Login         string `json:"login"`
-			GuildID       string `json:"guild_id"`
-			LiveChannelID string `json:"live_channel_id"`
-			ModChannelID  string `json:"mod_channel_id"`
-			BdayChannelID string `json:"bday_channel_id"`
+			Login           string `json:"login"`
+			GuildID         string `json:"guild_id"`
+			LiveChannelID   string `json:"live_channel_id"`
+			ModChannelID    string `json:"mod_channel_id"`
+			BdayChannelID   string `json:"bday_channel_id"`
+			BdaySourceLogin string `json:"bday_source_login"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			http.Error(w, "bad json", http.StatusBadRequest)
@@ -2358,6 +2360,7 @@ func handleDiscordSettings(w http.ResponseWriter, r *http.Request) {
 			LiveChannelID:    strings.TrimSpace(body.LiveChannelID),
 			ModChannelID:     strings.TrimSpace(body.ModChannelID),
 			BdayChannelID:    strings.TrimSpace(body.BdayChannelID),
+			BdaySourceLogin:  strings.ToLower(strings.TrimSpace(body.BdaySourceLogin)),
 		}); err != nil {
 			log.Println("save discord settings:", err)
 			http.Error(w, "db error", http.StatusInternalServerError)

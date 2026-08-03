@@ -1590,17 +1590,18 @@ func StartBirthdayScheduler() {
 	}
 }
 
-// fireBirthdayAnnouncement looks up today's birthdays for login (in their
-// configured timezone) and sends announcements to Twitch chat and Discord.
-func fireBirthdayAnnouncement(channelLogin string) {
-	// Only fire if the birthdays module is enabled for this channel.
+// computeTodaysBirthdayNames returns a comma-joined list of display names
+// whose birthday falls on "today" in channelLogin's configured timezone,
+// along with the count found. Returns ("", 0) if the birthdays module is
+// disabled for the channel or no birthdays match today.
+func computeTodaysBirthdayNames(channelLogin string) (string, int) {
 	enabled, err := GetModuleEnabled(channelLogin, "birthdays")
 	if err != nil {
-		log.Printf("birthday scheduler: GetModuleEnabled(%s): %v", channelLogin, err)
-		return
+		log.Printf("computeTodaysBirthdayNames: GetModuleEnabled(%s): %v", channelLogin, err)
+		return "", 0
 	}
 	if !enabled {
-		return
+		return "", 0
 	}
 
 	loc := getBroadcasterLocation(channelLogin)
@@ -1610,8 +1611,8 @@ func fireBirthdayAnnouncement(channelLogin string) {
 
 	birthdays, err := ListBirthdays(channelLogin)
 	if err != nil {
-		log.Printf("birthday scheduler: ListBirthdays(%s): %v", channelLogin, err)
-		return
+		log.Printf("computeTodaysBirthdayNames: ListBirthdays(%s): %v", channelLogin, err)
+		return "", 0
 	}
 
 	var today []string
@@ -1625,21 +1626,29 @@ func fireBirthdayAnnouncement(channelLogin string) {
 		}
 	}
 	if len(today) == 0 {
+		return "", 0
+	}
+	return strings.Join(today, ", "), len(today)
+}
+
+// fireBirthdayAnnouncement looks up today's birthdays for login (in their
+// configured timezone) and sends announcements to Twitch chat and Discord.
+func fireBirthdayAnnouncement(channelLogin string) {
+	namesStr, count := computeTodaysBirthdayNames(channelLogin)
+	if count == 0 {
 		return
 	}
 
-	namesStr := strings.Join(today, ", ")
-
 	// Twitch chat announcement.
 	var text string
-	if len(today) == 1 {
+	if count == 1 {
 		text = fmt.Sprintf("Today's birthday is %s!", namesStr)
 	} else {
 		text = fmt.Sprintf("Today's birthdays are %s!", namesStr)
 	}
 	text = renderBirthdayCommandMessage(channelLogin, "!birthday", text, map[string]string{
 		"names": namesStr,
-		"count": strconv.Itoa(len(today)),
+		"count": strconv.Itoa(count),
 	})
 	if err := sendHelixChatMessage(channelLogin, text); err != nil {
 		log.Printf("birthday scheduler: send chat (%s): %v", channelLogin, err)
