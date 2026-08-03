@@ -2307,15 +2307,25 @@ func handleDiscordSettings(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "missing login or guild_id", http.StatusBadRequest)
 			return
 		}
-		settings, err := GetDiscordSettings(login, guildID)
-		if err != nil {
-			log.Println("get discord settings:", err)
-			http.Error(w, "db error", http.StatusInternalServerError)
-			return
-		}
-		if settings == nil {
-			settings = &DiscordSettings{BroadcasterLogin: login, GuildID: guildID}
-		}
+			settings, err := GetDiscordSettings(login, guildID)
+			if err != nil {
+				log.Println("get discord settings:", err)
+				http.Error(w, "db error", http.StatusInternalServerError)
+				return
+			}
+			// If no per-broadcaster row exists, fall back to the guild-scoped
+			// settings so managers of the same Discord see shared configuration.
+			if settings == nil {
+				settings, err = GetDiscordSettingsByGuild(guildID)
+				if err != nil {
+					log.Println("get discord settings by guild:", err)
+					http.Error(w, "db error", http.StatusInternalServerError)
+					return
+				}
+			}
+			if settings == nil {
+				settings = &DiscordSettings{BroadcasterLogin: login, GuildID: guildID}
+			}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{
 			"guild_id":        settings.GuildID,
@@ -2340,8 +2350,10 @@ func handleDiscordSettings(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "missing login", http.StatusBadRequest)
 			return
 		}
+		// Persist settings at the guild scope so multiple managers share the
+		// same configuration regardless of which Twitch login saved them.
 		if err := SaveDiscordSettings(DiscordSettings{
-			BroadcasterLogin: login,
+			BroadcasterLogin: "",
 			GuildID:          strings.TrimSpace(body.GuildID),
 			LiveChannelID:    strings.TrimSpace(body.LiveChannelID),
 			ModChannelID:     strings.TrimSpace(body.ModChannelID),

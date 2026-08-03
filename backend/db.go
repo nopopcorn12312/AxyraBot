@@ -1299,9 +1299,13 @@ func GetDiscordSettingsByGuild(guildID string) (*DiscordSettings, error) {
 		return nil, fmt.Errorf("db not initialized")
 	}
 	guildID = strings.TrimSpace(guildID)
+	// Prefer an explicit guild-level row (broadcaster_login = '') when present,
+	// otherwise fall back to any existing per-broadcaster row for the guild.
 	row := db.QueryRowContext(context.Background(), `
 		SELECT broadcaster_login, guild_id, live_channel_id, mod_channel_id, bday_channel_id
 		FROM discord_settings WHERE guild_id = $1
+		ORDER BY (broadcaster_login = '') DESC
+		LIMIT 1
 	`, guildID)
 	var s DiscordSettings
 	if err := row.Scan(&s.BroadcasterLogin, &s.GuildID, &s.LiveChannelID, &s.ModChannelID, &s.BdayChannelID); err != nil {
