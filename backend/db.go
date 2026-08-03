@@ -1414,7 +1414,9 @@ type DiscordRoleMapping struct {
 	DiscordRoleName  string
 }
 
-// GetDiscordRoleMappings returns all role mappings for a (broadcaster, guild).
+// GetDiscordRoleMappings returns all role mappings for a guild. Rows saved by
+// any manager are shared: a login-specific row (legacy data) is preferred
+// over the guild-wide row for the same twitch_level, but both are merged.
 func GetDiscordRoleMappings(broadcasterLogin, guildID string) ([]DiscordRoleMapping, error) {
 	if db == nil {
 		return nil, fmt.Errorf("db not initialized")
@@ -1423,18 +1425,24 @@ func GetDiscordRoleMappings(broadcasterLogin, guildID string) ([]DiscordRoleMapp
 	rows, err := db.QueryContext(context.Background(), `
 		SELECT broadcaster_login, guild_id, twitch_level, discord_role_id, discord_role_name
 		FROM discord_role_mappings
-		WHERE broadcaster_login = $1 AND guild_id = $2
+		WHERE guild_id = $2 AND (broadcaster_login = $1 OR broadcaster_login = '')
+		ORDER BY twitch_level, (broadcaster_login = $1) DESC
 	`, broadcasterLogin, guildID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
+	seen := map[string]bool{}
 	var out []DiscordRoleMapping
 	for rows.Next() {
 		var m DiscordRoleMapping
 		if err := rows.Scan(&m.BroadcasterLogin, &m.GuildID, &m.TwitchLevel, &m.DiscordRoleID, &m.DiscordRoleName); err != nil {
 			return nil, err
 		}
+		if seen[m.TwitchLevel] {
+			continue
+		}
+		seen[m.TwitchLevel] = true
 		out = append(out, m)
 	}
 	return out, nil
@@ -1458,7 +1466,9 @@ func SaveDiscordRoleMapping(m DiscordRoleMapping) error {
 }
 
 // GetDiscordNotificationTemplate returns the stored custom template for a
-// notification type ("live", "mod", "birthday") scoped to a specific guild.
+// notification type ("live", "mod", "birthday") scoped to a guild. A
+// login-specific row (legacy data) takes priority over the guild-wide row so
+// all managers of the guild see the same shared template.
 func GetDiscordNotificationTemplate(broadcasterLogin, guildID, notificationType string) (string, error) {
 	if db == nil {
 		return "", nil
@@ -1466,7 +1476,10 @@ func GetDiscordNotificationTemplate(broadcasterLogin, guildID, notificationType 
 	broadcasterLogin = strings.ToLower(strings.TrimSpace(broadcasterLogin))
 	var tmpl string
 	err := db.QueryRowContext(context.Background(),
-		`SELECT template FROM discord_notification_templates WHERE broadcaster_login=$1 AND guild_id=$2 AND notification_type=$3`,
+		`SELECT template FROM discord_notification_templates
+		WHERE guild_id=$2 AND notification_type=$3 AND (broadcaster_login=$1 OR broadcaster_login='')
+		ORDER BY (broadcaster_login=$1) DESC
+		LIMIT 1`,
 		broadcasterLogin, guildID, notificationType,
 	).Scan(&tmpl)
 	if err == sql.ErrNoRows {

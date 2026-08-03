@@ -2187,7 +2187,7 @@ func handleDiscordNotificationTemplates(w http.ResponseWriter, r *http.Request) 
 			if !validTypes[t] {
 				continue
 			}
-			if err := SaveDiscordNotificationTemplate(login, body.GuildID, t, tmpl); err != nil {
+			if err := SaveDiscordNotificationTemplate("", body.GuildID, t, tmpl); err != nil {
 				log.Printf("save discord notification template (%s/%s/%s): %v", login, body.GuildID, t, err)
 				http.Error(w, "db error", http.StatusInternalServerError)
 				return
@@ -2277,7 +2277,7 @@ func handleDiscordRoleMappings(w http.ResponseWriter, r *http.Request) {
 			}
 			roleName := body.Roles[roleID]
 			if err := SaveDiscordRoleMapping(DiscordRoleMapping{
-				BroadcasterLogin: login,
+				BroadcasterLogin: "",
 				GuildID:          guildID,
 				TwitchLevel:      level,
 				DiscordRoleID:    roleID,
@@ -2307,25 +2307,25 @@ func handleDiscordSettings(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "missing login or guild_id", http.StatusBadRequest)
 			return
 		}
-			settings, err := GetDiscordSettings(login, guildID)
+		settings, err := GetDiscordSettings(login, guildID)
+		if err != nil {
+			log.Println("get discord settings:", err)
+			http.Error(w, "db error", http.StatusInternalServerError)
+			return
+		}
+		// If no per-broadcaster row exists, fall back to the guild-scoped
+		// settings so managers of the same Discord see shared configuration.
+		if settings == nil {
+			settings, err = GetDiscordSettingsByGuild(guildID)
 			if err != nil {
-				log.Println("get discord settings:", err)
+				log.Println("get discord settings by guild:", err)
 				http.Error(w, "db error", http.StatusInternalServerError)
 				return
 			}
-			// If no per-broadcaster row exists, fall back to the guild-scoped
-			// settings so managers of the same Discord see shared configuration.
-			if settings == nil {
-				settings, err = GetDiscordSettingsByGuild(guildID)
-				if err != nil {
-					log.Println("get discord settings by guild:", err)
-					http.Error(w, "db error", http.StatusInternalServerError)
-					return
-				}
-			}
-			if settings == nil {
-				settings = &DiscordSettings{BroadcasterLogin: login, GuildID: guildID}
-			}
+		}
+		if settings == nil {
+			settings = &DiscordSettings{BroadcasterLogin: login, GuildID: guildID}
+		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{
 			"guild_id":        settings.GuildID,
