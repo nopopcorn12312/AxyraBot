@@ -220,6 +220,7 @@ export default function DiscordSettingsPage() {
   const [modChannelId, setModChannelId] = useState("");
   const [bdayChannelId, setBdayChannelId] = useState("");
   const [bdaySourceLogin, setBdaySourceLogin] = useState("");
+  const [bdaySourceListOptions, setBdaySourceListOptions] = useState<{ value: string; label: string }[]>([]);
   const [loadingSettings, setLoadingSettings] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -397,6 +398,45 @@ export default function DiscordSettingsPage() {
       .catch(() => setGuilds([]))
       .finally(() => setLoadingGuilds(false));
   }, [viewerLogin, channelLogin]);
+
+  // Load the birthday lists this user can choose as an announcement source:
+  // their own channel, any channel they're an Editor for, and any custom
+  // lists they've created on the Birthdays page.
+  useEffect(() => {
+    if (!viewerLogin) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const [editorRes, customRes] = await Promise.all([
+          fetch(`${backendUrl}/roles/editor-channels?login=${encodeURIComponent(viewerLogin)}`),
+          fetch(`${backendUrl}/birthdays/lists?login=${encodeURIComponent(viewerLogin)}`),
+        ]);
+        const editorData: { channels?: string[] } = editorRes.ok ? await editorRes.json() : {};
+        const customData: { lists?: { listKey: string; displayName: string }[] } = customRes.ok
+          ? await customRes.json()
+          : {};
+        const editorChannels = (editorData.channels ?? []).map((c) => c.toLowerCase());
+        const seen = new Set<string>();
+        const opts: { value: string; label: string }[] = [];
+        for (const value of [viewerLogin, ...editorChannels]) {
+          if (seen.has(value)) continue;
+          seen.add(value);
+          opts.push({ value, label: value === viewerLogin ? `${value} (mine)` : value });
+        }
+        for (const l of customData.lists ?? []) {
+          if (seen.has(l.listKey)) continue;
+          seen.add(l.listKey);
+          opts.push({ value: l.listKey, label: l.displayName });
+        }
+        if (!cancelled) setBdaySourceListOptions(opts);
+      } catch {
+        // ignore; dropdown falls back to just the default option
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [viewerLogin]);
 
   // Fetch channels when selected guild changes
   useEffect(() => {
@@ -1325,14 +1365,20 @@ export default function DiscordSettingsPage() {
                               {guildChannels.map((c) => <option key={c.id} value={c.id}>#{c.name}</option>)}
                             </select>
                             <label className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Birthday list source</label>
-                            <p className="text-xs text-slate-500">Leave blank to use your own saved list, or enter a friend&apos;s Twitch login to announce their list here instead.</p>
-                            <input
-                              type="text"
+                            <p className="text-xs text-slate-500">Choose which saved birthday list to announce here — your own, or one shared with you.</p>
+                            <select
                               value={bdaySourceLogin}
-                              onChange={(e) => setBdaySourceLogin(e.target.value.toLowerCase())}
-                              placeholder={channelLogin || "your Twitch login"}
+                              onChange={(e) => setBdaySourceLogin(e.target.value)}
                               className={channelSelectClass}
-                            />
+                            >
+                              <option value="">Use my own list ({channelLogin || "your Twitch login"})</option>
+                              {bdaySourceLogin && !bdaySourceListOptions.some((o) => o.value === bdaySourceLogin) && (
+                                <option value={bdaySourceLogin}>{bdaySourceLogin}</option>
+                              )}
+                              {bdaySourceListOptions.map((opt) => (
+                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                              ))}
+                            </select>
                           </div>
 
                         </div>
