@@ -161,6 +161,7 @@ func startHTTPServer(clientID, clientSecret string) {
 	mux.HandleFunc("/roles", withCORS(handleRoles))
 	mux.HandleFunc("/roles/delete", withCORS(handleRolesDelete))
 	mux.HandleFunc("/roles/editor-channels", withCORS(handleEditorChannels))
+	mux.HandleFunc("/birthdays/lists", withCORS(handleBirthdayLists))
 	mux.HandleFunc("/user/avatar", withCORS(handleUserAvatar(clientID, clientSecret)))
 	mux.HandleFunc("/modules/settings", withCORS(handleModuleSettings))
 	mux.HandleFunc("/birthdays/list", withCORS(handleBirthdaysList))
@@ -1840,6 +1841,56 @@ func handleEditorChannels(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{"channels": channels})
+}
+
+// handleBirthdayLists manages custom, user-created birthday lists. GET
+// returns all lists owned by the given login; POST creates a new one.
+func handleBirthdayLists(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		login := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("login")))
+		if login == "" {
+			http.Error(w, "missing login", http.StatusBadRequest)
+			return
+		}
+		lists, err := ListBirthdayLists(login)
+		if err != nil {
+			log.Println("list birthday lists:", err)
+			http.Error(w, "db error", http.StatusInternalServerError)
+			return
+		}
+		out := make([]map[string]string, 0, len(lists))
+		for _, l := range lists {
+			out = append(out, map[string]string{"listKey": l.ListKey, "displayName": l.DisplayName})
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{"lists": out})
+	case http.MethodPost:
+		var body struct {
+			Login       string `json:"login"`
+			DisplayName string `json:"displayName"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "bad json", http.StatusBadRequest)
+			return
+		}
+		login := strings.ToLower(strings.TrimSpace(body.Login))
+		displayName := strings.TrimSpace(body.DisplayName)
+		if login == "" || displayName == "" {
+			http.Error(w, "missing login or displayName", http.StatusBadRequest)
+			return
+		}
+		list, err := CreateBirthdayList(login, displayName)
+		if err != nil {
+			log.Println("create birthday list:", err)
+			http.Error(w, "db error", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"listKey": list.ListKey, "displayName": list.DisplayName})
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
 }
 
 // handleUserAvatar returns the Twitch profile picture URL for a given login name.

@@ -483,6 +483,97 @@ ORDER BY month, day, display_name;
 	return res, nil
 }
 
+// BirthdayList represents a named, user-created birthday list. The list_key
+// is used as the "login" value passed to the existing birthdays/timezone/
+// module endpoints, which don't require it to correspond to a real Twitch
+// channel.
+type BirthdayList struct {
+	ListKey     string
+	OwnerLogin  string
+	DisplayName string
+	CreatedAt   time.Time
+}
+
+// birthdayListSlug converts a display name into a lowercase, hyphenated slug
+// suitable for embedding in a list key.
+func birthdayListSlug(name string) string {
+	name = strings.ToLower(strings.TrimSpace(name))
+	var b strings.Builder
+	lastHyphen := false
+	for _, r := range name {
+		switch {
+		case r >= 'a' && r <= 'z' || r >= '0' && r <= '9':
+			b.WriteRune(r)
+			lastHyphen = false
+		default:
+			if !lastHyphen && b.Len() > 0 {
+				b.WriteByte('-')
+				lastHyphen = true
+			}
+		}
+	}
+	return strings.Trim(b.String(), "-")
+}
+
+// CreateBirthdayList creates a new custom birthday list owned by ownerLogin
+// with the given display name, generating a unique list key derived from the
+// display name.
+func CreateBirthdayList(ownerLogin, displayName string) (*BirthdayList, error) {
+	if db == nil {
+		return nil, fmt.Errorf("db not initialized")
+	}
+	ownerLogin = strings.ToLower(strings.TrimSpace(ownerLogin))
+	displayName = strings.TrimSpace(displayName)
+	if ownerLogin == "" || displayName == "" {
+		return nil, fmt.Errorf("owner login and display name are required")
+	}
+	slug := birthdayListSlug(displayName)
+	if slug == "" {
+		slug = "list"
+	}
+	for attempt := 0; attempt < 20; attempt++ {
+		listKey := fmt.Sprintf("%s::%s", ownerLogin, slug)
+		if attempt > 0 {
+			listKey = fmt.Sprintf("%s::%s-%d", ownerLogin, slug, attempt+1)
+		}
+		_, err := db.Exec(`INSERT INTO birthday_lists (list_key, owner_login, display_name, created_at) VALUES ($1, $2, $3, now())`, listKey, ownerLogin, displayName)
+		if err == nil {
+			return &BirthdayList{ListKey: listKey, OwnerLogin: ownerLogin, DisplayName: displayName}, nil
+		}
+		if !strings.Contains(err.Error(), "duplicate key") {
+			return nil, err
+		}
+	}
+	return nil, fmt.Errorf("could not generate a unique list key")
+}
+
+// ListBirthdayLists returns all custom birthday lists owned by ownerLogin.
+func ListBirthdayLists(ownerLogin string) ([]BirthdayList, error) {
+	res := []BirthdayList{}
+	if db == nil {
+		return res, nil
+	}
+	ownerLogin = strings.ToLower(strings.TrimSpace(ownerLogin))
+	rows, err := db.Query(`
+	SELECT list_key, owner_login, display_name, COALESCE(created_at, now())
+	FROM birthday_lists
+	WHERE owner_login = $1
+	ORDER BY created_at;
+	`, ownerLogin)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var l BirthdayList
+		if err := rows.Scan(&l.ListKey, &l.OwnerLogin, &l.DisplayName, &l.CreatedAt); err != nil {
+			return nil, err
+		}
+		res = append(res, l)
+	}
+	return res, nil
+}
+
 // SetCustomCommandEnabled updates the enabled flag for a custom command.
 func SetCustomCommandEnabled(broadcasterLogin, commandName string, enabled bool) error {
 	if db == nil {
@@ -667,6 +758,12 @@ func EnsureSchema() error {
 	 command_name TEXT NOT NULL,
 	 message TEXT NOT NULL,
 	 PRIMARY KEY (broadcaster_login, command_name)
+	);
+	CREATE TABLE IF NOT EXISTS birthday_lists (
+	 list_key TEXT PRIMARY KEY,
+	 owner_login TEXT NOT NULL,
+	 display_name TEXT NOT NULL,
+	 created_at TIMESTAMPTZ DEFAULT now()
 	);
 	CREATE TABLE IF NOT EXISTS watch_time (
 	 id SERIAL PRIMARY KEY,

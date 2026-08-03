@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import AxyraBotPFP from "../images/AxyraBotPFP.png";
 import ManagingChannelBadge from "../components/ManagingChannelBadge";
@@ -453,7 +453,12 @@ export default function BirthdaysPage() {
   const [login, setLogin] = useState<string | null>(null);
   const [ownLogin, setOwnLogin] = useState<string | null>(null);
   const [selectedList, setSelectedList] = useState<string | null>(null);
-  const [listOptions, setListOptions] = useState<string[]>([]);
+  const [listOptions, setListOptions] = useState<{ value: string; label: string }[]>([]);
+  const [showNewListModal, setShowNewListModal] = useState(false);
+  const [newListName, setNewListName] = useState("");
+  const [creatingList, setCreatingList] = useState(false);
+  const [newListError, setNewListError] = useState<string | null>(null);
+  const newListModalRef = useRef<HTMLDivElement | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mainSectionOpen, setMainSectionOpen] = usePersistentSectionState(
@@ -515,28 +520,64 @@ export default function BirthdaysPage() {
   }, []);
 
   // Load the list of birthday lists this user can view/edit: their own
-  // channel plus any channel they've been granted Editor access to.
-  useEffect(() => {
+  // channel, any channel they've been granted Editor access to, and any
+  // custom lists they've created.
+  const loadListOptions = useCallback(async () => {
     if (!ownLogin) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch(
-          `${backendUrl}/roles/editor-channels?login=${encodeURIComponent(ownLogin)}`,
-        );
-        if (!res.ok) return;
-        const data: { channels?: string[] } = await res.json();
-        const editorChannels = (data.channels ?? []).map((c) => c.toLowerCase());
-        const opts = Array.from(new Set([ownLogin, ...editorChannels]));
-        if (!cancelled) setListOptions(opts);
-      } catch {
-        // ignore; default list options stays as just the own channel
+    try {
+      const [editorRes, customRes] = await Promise.all([
+        fetch(`${backendUrl}/roles/editor-channels?login=${encodeURIComponent(ownLogin)}`),
+        fetch(`${backendUrl}/birthdays/lists?login=${encodeURIComponent(ownLogin)}`),
+      ]);
+      const editorData: { channels?: string[] } = editorRes.ok ? await editorRes.json() : {};
+      const customData: { lists?: { listKey: string; displayName: string }[] } = customRes.ok
+        ? await customRes.json()
+        : {};
+      const editorChannels = (editorData.channels ?? []).map((c) => c.toLowerCase());
+      const seen = new Set<string>();
+      const opts: { value: string; label: string }[] = [];
+      for (const value of [ownLogin, ...editorChannels]) {
+        if (seen.has(value)) continue;
+        seen.add(value);
+        opts.push({ value, label: value === ownLogin ? `${value} (mine)` : value });
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
+      for (const l of customData.lists ?? []) {
+        if (seen.has(l.listKey)) continue;
+        seen.add(l.listKey);
+        opts.push({ value: l.listKey, label: l.displayName });
+      }
+      setListOptions(opts);
+    } catch {
+      // ignore; default list options stays as just the own channel
+    }
   }, [ownLogin]);
+
+  useEffect(() => {
+    loadListOptions();
+  }, [loadListOptions]);
+
+  const handleCreateList = async () => {
+    if (!ownLogin || !newListName.trim()) return;
+    setCreatingList(true);
+    setNewListError(null);
+    try {
+      const res = await fetch(`${backendUrl}/birthdays/lists`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ login: ownLogin, displayName: newListName.trim() }),
+      });
+      if (!res.ok) throw new Error("Failed to create list");
+      const data: { listKey?: string } = await res.json();
+      await loadListOptions();
+      if (data.listKey) setSelectedList(data.listKey);
+      setShowNewListModal(false);
+      setNewListName("");
+    } catch {
+      setNewListError("Could not create list. Please try again.");
+    } finally {
+      setCreatingList(false);
+    }
+  };
 
   // Load current module state for the birthdays module so we can show an
   // enable/disable toggle on this page.
@@ -1092,23 +1133,76 @@ export default function BirthdaysPage() {
                 </div>
               )}
             </div>
-            {listOptions.length > 1 && (
+            {selectedList && (
               <div className="mb-4 flex items-center gap-2">
-                <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                  Editing list:
-                </label>
-                <select
-                  value={selectedList ?? ""}
-                  onChange={(e) => setSelectedList(e.target.value)}
-                  className="rounded-md border border-slate-700 bg-slate-900/80 px-2 py-1.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-accent/60"
+                {listOptions.length > 1 && (
+                  <>
+                    <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                      Editing list:
+                    </label>
+                    <select
+                      value={selectedList ?? ""}
+                      onChange={(e) => setSelectedList(e.target.value)}
+                      className="rounded-md border border-slate-700 bg-slate-900/80 px-2 py-1.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-accent/60"
+                    >
+                      {listOptions.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </>
+                )}
+                <button
+                  type="button"
+                  onClick={() => { setNewListName(""); setNewListError(null); setShowNewListModal(true); }}
+                  className="inline-flex items-center rounded-md border border-slate-700 px-2 py-1.5 text-xs font-medium text-slate-300 hover:bg-slate-800"
                 >
-                  {listOptions.map((opt) => (
-                    <option key={opt} value={opt}>
-                      {opt}
-                      {opt === ownLogin ? " (mine)" : ""}
-                    </option>
-                  ))}
-                </select>
+                  + New list
+                </button>
+              </div>
+            )}
+            {/* New list modal */}
+            {showNewListModal && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+                <div
+                  ref={newListModalRef}
+                  className="w-full max-w-md rounded-xl border border-slate-700 bg-slate-900 p-6 shadow-xl"
+                >
+                  <h2 className="mb-4 text-base font-semibold text-slate-100">Create a new birthday list</h2>
+                  <p className="mb-2 text-xs text-slate-400">
+                    Give your new list a name. It starts out empty and can be selected
+                    from the &quot;Editing list&quot; dropdown, or set as a friend&apos;s
+                    Discord announcement source.
+                  </p>
+                  <input
+                    type="text"
+                    value={newListName}
+                    onChange={(e) => setNewListName(e.target.value)}
+                    placeholder="e.g. Mod team birthdays"
+                    className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                  {newListError && (
+                    <p className="mt-2 text-xs text-red-400">{newListError}</p>
+                  )}
+                  <div className="mt-4 flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => { setShowNewListModal(false); setNewListName(""); setNewListError(null); }}
+                      className="rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCreateList}
+                      disabled={creatingList || !newListName.trim()}
+                      className="rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
+                    >
+                      {creatingList ? "Creating…" : "Create"}
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
             {/* Add Birthdays modal */}
