@@ -54,6 +54,11 @@ const defaultCommands: { name: string; label?: string; description: string; enab
     enabled: true,
   },
   {
+    name: "!clip",
+    description: "Creates a Twitch clip of the last moments of the stream.",
+    enabled: true,
+  },
+  {
     name: "!commands",
     description: "Links viewers to your channel's custom commands page.",
     enabled: true,

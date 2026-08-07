@@ -73,6 +73,7 @@ var defaultCommandNames = func() []string {
 		"!watchtime",
 		"!uptime",
 		"!commands",
+		"!clip",
 	}
 	return append(base, birthdayCommandNames...)
 }()
@@ -1044,6 +1045,22 @@ func handleChatMessageEvent(channelLogin, chatterLogin, chatterID, messageID, me
 		}
 	}
 
+	// !clip - create a Twitch clip of the last moments of the stream
+	if isChatCommand(message, "!clip") {
+		if !isDefaultCommandEnabled(channelLogin, "!clip") {
+			return
+		}
+		clipURL, err := createClip(channelLogin)
+		if err != nil {
+			log.Println("failed to create clip:", err)
+			_ = sendHelixChatMessage(channelLogin, fmt.Sprintf("@%s couldn't create a clip — the stream may not be live.", chatterLogin))
+			return
+		}
+		if err := sendHelixChatMessage(channelLogin, fmt.Sprintf("@%s clip created: %s", chatterLogin, clipURL)); err != nil {
+			log.Println("failed to send !clip response:", err)
+		}
+	}
+
 	// !watchtime [username] - report how many hours a viewer has been in chat
 	if isChatCommand(message, "!watchtime") {
 		if !isDefaultCommandEnabled(channelLogin, "!watchtime") {
@@ -1936,6 +1953,53 @@ func deleteHelixMessage(channelLogin, messageID string) error {
 		return fmt.Errorf("helix delete message status %d: %s", code, string(b))
 	}
 	return nil
+}
+
+// createClip creates a Twitch clip of the broadcaster's current stream using
+// the Helix Create Clip endpoint (requires clips:edit scope on the
+// broadcaster's stored user token) and returns the shareable clip URL. Note
+// Twitch always captures a clip of its own fixed default length (~30-60
+// seconds ending at the moment of the request); the API does not support
+// requesting a specific duration.
+func createClip(channelLogin string) (string, error) {
+	channelLogin = strings.ToLower(channelLogin)
+	clientID := os.Getenv("TWITCH_CLIENT_ID")
+	if clientID == "" {
+		return "", fmt.Errorf("TWITCH_CLIENT_ID not set")
+	}
+	broadcasterID, access, err := ensureValidUserToken(channelLogin)
+	if err != nil || access == "" {
+		return "", fmt.Errorf("no valid token for channel %s: %w", channelLogin, err)
+	}
+	endpoint := "https://api.twitch.tv/helix/clips?broadcaster_id=" + url.QueryEscape(broadcasterID)
+	req, err := http.NewRequest("POST", endpoint, nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Client-ID", clientID)
+	req.Header.Set("Authorization", "Bearer "+access)
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode/100 != 2 {
+		b, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("helix clips status %s: %s", resp.Status, string(b))
+	}
+	var out struct {
+		Data []struct {
+			ID string `json:"id"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return "", err
+	}
+	if len(out.Data) == 0 {
+		return "", fmt.Errorf("no clip returned")
+	}
+	return "https://clips.twitch.tv/" + out.Data[0].ID, nil
 }
 
 // banUser permanently bans a user from the channel using the Helix

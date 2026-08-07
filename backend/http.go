@@ -998,6 +998,7 @@ func handleAuthStart(clientID string) http.HandlerFunc {
 			"channel:edit:commercial",
 			"channel:manage:redemptions",
 			"channel:manage:moderators",
+			"clips:edit",
 
 			// Channel read
 			"channel:read:ads",
