@@ -13,6 +13,7 @@ const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://your-backend.
 const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL;
 
 const defaultLiveAnnouncementMessage = "$(channel) is now live! Streaming $(game) | $(title)";
+const defaultRaidShoutoutMessage = "Make sure to go check out $(raider)'s channel at https://twitch.tv/$(raider) and they were playing $(game)!";
 
 type ModuleRow = {
   name: string;
@@ -774,6 +775,140 @@ export default function ModulesPage() {
                                         setModules((prev) =>
                                           prev.map((mod) =>
                                             mod.name === "live_announcement"
+                                              ? { ...mod, message: trimmed }
+                                              : mod,
+                                          ),
+                                        );
+                                      }
+                                    } catch {
+                                      setEditError("Network error while saving changes.");
+                                    } finally {
+                                      setSavingEdit(false);
+                                    }
+                                  }}
+                                  className="rounded-md bg-accent px-3 py-1 text-xs font-medium text-white hover:bg-accent/90 disabled:opacity-60"
+                                  disabled={savingEdit}
+                                >
+                                  {savingEdit ? "Saving..." : "Save changes"}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Raid auto-shoutout dropdown */}
+                      {openModule === m.name && m.name === "raid_shoutout" && (
+                        <div className="border-t border-slate-800 px-4 py-3">
+                          <div className="mb-2 flex items-center justify-between gap-4">
+                            <span className="text-xs font-semibold text-slate-200">
+                              Shoutout message
+                            </span>
+                          </div>
+                          <p className="mb-1 text-xs text-slate-400">
+                            Current message: {m.message || defaultRaidShoutoutMessage}
+                          </p>
+                          <div className="mt-3 border-t border-slate-800 pt-3">
+                            <div className="flex flex-col gap-2">
+                              <label className="text-xs font-medium text-slate-300">
+                                Shoutout message
+                              </label>
+                              <input
+                                type="text"
+                                value={editMessage}
+                                onChange={(e) => setEditMessage(e.target.value)}
+                                className="w-full rounded-md border border-slate-700 bg-slate-900/80 px-2 py-1 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-accent/60"
+                                placeholder={defaultRaidShoutoutMessage}
+                              />
+                              <p className="text-[11px] text-slate-400">
+                                You can use $(raider) and $(game) as variables.
+                                A native Twitch shoutout is also sent
+                                automatically.
+                              </p>
+                              {editError && (
+                                <div className="text-xs text-red-400">{editError}</div>
+                              )}
+                              <div className="mt-1 flex gap-2 justify-end">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditMessage(m.message ?? "");
+                                    setEditError(null);
+                                  }}
+                                  className="rounded-md border border-slate-700 px-3 py-1 text-xs font-medium text-slate-200 hover:bg-slate-800/80"
+                                  disabled={savingEdit}
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    if (!login) return;
+                                    setSavingEdit(true);
+                                    setEditError(null);
+                                    try {
+                                      const res = await fetch(`${backendUrl}/modules/settings`, {
+                                        method: "POST",
+                                        headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({
+                                          login,
+                                          module: "raid_shoutout",
+                                          enabled: m.enabled,
+                                          resetToDefault: true,
+                                        }),
+                                      });
+                                      if (!res.ok) {
+                                        setEditError("Failed to restore default. Please try again.");
+                                      } else {
+                                        const nextMessage = defaultRaidShoutoutMessage;
+                                        setModules((prev) =>
+                                          prev.map((mod) =>
+                                            mod.name === "raid_shoutout"
+                                              ? { ...mod, message: nextMessage }
+                                              : mod,
+                                          ),
+                                        );
+                                        setEditMessage(nextMessage);
+                                      }
+                                    } catch {
+                                      setEditError("Network error while restoring default.");
+                                    } finally {
+                                      setSavingEdit(false);
+                                    }
+                                  }}
+                                  className="rounded-md border border-slate-700 px-3 py-1 text-xs font-medium text-slate-200 hover:bg-slate-800/80 disabled:opacity-60"
+                                  disabled={savingEdit}
+                                >
+                                  Restore Default
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    if (!login) return;
+                                    const trimmed = editMessage.trim();
+                                    if (!trimmed) {
+                                      setEditError("Message cannot be empty.");
+                                      return;
+                                    }
+                                    setSavingEdit(true);
+                                    setEditError(null);
+                                    try {
+                                      const res = await fetch(`${backendUrl}/modules/settings`, {
+                                        method: "POST",
+                                        headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({
+                                          login,
+                                          module: "raid_shoutout",
+                                          enabled: m.enabled,
+                                          message: trimmed,
+                                        }),
+                                      });
+                                      if (!res.ok) {
+                                        setEditError("Failed to save changes. Please try again.");
+                                      } else {
+                                        setModules((prev) =>
+                                          prev.map((mod) =>
+                                            mod.name === "raid_shoutout"
                                               ? { ...mod, message: trimmed }
                                               : mod,
                                           ),

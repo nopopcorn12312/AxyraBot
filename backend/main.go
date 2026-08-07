@@ -51,6 +51,10 @@ var (
 // per-broadcaster via the module_settings table.
 const defaultLiveAnnouncementTemplate = "$(channel) is now live! Streaming $(game) | $(title)"
 
+// Default template for the raid shoutout module. This can be overridden
+// per-broadcaster via the module_settings table.
+const defaultRaidShoutoutTemplate = "Make sure to go check out $(raider)'s channel at https://twitch.tv/$(raider) and they were playing $(game)!"
+
 // List of all birthday-related commands that are treated as default
 // commands and controlled by the birthdays module.
 var birthdayCommandNames = []string{
@@ -536,6 +540,101 @@ func renderLiveAnnouncementMessage(channelLogin, title, game string) string {
 	msg = strings.ReplaceAll(msg, "$(title)", title)
 	msg = strings.ReplaceAll(msg, "$(game)", game)
 	return msg
+}
+
+// renderRaidShoutoutMessage builds the outgoing chat message for the raid
+// shoutout module. It supports simple template variables in the stored
+// message string:
+//
+//	$(raider) - the raiding channel's login
+//	$(game)   - the game/category the raider was last streaming
+func renderRaidShoutoutMessage(channelLogin, raiderLogin, game string) string {
+	if game == "" {
+		game = "something"
+	}
+	tmpl := defaultRaidShoutoutTemplate
+	if db != nil {
+		if msg, err := GetModuleMessage(channelLogin, "raid_shoutout"); err != nil {
+			log.Println("failed to load raid_shoutout template:", err)
+		} else if strings.TrimSpace(msg) != "" {
+			tmpl = msg
+		}
+	}
+	msg := strings.ReplaceAll(tmpl, "$(raider)", raiderLogin)
+	msg = strings.ReplaceAll(msg, "$(game)", game)
+	return msg
+}
+
+// sendShoutout issues a native Twitch shoutout for toLogin on channelLogin's
+// channel using the Helix Send a Shoutout endpoint (requires
+// moderator:manage:shoutouts scope on the broadcaster's stored user token).
+func sendShoutout(channelLogin, toLogin string) error {
+	channelLogin = strings.ToLower(channelLogin)
+	toLogin = strings.ToLower(toLogin)
+	clientID := os.Getenv("TWITCH_CLIENT_ID")
+	if clientID == "" {
+		return fmt.Errorf("TWITCH_CLIENT_ID not set")
+	}
+	broadcasterID, access, err := ensureValidUserToken(channelLogin)
+	if err != nil || access == "" {
+		return fmt.Errorf("no valid token for channel %s: %w", channelLogin, err)
+	}
+	toID, err := getUserID(toLogin, access, clientID)
+	if err != nil || toID == "" {
+		return fmt.Errorf("failed to resolve user id for %s: %w", toLogin, err)
+	}
+	endpoint := fmt.Sprintf(
+		"https://api.twitch.tv/helix/chat/shoutouts?from_broadcaster_id=%s&to_broadcaster_id=%s&moderator_id=%s",
+		url.QueryEscape(broadcasterID), url.QueryEscape(toID), url.QueryEscape(broadcasterID),
+	)
+	req, err := http.NewRequest("POST", endpoint, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Client-ID", clientID)
+	req.Header.Set("Authorization", "Bearer "+access)
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode/100 != 2 {
+		b, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("helix shoutout status %s: %s", resp.Status, string(b))
+	}
+	return nil
+}
+
+// handleRaidEvent responds to an incoming channel.raid EventSub notification
+// by issuing a native Twitch shoutout for the raider and posting a chat
+// message pointing viewers to the raider's channel and last-played game.
+func handleRaidEvent(channelLogin, raiderLogin, raiderDisplayName string) {
+	channelLogin = strings.ToLower(channelLogin)
+	raiderLogin = strings.ToLower(raiderLogin)
+	if channelLogin == "" || raiderLogin == "" {
+		return
+	}
+	if !isModuleEnabled(channelLogin, "raid_shoutout") {
+		return
+	}
+	if err := sendShoutout(channelLogin, raiderLogin); err != nil {
+		log.Println("failed to send native shoutout for raid:", err)
+	}
+	_, game, err := getChannelTitleAndGame(raiderLogin)
+	if err != nil {
+		log.Println("failed to get raider's last game:", err)
+	}
+	msg := renderRaidShoutoutMessage(channelLogin, raiderLogin, game)
+	if err := sendHelixChatMessage(channelLogin, msg); err != nil {
+		log.Println("failed to send raid shoutout chat message:", err)
+	}
+	if raiderDisplayName == "" {
+		raiderDisplayName = raiderLogin
+	}
+	if err := InsertAuditLog(channelLogin, "twitch", "raid", fmt.Sprintf("%s raided the channel; auto-shoutout sent", raiderDisplayName)); err != nil {
+		log.Println("failed to insert audit log for raid:", err)
+	}
 }
 
 // isChatCommand returns true if the message matches the given command token
@@ -3737,6 +3836,40 @@ func registerEventSubSubscriptions(appToken, clientID, channel, tokensPath strin
 		}
 	} else {
 		log.Println("webhook channel.chat.message skipped; set TWITCH_EVENTSUB_SECRET, TWITCH_EVENTSUB_CALLBACK_URL, and ensure app token + bot ID are available")
+	}
+
+	// ── Webhook subscriptions (channel.raid) ─────────────────────────────────
+	// Used for the auto-shoutout module: fires when a channel raids one of
+	// our broadcasters. Uses an app token + webhook so no extra broadcaster
+	// scope is required to receive the notification.
+	if webhookSecret != "" && callbackURL != "" && appToken != "" {
+		if existing, err := getEventSubSubscriptions(appToken, clientID); err != nil {
+			log.Println("[EventSub] failed to list subs before raid registration:", err)
+		} else {
+			for _, s := range existing {
+				if s.Type == "channel.raid" && s.Transport.Method == "webhook" {
+					log.Printf("[EventSub] deleting old webhook sub id=%s status=%s", s.ID, s.Status)
+					if err := deleteEventSubSubscription(appToken, clientID, s.ID); err != nil {
+						log.Printf("[EventSub] failed to delete sub %s: %v", s.ID, err)
+					}
+					time.Sleep(100 * time.Millisecond)
+				}
+			}
+		}
+		for _, ch := range channels {
+			broadcasterID, err := getUserID(ch, appToken, clientID)
+			if err != nil {
+				log.Println("failed to resolve broadcaster id for raid webhook sub", ch, ":", err)
+				continue
+			}
+			cond := map[string]string{"to_broadcaster_user_id": broadcasterID}
+			if err := createEventSubSubscription(appToken, clientID, "channel.raid", "1", cond, "", "webhook", callbackURL, webhookSecret); err != nil {
+				log.Println("failed creating webhook channel.raid for", ch, ":", err)
+			}
+			time.Sleep(300 * time.Millisecond)
+		}
+	} else {
+		log.Println("webhook channel.raid skipped; set TWITCH_EVENTSUB_SECRET, TWITCH_EVENTSUB_CALLBACK_URL, and ensure app token is available")
 	}
 
 	// ── WebSocket subscriptions (channel.follow, stream.online) ──────────────

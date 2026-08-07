@@ -847,6 +847,32 @@ func handleModuleSettings(w http.ResponseWriter, r *http.Request) {
 			Enabled:     bdayEnabled,
 			Message:     "",
 		})
+
+		// Raid auto-shoutout: shout out and announce raiders when they raid.
+		raidEnabled, err := GetModuleEnabled(login, "raid_shoutout")
+		if err != nil {
+			log.Println("failed to load raid_shoutout module setting:", err)
+			raidEnabled = true
+		}
+		raidMsgTmpl := defaultRaidShoutoutTemplate
+		if msg, err := GetModuleMessage(login, "raid_shoutout"); err != nil {
+			log.Println("failed to load raid_shoutout template in HTTP handler:", err)
+		} else if strings.TrimSpace(msg) != "" {
+			raidMsgTmpl = msg
+		}
+		modules = append(modules, struct {
+			Name        string `json:"name"`
+			Label       string `json:"label"`
+			Description string `json:"description"`
+			Enabled     bool   `json:"enabled"`
+			Message     string `json:"message"`
+		}{
+			Name:        "raid_shoutout",
+			Label:       "Raid auto-shoutout",
+			Description: "Automatically shout out and announce a channel when they raid you.",
+			Enabled:     raidEnabled,
+			Message:     raidMsgTmpl,
+		})
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(struct {
 			Modules interface{} `json:"modules"`
@@ -1035,6 +1061,7 @@ func handleAuthStart(clientID string) http.HandlerFunc {
 			"moderator:manage:banned_users",
 			"moderator:manage:chat_messages",
 			"moderator:manage:chat_settings",
+			"moderator:manage:shoutouts",
 
 			// Bot
 			"channel:bot",
@@ -2691,6 +2718,16 @@ func handleEventSubWebhook(w http.ResponseWriter, r *http.Request) {
 			}
 			if err := json.Unmarshal(b, &envelope); err != nil {
 				log.Println("[webhook] failed to parse notification:", err)
+				return
+			}
+			if envelope.Subscription.Type == "channel.raid" {
+				event := envelope.Event
+				toLogin, _ := event["to_broadcaster_user_login"].(string)
+				fromLogin, _ := event["from_broadcaster_user_login"].(string)
+				fromName, _ := event["from_broadcaster_user_name"].(string)
+				if toLogin != "" && fromLogin != "" {
+					handleRaidEvent(toLogin, fromLogin, fromName)
+				}
 				return
 			}
 			if envelope.Subscription.Type != "channel.chat.message" {
