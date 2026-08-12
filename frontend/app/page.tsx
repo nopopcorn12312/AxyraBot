@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from "react";
 function FAQItem({ question, answer }: { question: string; answer: string }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="rounded-2xl border border-white/8 bg-white/[0.03] px-5 backdrop-blur-sm transition hover:border-cyan-400/20 hover:bg-white/[0.05]">
+    <div className="rounded-2xl border border-white/6 bg-slate-950/55 px-5 transition hover:border-white/10 hover:bg-slate-950/70">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -15,7 +15,7 @@ function FAQItem({ question, answer }: { question: string; answer: string }) {
       >
         <span className="pr-4 font-medium tracking-[0.01em]">{question}</span>
         <span
-          className={`ml-4 flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-xl font-light text-cyan-300 transition-all duration-200 ${open ? "rotate-45 border-cyan-300/30 bg-cyan-300/10" : ""}`}
+          className={`ml-4 flex h-8 w-8 items-center justify-center rounded-full border border-white/8 bg-slate-900/80 text-xl font-light text-slate-300 transition-all duration-200 ${open ? "rotate-45 border-slate-500/40 bg-slate-800/90" : ""}`}
         >
           +
         </span>
@@ -63,8 +63,8 @@ function DashboardCarousel({ slides }: { slides: { src: string; alt: string }[] 
 
   return (
     <div className="relative group">
-      <div className="absolute -inset-5 rounded-[2rem] bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.18),transparent_55%),radial-gradient(circle_at_bottom_right,rgba(14,165,233,0.18),transparent_45%)] blur-3xl" />
-      <div className="relative overflow-hidden rounded-[1.75rem] border border-white/10 bg-slate-950/70 shadow-[0_30px_80px_rgba(2,8,23,0.7)] backdrop-blur-xl">
+      <div className="absolute -inset-4 rounded-[2rem] bg-[radial-gradient(circle_at_top,rgba(51,65,85,0.24),transparent_55%),radial-gradient(circle_at_bottom_right,rgba(30,41,59,0.24),transparent_45%)] blur-3xl" />
+      <div className="relative overflow-hidden rounded-[1.75rem] border border-white/8 bg-slate-950/82 shadow-[0_24px_70px_rgba(2,8,23,0.82)]">
         {/* Images stacked; only the displayed one is visible */}
         <div className="relative w-full">
           {/* Invisible first image keeps the container height correct */}
@@ -85,7 +85,7 @@ function DashboardCarousel({ slides }: { slides: { src: string; alt: string }[] 
           type="button"
           aria-label="Previous"
           onClick={() => goTo(current - 1)}
-          className="absolute left-3 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-slate-950/65 text-white opacity-0 transition-all duration-200 hover:bg-slate-900/90 group-hover:opacity-100 focus:outline-none"
+          className="absolute left-3 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/8 bg-slate-950/90 text-white opacity-0 transition-all duration-200 hover:bg-slate-900 group-hover:opacity-100 focus:outline-none"
         >
           <svg viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
             <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
@@ -97,7 +97,7 @@ function DashboardCarousel({ slides }: { slides: { src: string; alt: string }[] 
           type="button"
           aria-label="Next"
           onClick={() => goTo(current + 1)}
-          className="absolute right-3 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-slate-950/65 text-white opacity-0 transition-all duration-200 hover:bg-slate-900/90 group-hover:opacity-100 focus:outline-none"
+          className="absolute right-3 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/8 bg-slate-950/90 text-white opacity-0 transition-all duration-200 hover:bg-slate-900 group-hover:opacity-100 focus:outline-none"
         >
           <svg viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
             <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
@@ -105,7 +105,7 @@ function DashboardCarousel({ slides }: { slides: { src: string; alt: string }[] 
         </button>
 
         {/* Dot indicators */}
-        <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-white/10 bg-slate-950/65 px-2 py-1 backdrop-blur">
+        <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-white/8 bg-slate-950/90 px-2 py-1">
           {slides.map((_, i) => (
             <button
               key={i}
@@ -114,7 +114,7 @@ function DashboardCarousel({ slides }: { slides: { src: string; alt: string }[] 
               onClick={() => goTo(i)}
               className={`rounded-full transition-all duration-300 ${
                 i === current
-                  ? "h-1.5 w-5 bg-cyan-300"
+                  ? "h-1.5 w-5 bg-slate-300"
                   : "h-1.5 w-1.5 bg-white/40 hover:bg-white/70"
               }`}
             />
@@ -230,14 +230,14 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-background text-slate-100">
-      <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.14),transparent_35%),radial-gradient(circle_at_80%_20%,rgba(103,232,249,0.08),transparent_25%),radial-gradient(circle_at_bottom_left,rgba(14,165,233,0.1),transparent_35%)]" />
-      <div className="pointer-events-none fixed inset-0 -z-10 opacity-[0.07] [background-image:linear-gradient(rgba(255,255,255,0.18)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.18)_1px,transparent_1px)] [background-size:56px_56px]" />
+      <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(circle_at_top,rgba(30,41,59,0.18),transparent_34%),radial-gradient(circle_at_80%_20%,rgba(15,23,42,0.12),transparent_24%),radial-gradient(circle_at_bottom_left,rgba(51,65,85,0.12),transparent_34%)]" />
+      <div className="pointer-events-none fixed inset-0 -z-10 opacity-[0.035] [background-image:linear-gradient(rgba(255,255,255,0.14)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.14)_1px,transparent_1px)] [background-size:56px_56px]" />
 
       {/* ── NAV ── */}
-      <header className={`fixed left-0 right-0 top-0 z-40 transition-all duration-300 ${isScrolled ? "border-b border-white/10 bg-slate-950/70 backdrop-blur-xl" : "bg-transparent"}`}>
+      <header className={`fixed left-0 right-0 top-0 z-40 transition-all duration-300 ${isScrolled ? "border-b border-white/8 bg-slate-950/88 backdrop-blur-md" : "bg-transparent"}`}>
         <div className="mx-auto flex h-20 max-w-7xl items-center gap-6 px-6">
           <div className="flex items-center gap-2.5 flex-shrink-0">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-cyan-300/20 bg-white/[0.04] shadow-[0_0_0_1px_rgba(255,255,255,0.02)] backdrop-blur">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/8 bg-slate-900/80 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]">
               <Image src={AxyraBotPFP} alt="AxyraBot" width={20} height={20} className="rounded" />
             </div>
             <span className="text-base font-semibold tracking-[0.02em] text-white">AxyraBot</span>
@@ -254,7 +254,7 @@ export default function HomePage() {
                 key={item.label}
                 href={item.href}
                 {...(item.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-                className="rounded-full border border-transparent px-4 py-2 text-sm text-slate-400 transition hover:border-white/10 hover:bg-white/[0.04] hover:text-white"
+                className="rounded-full border border-transparent px-4 py-2 text-sm text-slate-400 transition hover:border-white/8 hover:bg-white/[0.03] hover:text-white"
               >
                 {item.label}
               </a>
@@ -263,22 +263,22 @@ export default function HomePage() {
           <div ref={menuRef} className="relative flex items-center gap-3 flex-shrink-0">
             {isLoggedIn ? (
               <>
-                <a href="/dashboard" className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-slate-200 transition hover:bg-white/[0.06] hover:text-white">Dashboard</a>
+                <a href="/dashboard" className="rounded-full border border-white/8 bg-slate-900/70 px-4 py-2 text-sm text-slate-200 transition hover:bg-slate-800/85 hover:text-white">Dashboard</a>
                 {avatarUrl && (
                   <button type="button" onClick={() => setMenuOpen((o) => !o)} className="focus:outline-none">
                     <Image src={avatarUrl} alt="Profile" width={36} height={36} className="rounded-full ring-2 ring-white/10" />
                   </button>
                 )}
                 {menuOpen && (
-                  <div className="absolute right-0 top-full mt-3 w-40 rounded-2xl border border-white/10 bg-slate-950/90 py-2 shadow-2xl shadow-black/50 backdrop-blur-xl">
+                  <div className="absolute right-0 top-full mt-3 w-40 rounded-2xl border border-white/8 bg-slate-950/95 py-2 shadow-2xl shadow-black/60">
                     <button type="button" onClick={handleLogout} className="w-full px-4 py-2 text-left text-sm text-slate-200 transition hover:bg-white/[0.05]">Log out</button>
                   </div>
                 )}
               </>
             ) : (
               <>
-                <a href={connectUrl} className="rounded-full px-4 py-2 text-sm text-slate-300 transition hover:bg-white/[0.04] hover:text-white">Log in</a>
-                <a href={connectUrl} className="inline-flex items-center gap-2 rounded-full border border-cyan-300/30 bg-cyan-300/90 px-5 py-2.5 text-sm font-semibold text-slate-950 shadow-[0_20px_45px_rgba(34,211,238,0.18)] transition hover:bg-cyan-200">
+                <a href={connectUrl} className="rounded-full px-4 py-2 text-sm text-slate-300 transition hover:bg-white/[0.03] hover:text-white">Log in</a>
+                <a href={connectUrl} className="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-white">
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"/></svg>
                   Connect Twitch
                 </a>
@@ -290,27 +290,27 @@ export default function HomePage() {
 
       {/* ── HERO ── */}
       <section className="relative flex min-h-screen items-center overflow-hidden pt-20">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_60%_at_75%_35%,rgba(34,211,238,0.16),transparent),radial-gradient(ellipse_55%_45%_at_15%_65%,rgba(56,189,248,0.1),transparent)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_60%_at_75%_35%,rgba(51,65,85,0.18),transparent),radial-gradient(ellipse_55%_45%_at_15%_65%,rgba(30,41,59,0.12),transparent)]" />
         <div className="relative z-10 mx-auto grid w-full max-w-7xl items-center gap-14 px-6 py-24 lg:grid-cols-2">
           {/* Left */}
           <div>
-            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-white/[0.03] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.28em] text-cyan-200 backdrop-blur-sm">
-              <span className="h-2 w-2 rounded-full bg-cyan-300 shadow-[0_0_16px_rgba(103,232,249,0.8)]" />
+            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/8 bg-slate-950/70 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-300">
+              <span className="h-2 w-2 rounded-full bg-slate-400" />
               The Complete Moderation Solution
             </div>
             <h1 className="mb-6 text-5xl font-black leading-[0.98] tracking-[-0.04em] text-white sm:text-6xl">
               Powerful Moderation<br />
-              for <span className="text-cyan-300">Twitch</span> &amp; <span className="text-slate-200">Discord</span>
+              for <span className="text-slate-200">Twitch</span> &amp; <span className="text-slate-300">Discord</span>
             </h1>
             <p className="mb-8 max-w-xl text-lg leading-relaxed text-slate-400">
               Protect your community, automate moderation, and keep your chat safe 24/7 with AxyraBot
             </p>
             <div className="mb-12 flex flex-wrap gap-3">
-              <a href={isDiscordConnected ? "/discord" : "https://discord.gg/p4RbzDvnjA"} className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-5 py-3 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/[0.08]">
+              <a href={isDiscordConnected ? "/discord" : "https://discord.gg/p4RbzDvnjA"} className="inline-flex items-center gap-2 rounded-full border border-white/8 bg-slate-900/75 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800/90">
                 <img src="/DiscordLogo.png" alt="Discord" className="w-5 h-5 brightness-0 invert" />
                 {isDiscordConnected ? "Discord Integration" : "Add to Discord"}
               </a>
-              <a href={isLoggedIn ? "/dashboard" : connectUrl} className="inline-flex items-center gap-2 rounded-full border border-cyan-300/30 bg-cyan-300/90 px-5 py-3 text-sm font-semibold text-slate-950 shadow-[0_18px_40px_rgba(34,211,238,0.18)] transition hover:bg-cyan-200">
+              <a href={isLoggedIn ? "/dashboard" : connectUrl} className="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-200 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-white">
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"/></svg>
                 {isLoggedIn ? "Dashboard" : "Connect Twitch"}
               </a>
@@ -321,7 +321,7 @@ export default function HomePage() {
                 { label: "Communities onboarded", value: channelCount !== null ? `${channelCount}+` : "…" },
                 { label: "Cross-platform control", value: "Twitch + Discord" },
               ].map((item) => (
-                <div key={item.label} className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-4 backdrop-blur-sm">
+                <div key={item.label} className="rounded-2xl border border-white/8 bg-slate-950/60 px-4 py-4">
                   <div className="text-lg font-semibold tracking-tight text-white">{item.value}</div>
                   <div className="mt-1 text-xs text-slate-400">{item.label}</div>
                 </div>
@@ -331,17 +331,17 @@ export default function HomePage() {
 
           {/* Right: Chat UI mockups */}
           <div className="relative flex items-center justify-center pb-12 lg:justify-end">
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_70%_at_60%_50%,rgba(56,189,248,0.16),transparent)]" />
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_70%_at_60%_50%,rgba(30,41,59,0.24),transparent)]" />
             <div className="relative w-full max-w-md">
               {/* Twitch chat mockup */}
-              <div className="overflow-hidden rounded-[1.5rem] border border-white/10 bg-slate-950/78 shadow-[0_32px_80px_rgba(2,8,23,0.7)] backdrop-blur-xl">
-                <div className="flex items-center justify-between border-b border-white/8 bg-white/[0.03] px-4 py-3">
+              <div className="overflow-hidden rounded-[1.5rem] border border-white/8 bg-slate-950/88 shadow-[0_30px_72px_rgba(2,8,23,0.82)]">
+                <div className="flex items-center justify-between border-b border-white/8 bg-slate-900/85 px-4 py-3">
                   <div className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-cyan-300" viewBox="0 0 24 24" fill="currentColor"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"/></svg>
+                    <svg className="w-4 h-4 text-slate-300" viewBox="0 0 24 24" fill="currentColor"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"/></svg>
                     <span className="text-xs font-semibold tracking-[0.2em] text-slate-300">TWITCH CHAT</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
+                    <span className="h-2.5 w-2.5 rounded-full bg-slate-400" />
                     <span className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Live moderation</span>
                   </div>
                 </div>
@@ -352,7 +352,7 @@ export default function HomePage() {
                     { user: "BadUser123",      color: "text-red-400",    msg: "Buy followers here! bit.ly/spam",                 mod: false },
                     { user: "AxyraBot",        color: "text-accent",     msg: "@BadUser123 has been timed out for 600 seconds.", mod: true  },
                   ].map((line, i) => (
-                    <div key={i} className="flex items-start gap-2 rounded-xl border border-white/6 bg-white/[0.025] px-3 py-2.5">
+                    <div key={i} className="flex items-start gap-2 rounded-xl border border-white/6 bg-slate-900/80 px-3 py-2.5">
                       <span className={`shrink-0 font-semibold ${line.color}`}>{line.user}:</span>
                       <span className={line.mod ? "text-slate-300 italic" : "text-slate-400"}>{line.msg}</span>
                     </div>
@@ -360,8 +360,8 @@ export default function HomePage() {
                 </div>
               </div>
               {/* Discord server mockup — overlaps bottom-right */}
-              <div className="absolute -bottom-10 -right-6 w-64 overflow-hidden rounded-[1.4rem] border border-white/10 bg-slate-950/88 shadow-[0_24px_60px_rgba(2,8,23,0.65)] backdrop-blur-xl">
-                <div className="flex items-center gap-2 border-b border-white/8 bg-white/[0.04] px-4 py-3">
+              <div className="absolute -bottom-10 -right-6 w-64 overflow-hidden rounded-[1.4rem] border border-white/8 bg-slate-950/92 shadow-[0_24px_60px_rgba(2,8,23,0.8)]">
+                <div className="flex items-center gap-2 border-b border-white/8 bg-slate-900/85 px-4 py-3">
                   <img src="/DiscordLogo.png" alt="Discord" className="w-5 h-5 brightness-0 invert" />
                   <span className="text-xs font-semibold tracking-[0.2em] text-slate-300">DISCORD SERVER</span>
                 </div>
@@ -371,7 +371,7 @@ export default function HomePage() {
                     { user: "AxyraBot", color: "text-accent",    msg: "Welcome @Member! Please read #rules and have a great time!" },
                     { user: "AxyraBot", color: "text-accent",    msg: "@Spammer was banned." },
                   ].map((line, i) => (
-                    <div key={i} className="flex items-start gap-1.5 rounded-xl border border-white/6 bg-white/[0.025] px-3 py-2">
+                    <div key={i} className="flex items-start gap-1.5 rounded-xl border border-white/6 bg-slate-900/78 px-3 py-2">
                       <span className={`shrink-0 font-semibold ${line.color}`}>{line.user}:</span>
                       <span className="text-slate-400">{line.msg}</span>
                     </div>
