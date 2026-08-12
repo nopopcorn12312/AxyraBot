@@ -6,6 +6,18 @@
   color-scheme: dark;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   @apply bg-background text-slate-100 antialiased;
+  background-image:
+    radial-gradient(circle at top, rgba(14, 165, 233, 0.12), transparent 32%),
+    linear-gradient(180deg, #020617 0%, #050b16 48%, #030712 100%);
+}
+
+::selection {
+  background: rgba(103, 232, 249, 0.3);
+  color: #f8fafc;
 }

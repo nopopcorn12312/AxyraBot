@@ -7,20 +7,20 @@ import { useEffect, useRef, useState } from "react";
 function FAQItem({ question, answer }: { question: string; answer: string }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="border-b border-slate-800">
+    <div className="rounded-2xl border border-white/8 bg-white/[0.03] px-5 backdrop-blur-sm transition hover:border-cyan-400/20 hover:bg-white/[0.05]">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between py-4 text-left text-sm text-slate-200 hover:text-white transition"
+        className="flex w-full items-center justify-between py-4 text-left text-sm text-slate-100 transition hover:text-white"
       >
-        <span>{question}</span>
+        <span className="pr-4 font-medium tracking-[0.01em]">{question}</span>
         <span
-          className={`ml-4 text-xl font-light text-accent transition-transform duration-200 ${open ? "rotate-45" : ""}`}
+          className={`ml-4 flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-xl font-light text-cyan-300 transition-all duration-200 ${open ? "rotate-45 border-cyan-300/30 bg-cyan-300/10" : ""}`}
         >
           +
         </span>
       </button>
-      {open && <p className="pb-4 text-sm text-slate-400 leading-relaxed">{answer}</p>}
+      {open && <p className="pb-5 text-sm leading-relaxed text-slate-400">{answer}</p>}
     </div>
   );
 }
@@ -63,8 +63,8 @@ function DashboardCarousel({ slides }: { slides: { src: string; alt: string }[] 
 
   return (
     <div className="relative group">
-      <div className="absolute -inset-4 rounded-3xl bg-accent/5 blur-3xl" />
-      <div className="relative rounded-2xl border border-slate-700/60 overflow-hidden shadow-2xl shadow-black/60">
+      <div className="absolute -inset-5 rounded-[2rem] bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.18),transparent_55%),radial-gradient(circle_at_bottom_right,rgba(14,165,233,0.18),transparent_45%)] blur-3xl" />
+      <div className="relative overflow-hidden rounded-[1.75rem] border border-white/10 bg-slate-950/70 shadow-[0_30px_80px_rgba(2,8,23,0.7)] backdrop-blur-xl">
         {/* Images stacked; only the displayed one is visible */}
         <div className="relative w-full">
           {/* Invisible first image keeps the container height correct */}
@@ -85,7 +85,7 @@ function DashboardCarousel({ slides }: { slides: { src: string; alt: string }[] 
           type="button"
           aria-label="Previous"
           onClick={() => goTo(current - 1)}
-          className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center justify-center w-9 h-9 rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 hover:bg-black/75 transition-all duration-200 focus:outline-none"
+          className="absolute left-3 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-slate-950/65 text-white opacity-0 transition-all duration-200 hover:bg-slate-900/90 group-hover:opacity-100 focus:outline-none"
         >
           <svg viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
             <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
@@ -97,7 +97,7 @@ function DashboardCarousel({ slides }: { slides: { src: string; alt: string }[] 
           type="button"
           aria-label="Next"
           onClick={() => goTo(current + 1)}
-          className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center w-9 h-9 rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 hover:bg-black/75 transition-all duration-200 focus:outline-none"
+          className="absolute right-3 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-slate-950/65 text-white opacity-0 transition-all duration-200 hover:bg-slate-900/90 group-hover:opacity-100 focus:outline-none"
         >
           <svg viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
             <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
@@ -105,7 +105,7 @@ function DashboardCarousel({ slides }: { slides: { src: string; alt: string }[] 
         </button>
 
         {/* Dot indicators */}
-        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5">
+        <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-white/10 bg-slate-950/65 px-2 py-1 backdrop-blur">
           {slides.map((_, i) => (
             <button
               key={i}
@@ -114,8 +114,8 @@ function DashboardCarousel({ slides }: { slides: { src: string; alt: string }[] 
               onClick={() => goTo(i)}
               className={`rounded-full transition-all duration-300 ${
                 i === current
-                  ? "w-4 h-1.5 bg-white"
-                  : "w-1.5 h-1.5 bg-white/40 hover:bg-white/70"
+                  ? "h-1.5 w-5 bg-cyan-300"
+                  : "h-1.5 w-1.5 bg-white/40 hover:bg-white/70"
               }`}
             />
           ))}
@@ -229,43 +229,56 @@ export default function HomePage() {
   const primaryLabel = isLoggedIn ? "Dashboard" : "Connect Twitch";
 
   return (
-    <div className="min-h-screen bg-background text-slate-100">
+    <div className="min-h-screen overflow-x-hidden bg-background text-slate-100">
+      <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.14),transparent_35%),radial-gradient(circle_at_80%_20%,rgba(103,232,249,0.08),transparent_25%),radial-gradient(circle_at_bottom_left,rgba(14,165,233,0.1),transparent_35%)]" />
+      <div className="pointer-events-none fixed inset-0 -z-10 opacity-[0.07] [background-image:linear-gradient(rgba(255,255,255,0.18)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.18)_1px,transparent_1px)] [background-size:56px_56px]" />
 
       {/* ── NAV ── */}
-      <header className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 ${isScrolled ? "bg-background/90 backdrop-blur-md border-b border-slate-800/60" : ""}`}>
-        <div className="max-w-7xl mx-auto flex h-16 items-center px-6 gap-6">
+      <header className={`fixed left-0 right-0 top-0 z-40 transition-all duration-300 ${isScrolled ? "border-b border-white/10 bg-slate-950/70 backdrop-blur-xl" : "bg-transparent"}`}>
+        <div className="mx-auto flex h-20 max-w-7xl items-center gap-6 px-6">
           <div className="flex items-center gap-2.5 flex-shrink-0">
-            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-accent/20 border border-accent/40">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-cyan-300/20 bg-white/[0.04] shadow-[0_0_0_1px_rgba(255,255,255,0.02)] backdrop-blur">
               <Image src={AxyraBotPFP} alt="AxyraBot" width={20} height={20} className="rounded" />
             </div>
-            <span className="text-base font-bold tracking-tight text-white">AxyraBot</span>
+            <span className="text-base font-semibold tracking-[0.02em] text-white">AxyraBot</span>
           </div>
-          <nav className="hidden md:flex items-center gap-7 text-sm text-slate-400 flex-1 justify-center">
-            <a href="#features" className="hover:text-white transition">Features</a>
-            <a href="/dashboard" className="hover:text-white transition">Dashboard</a>
-            <a href="/commands" className="hover:text-white transition">Commands</a>
-            <a href="/api-docs" className="hover:text-white transition">Docs</a>
-            <a href="https://discord.gg/p4RbzDvnjA" target="_blank" rel="noopener noreferrer" className="hover:text-white transition">Support</a>
+          <nav className="hidden flex-1 items-center justify-center gap-3 md:flex">
+            {[
+              { href: "#features", label: "Features" },
+              { href: "/dashboard", label: "Dashboard" },
+              { href: "/commands", label: "Commands" },
+              { href: "/api-docs", label: "Docs" },
+              { href: "https://discord.gg/p4RbzDvnjA", label: "Support", external: true },
+            ].map((item) => (
+              <a
+                key={item.label}
+                href={item.href}
+                {...(item.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                className="rounded-full border border-transparent px-4 py-2 text-sm text-slate-400 transition hover:border-white/10 hover:bg-white/[0.04] hover:text-white"
+              >
+                {item.label}
+              </a>
+            ))}
           </nav>
           <div ref={menuRef} className="relative flex items-center gap-3 flex-shrink-0">
             {isLoggedIn ? (
               <>
-                <a href="/dashboard" className="text-sm text-slate-300 hover:text-white transition px-4 py-2">Dashboard</a>
+                <a href="/dashboard" className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-slate-200 transition hover:bg-white/[0.06] hover:text-white">Dashboard</a>
                 {avatarUrl && (
                   <button type="button" onClick={() => setMenuOpen((o) => !o)} className="focus:outline-none">
-                    <Image src={avatarUrl} alt="Profile" width={32} height={32} className="rounded-full" />
+                    <Image src={avatarUrl} alt="Profile" width={36} height={36} className="rounded-full ring-2 ring-white/10" />
                   </button>
                 )}
                 {menuOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-36 rounded-lg border border-slate-700 bg-slate-900/95 py-2 shadow-lg">
-                    <button type="button" onClick={handleLogout} className="w-full px-4 py-2 text-sm text-left text-slate-200 hover:bg-slate-800">Log out</button>
+                  <div className="absolute right-0 top-full mt-3 w-40 rounded-2xl border border-white/10 bg-slate-950/90 py-2 shadow-2xl shadow-black/50 backdrop-blur-xl">
+                    <button type="button" onClick={handleLogout} className="w-full px-4 py-2 text-left text-sm text-slate-200 transition hover:bg-white/[0.05]">Log out</button>
                   </div>
                 )}
               </>
             ) : (
               <>
-                <a href={connectUrl} className="text-sm text-slate-300 hover:text-white transition px-4 py-2">Log in</a>
-                <a href={connectUrl} className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-slate-900 shadow-lg shadow-sky-400/20 transition hover:bg-sky-300">
+                <a href={connectUrl} className="rounded-full px-4 py-2 text-sm text-slate-300 transition hover:bg-white/[0.04] hover:text-white">Log in</a>
+                <a href={connectUrl} className="inline-flex items-center gap-2 rounded-full border border-cyan-300/30 bg-cyan-300/90 px-5 py-2.5 text-sm font-semibold text-slate-950 shadow-[0_20px_45px_rgba(34,211,238,0.18)] transition hover:bg-cyan-200">
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"/></svg>
                   Connect Twitch
                 </a>
@@ -276,53 +289,70 @@ export default function HomePage() {
       </header>
 
       {/* ── HERO ── */}
-      <section className="relative min-h-screen flex items-center pt-16 overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_60%_at_70%_40%,rgba(139,92,246,0.15),transparent)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_40%_at_20%_60%,rgba(56,189,248,0.08),transparent)]" />
-        <div className="max-w-7xl mx-auto px-6 w-full grid lg:grid-cols-2 gap-12 items-center py-20 relative z-10">
+      <section className="relative flex min-h-screen items-center overflow-hidden pt-20">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_60%_at_75%_35%,rgba(34,211,238,0.16),transparent),radial-gradient(ellipse_55%_45%_at_15%_65%,rgba(56,189,248,0.1),transparent)]" />
+        <div className="relative z-10 mx-auto grid w-full max-w-7xl items-center gap-14 px-6 py-24 lg:grid-cols-2">
           {/* Left */}
           <div>
-            <div className="inline-block text-xs font-semibold tracking-widest text-accent/80 uppercase mb-4">
+            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-white/[0.03] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.28em] text-cyan-200 backdrop-blur-sm">
+              <span className="h-2 w-2 rounded-full bg-cyan-300 shadow-[0_0_16px_rgba(103,232,249,0.8)]" />
               The Complete Moderation Solution
             </div>
-            <h1 className="text-5xl sm:text-6xl font-black tracking-tight text-white leading-[1.05] mb-6">
+            <h1 className="mb-6 text-5xl font-black leading-[0.98] tracking-[-0.04em] text-white sm:text-6xl">
               Powerful Moderation<br />
-              for <span className="text-accent">Twitch</span> &amp; <span className="text-violet-400">Discord</span>
+              for <span className="text-cyan-300">Twitch</span> &amp; <span className="text-slate-200">Discord</span>
             </h1>
-            <p className="text-slate-400 text-lg mb-8 max-w-lg leading-relaxed">
+            <p className="mb-8 max-w-xl text-lg leading-relaxed text-slate-400">
               Protect your community, automate moderation, and keep your chat safe 24/7 with AxyraBot
             </p>
-            <div className="flex flex-wrap gap-3 mb-10">
-              <a href={isDiscordConnected ? "/discord" : "https://discord.gg/p4RbzDvnjA"} className="inline-flex items-center gap-2 rounded-lg bg-[#5865f2] hover:bg-[#4752c4] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-violet-500/30 transition">
+            <div className="mb-12 flex flex-wrap gap-3">
+              <a href={isDiscordConnected ? "/discord" : "https://discord.gg/p4RbzDvnjA"} className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-5 py-3 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/[0.08]">
                 <img src="/DiscordLogo.png" alt="Discord" className="w-5 h-5 brightness-0 invert" />
                 {isDiscordConnected ? "Discord Integration" : "Add to Discord"}
               </a>
-              <a href={isLoggedIn ? "/dashboard" : connectUrl} className="inline-flex items-center gap-2 rounded-lg border border-slate-600 bg-slate-800/60 hover:bg-slate-700/60 px-5 py-3 text-sm font-bold text-white transition">
-                <svg className="w-4 h-4 text-violet-400" viewBox="0 0 24 24" fill="currentColor"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"/></svg>
+              <a href={isLoggedIn ? "/dashboard" : connectUrl} className="inline-flex items-center gap-2 rounded-full border border-cyan-300/30 bg-cyan-300/90 px-5 py-3 text-sm font-semibold text-slate-950 shadow-[0_18px_40px_rgba(34,211,238,0.18)] transition hover:bg-cyan-200">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"/></svg>
                 {isLoggedIn ? "Dashboard" : "Connect Twitch"}
               </a>
             </div>
-            {/* Social proof */}
+            <div className="grid max-w-xl grid-cols-1 gap-3 sm:grid-cols-3">
+              {[
+                { label: "Real-time protection", value: "24/7" },
+                { label: "Communities onboarded", value: channelCount !== null ? `${channelCount}+` : "…" },
+                { label: "Cross-platform control", value: "Twitch + Discord" },
+              ].map((item) => (
+                <div key={item.label} className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-4 backdrop-blur-sm">
+                  <div className="text-lg font-semibold tracking-tight text-white">{item.value}</div>
+                  <div className="mt-1 text-xs text-slate-400">{item.label}</div>
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Right: Chat UI mockups */}
-          <div className="relative flex items-center justify-center lg:justify-end pb-12">
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_70%_at_60%_50%,rgba(139,92,246,0.2),transparent)]" />
+          <div className="relative flex items-center justify-center pb-12 lg:justify-end">
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_70%_at_60%_50%,rgba(56,189,248,0.16),transparent)]" />
             <div className="relative w-full max-w-md">
               {/* Twitch chat mockup */}
-              <div className="rounded-xl border border-slate-700/60 bg-slate-900/90 shadow-2xl shadow-black/60 overflow-hidden">
-                <div className="flex items-center gap-2 px-4 py-2.5 border-b border-slate-800 bg-slate-950/60">
-                  <svg className="w-4 h-4 text-violet-400" viewBox="0 0 24 24" fill="currentColor"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"/></svg>
-                  <span className="text-xs font-semibold text-slate-300">TWITCH CHAT</span>
+              <div className="overflow-hidden rounded-[1.5rem] border border-white/10 bg-slate-950/78 shadow-[0_32px_80px_rgba(2,8,23,0.7)] backdrop-blur-xl">
+                <div className="flex items-center justify-between border-b border-white/8 bg-white/[0.03] px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4 h-4 text-cyan-300" viewBox="0 0 24 24" fill="currentColor"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"/></svg>
+                    <span className="text-xs font-semibold tracking-[0.2em] text-slate-300">TWITCH CHAT</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
+                    <span className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Live moderation</span>
+                  </div>
                 </div>
-                <div className="px-4 py-3 space-y-3 text-xs">
+                <div className="space-y-3 px-4 py-4 text-xs">
                   {[
                     { user: "StreamElements", color: "text-sky-400",    msg: "Check out my socials! linktr.ee/xyz",              mod: false },
                     { user: "AxyraBot",        color: "text-accent",     msg: "@user, links are not allowed!",                   mod: true  },
                     { user: "BadUser123",      color: "text-red-400",    msg: "Buy followers here! bit.ly/spam",                 mod: false },
                     { user: "AxyraBot",        color: "text-accent",     msg: "@BadUser123 has been timed out for 600 seconds.", mod: true  },
                   ].map((line, i) => (
-                    <div key={i} className="flex gap-2 items-start">
+                    <div key={i} className="flex items-start gap-2 rounded-xl border border-white/6 bg-white/[0.025] px-3 py-2.5">
                       <span className={`shrink-0 font-semibold ${line.color}`}>{line.user}:</span>
                       <span className={line.mod ? "text-slate-300 italic" : "text-slate-400"}>{line.msg}</span>
                     </div>
@@ -330,18 +360,18 @@ export default function HomePage() {
                 </div>
               </div>
               {/* Discord server mockup — overlaps bottom-right */}
-              <div className="absolute -bottom-10 -right-6 w-64 rounded-xl border border-slate-700/60 bg-slate-900/95 shadow-2xl shadow-black/60 overflow-hidden">
-                <div className="flex items-center gap-2 px-4 py-2.5 border-b border-slate-800 bg-[#5865f2]/20">
+              <div className="absolute -bottom-10 -right-6 w-64 overflow-hidden rounded-[1.4rem] border border-white/10 bg-slate-950/88 shadow-[0_24px_60px_rgba(2,8,23,0.65)] backdrop-blur-xl">
+                <div className="flex items-center gap-2 border-b border-white/8 bg-white/[0.04] px-4 py-3">
                   <img src="/DiscordLogo.png" alt="Discord" className="w-5 h-5 brightness-0 invert" />
-                  <span className="text-xs font-semibold text-slate-300">DISCORD SERVER</span>
+                  <span className="text-xs font-semibold tracking-[0.2em] text-slate-300">DISCORD SERVER</span>
                 </div>
-                <div className="px-4 py-3 space-y-2 text-xs">
+                <div className="space-y-2 px-4 py-4 text-xs">
                   {[
                     { user: "Member",   color: "text-slate-400", msg: "Just joined the server!" },
                     { user: "AxyraBot", color: "text-accent",    msg: "Welcome @Member! Please read #rules and have a great time!" },
                     { user: "AxyraBot", color: "text-accent",    msg: "@Spammer was banned." },
                   ].map((line, i) => (
-                    <div key={i} className="flex gap-1.5 items-start">
+                    <div key={i} className="flex items-start gap-1.5 rounded-xl border border-white/6 bg-white/[0.025] px-3 py-2">
                       <span className={`shrink-0 font-semibold ${line.color}`}>{line.user}:</span>
                       <span className="text-slate-400">{line.msg}</span>
                     </div>
@@ -354,13 +384,13 @@ export default function HomePage() {
       </section>
 
       {/* ── STATS BAR ── */}
-      <section className="border-y border-slate-800/60 bg-slate-900/40 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto px-6 py-8 flex justify-center gap-16">
+      <section className="border-y border-white/8 bg-white/[0.03] backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl justify-center gap-16 px-6 py-8">
           {[
             { icon: "👥", stat: channelCount !== null ? channelCount.toString() : "…", label: "Communities" },
             { icon: "⚡", stat: "99.9%", label: "Uptime" },
           ].map((s) => (
-            <div key={s.label} className="flex items-center gap-4">
+            <div key={s.label} className="flex items-center gap-4 rounded-2xl border border-white/8 bg-slate-950/35 px-5 py-3">
               <span className="text-2xl">{s.icon}</span>
               <div>
                 <div className="text-2xl font-black text-white">{s.stat}</div>
@@ -372,13 +402,13 @@ export default function HomePage() {
       </section>
 
       {/* ── FEATURES GRID ── */}
-      <section id="features" className="py-24 px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-14">
-            <div className="text-xs font-semibold tracking-widest text-accent/70 uppercase mb-3">Everything You Need</div>
-            <h2 className="text-4xl font-black text-white">Powerful Features. Total Control.</h2>
+      <section id="features" className="px-6 py-24">
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-14 text-center">
+            <div className="mb-3 text-xs font-semibold uppercase tracking-[0.28em] text-cyan-200/80">Everything You Need</div>
+            <h2 className="text-4xl font-black tracking-[-0.03em] text-white">Powerful Features. Total Control.</h2>
           </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {[
               { icon: "🛡️", color: "text-sky-400",     bg: "bg-sky-400/10 border-sky-400/20",       title: "Auto Moderation",     desc: "Advanced filters detect spam, scams, hate speech, and more in real-time."        },
               { icon: "🔗", color: "text-violet-400",  bg: "bg-violet-400/10 border-violet-400/20", title: "Link Protection",     desc: "Automatically block harmful links, invites, and suspicious URLs."               },
@@ -387,17 +417,17 @@ export default function HomePage() {
               { icon: "🤖", color: "text-pink-400",    bg: "bg-pink-400/10 border-pink-400/20",     title: "Raid Protection",     desc: "Automatically detect and prevent raids & bot attacks."                         },
               { icon: "⚙️", color: "text-orange-400",  bg: "bg-orange-400/10 border-orange-400/20", title: "Highly Customizable", desc: "Fine-tune every setting to match your community's needs."                      },
             ].map((f) => (
-              <div key={f.title} className="rounded-xl border border-slate-800 bg-slate-900/60 p-5 hover:border-slate-700 hover:bg-slate-900 transition">
-                <div className={`inline-flex items-center justify-center w-10 h-10 rounded-lg border text-xl mb-4 ${f.bg}`}>
+              <div key={f.title} className="rounded-[1.4rem] border border-white/8 bg-white/[0.03] p-6 backdrop-blur-sm transition hover:-translate-y-1 hover:border-cyan-300/20 hover:bg-white/[0.05]">
+                <div className={`mb-4 inline-flex h-11 w-11 items-center justify-center rounded-2xl border text-xl ${f.bg}`}>
                   {f.icon}
                 </div>
-                <h3 className={`text-sm font-bold mb-2 ${f.color}`}>{f.title}</h3>
+                <h3 className={`mb-2 text-sm font-bold ${f.color}`}>{f.title}</h3>
                 <p className="text-xs text-slate-400 leading-relaxed">{f.desc}</p>
               </div>
             ))}
           </div>
-          <div className="text-center mt-10">
-            <a href="/dashboard" className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-800/60 hover:bg-slate-700/60 px-6 py-2.5 text-sm font-semibold text-slate-200 transition">
+          <div className="mt-10 text-center">
+            <a href="/dashboard" className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-6 py-2.5 text-sm font-semibold text-slate-200 transition hover:bg-white/[0.06]">
               View All Features →
             </a>
           </div>
@@ -405,8 +435,8 @@ export default function HomePage() {
       </section>
 
       {/* ── DASHBOARD SECTION ── */}
-      <section className="py-24 px-6 bg-slate-950/50 border-y border-slate-800/60">
-        <div className="max-w-6xl mx-auto flex flex-col gap-12">
+      <section className="border-y border-white/8 bg-white/[0.025] px-6 py-24">
+        <div className="mx-auto flex max-w-6xl flex-col gap-12">
           {/* Carousel */}
           {(() => {
             const slides = [
@@ -421,8 +451,8 @@ export default function HomePage() {
           {/* Text below */}
           <div className="flex flex-col lg:flex-row lg:items-center gap-10">
             <div className="flex-1">
-              <div className="text-xs font-semibold tracking-widest text-accent/70 uppercase mb-3">Unified Dashboard</div>
-              <h2 className="text-4xl font-black text-white mb-5">Manage Everything<br />in One Place</h2>
+              <div className="mb-3 text-xs font-semibold uppercase tracking-[0.28em] text-cyan-200/80">Unified Dashboard</div>
+              <h2 className="mb-5 text-4xl font-black tracking-[-0.03em] text-white">Manage Everything<br />in One Place</h2>
               <p className="text-slate-400 leading-relaxed">
                 Our powerful dashboard gives you complete control over your Twitch and Discord moderation.
               </p>
@@ -431,12 +461,12 @@ export default function HomePage() {
               <ul className="space-y-3 mb-8">
                 {["Real-time activity monitoring","Manage settings in seconds","Cross-platform synchronization"].map((item) => (
                   <li key={item} className="flex items-center gap-3 text-sm text-slate-300">
-                    <span className="flex items-center justify-center w-5 h-5 rounded-full bg-accent/20 text-accent text-[10px] shrink-0">✓</span>
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-cyan-300/20 bg-cyan-300/10 text-[10px] text-cyan-200">✓</span>
                     {item}
                   </li>
                 ))}
               </ul>
-              <a href="/dashboard" className="inline-flex items-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-bold text-slate-900 shadow-lg shadow-sky-400/20 transition hover:bg-sky-300">
+              <a href="/dashboard" className="inline-flex items-center gap-2 rounded-full border border-cyan-300/30 bg-cyan-300/90 px-5 py-2.5 text-sm font-semibold text-slate-950 shadow-[0_18px_40px_rgba(34,211,238,0.18)] transition hover:bg-cyan-200">
                 Explore Dashboard →
               </a>
             </div>
@@ -445,11 +475,11 @@ export default function HomePage() {
       </section>
 
       {/* ── AUTOMATION ── */}
-      <section className="py-24 px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-14">
-            <div className="text-xs font-semibold tracking-widest text-accent/70 uppercase mb-3">Smart Automation</div>
-            <h2 className="text-4xl font-black text-white mb-4">Automate. Protect. Relax.</h2>
+      <section className="px-6 py-24">
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-14 text-center">
+            <div className="mb-3 text-xs font-semibold uppercase tracking-[0.28em] text-cyan-200/80">Smart Automation</div>
+            <h2 className="mb-4 text-4xl font-black tracking-[-0.03em] text-white">Automate. Protect. Relax.</h2>
             <p className="text-slate-400 max-w-lg mx-auto text-sm">
               Create powerful automated workflows without writing a single line of code.
             </p>
@@ -461,7 +491,7 @@ export default function HomePage() {
               { trigger: "IF chat becomes too fast",       color: "border-violet-500/30 bg-violet-500/5", accent: "text-violet-400", icons: ["🐌","🔔","📢"], steps: ["Enable slow mode","Notify moderators","Post announcement"]            },
             ].map((flow, idx) => (
               <div key={idx} className="flex-1 flex items-center gap-3">
-                <div className={`flex-1 rounded-xl border p-5 h-full ${flow.color}`}>
+                <div className={`flex-1 rounded-[1.4rem] border p-5 h-full backdrop-blur-sm ${flow.color}`}>
                   <div className={`text-xs font-bold mb-4 ${flow.accent}`}>{flow.trigger}</div>
                   <div className="space-y-2">
                     {flow.steps.map((step, i) => (
@@ -476,8 +506,8 @@ export default function HomePage() {
               </div>
             ))}
           </div>
-          <div className="text-center mt-10">
-            <a href="/modules" className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-800/60 hover:bg-slate-700/60 px-6 py-2.5 text-sm font-semibold text-slate-200 transition">
+          <div className="mt-10 text-center">
+            <a href="/modules" className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-6 py-2.5 text-sm font-semibold text-slate-200 transition hover:bg-white/[0.06]">
               Explore Automations
             </a>
           </div>
@@ -485,16 +515,16 @@ export default function HomePage() {
       </section>
 
       {/* ── FAQ ── */}
-      <section id="faq" className="py-24 px-6 bg-slate-950/50 border-t border-slate-800/60">
-        <div className="max-w-5xl mx-auto">
-          <h2 className="text-4xl font-black text-white text-center mb-14">Frequently Asked Questions</h2>
+      <section id="faq" className="border-t border-white/8 bg-white/[0.025] px-6 py-24">
+        <div className="mx-auto max-w-5xl">
+          <h2 className="mb-14 text-center text-4xl font-black tracking-[-0.03em] text-white">Frequently Asked Questions</h2>
           <div className="grid md:grid-cols-2 gap-x-16">
-            <div>
+            <div className="space-y-4">
               <FAQItem question="Is AxyraBot free?" answer="Yes, AxyraBot is completely free. Connect your Twitch account, authorize the bot, and you're ready to go — no credit card, no paid plans, ever." />
               <FAQItem question="Does it work on both Twitch and Discord?" answer="Yes. AxyraBot supports both platforms. You can moderate Twitch chat and your Discord server from the same unified dashboard." />
               <FAQItem question="How long does setup take?" answer="Most users are up and running in under five minutes. Just connect your Twitch account, add the bot to your Discord, and configure your settings." />
             </div>
-            <div>
+            <div className="space-y-4">
               <FAQItem question="Do I need coding experience?" answer="No coding required. Everything is managed through a clean point-and-click dashboard designed for streamers and community managers." />
               <FAQItem question="Is my data safe?" answer="Yes. We take security seriously. Your credentials are never stored in plain text and we only request the minimum permissions needed to operate." />
               <FAQItem question="Where can I get support?" answer="You can reach us through our Discord support server or browse the API documentation for technical details." />
@@ -504,10 +534,10 @@ export default function HomePage() {
       </section>
 
       {/* ── FOOTER CTA BAR ── */}
-      <section className="bg-accent/10 border-y border-accent/20 px-6 py-5">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+      <section className="border-y border-cyan-300/15 bg-[linear-gradient(90deg,rgba(34,211,238,0.08),rgba(255,255,255,0.02),rgba(34,211,238,0.08))] px-6 py-5">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 sm:flex-row">
           <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-accent/20 border border-accent/30">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-cyan-300/20 bg-white/[0.05]">
               <Image src={AxyraBotPFP} alt="AxyraBot" width={20} height={20} className="rounded" />
             </div>
             <div>
@@ -516,12 +546,12 @@ export default function HomePage() {
             </div>
           </div>
           <div className="flex gap-3">
-            <a href={isDiscordConnected ? "/discord" : "https://discord.gg/p4RbzDvnjA"} className="inline-flex items-center gap-2 rounded-lg bg-[#5865f2] hover:bg-[#4752c4] px-4 py-2 text-sm font-bold text-white transition">
+            <a href={isDiscordConnected ? "/discord" : "https://discord.gg/p4RbzDvnjA"} className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/[0.08]">
               <img src="/DiscordLogo.png" alt="Discord" className="w-5 h-5 brightness-0 invert" />
               {isDiscordConnected ? "Discord Integration" : "Add to Discord"}
             </a>
-            <a href={isLoggedIn ? "/dashboard" : connectUrl} className="inline-flex items-center gap-2 rounded-lg border border-slate-600 bg-slate-800 hover:bg-slate-700 px-4 py-2 text-sm font-bold text-white transition">
-              <svg className="w-4 h-4 text-violet-400" viewBox="0 0 24 24" fill="currentColor"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"/></svg>
+            <a href={isLoggedIn ? "/dashboard" : connectUrl} className="inline-flex items-center gap-2 rounded-full border border-cyan-300/30 bg-cyan-300/90 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200">
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"/></svg>
               {isLoggedIn ? "Dashboard" : "Connect Twitch"}
             </a>
           </div>
@@ -529,13 +559,13 @@ export default function HomePage() {
       </section>
 
       {/* ── FOOTER ── */}
-      <footer className="border-t border-slate-800 bg-background px-6 py-10">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-8 mb-8">
+      <footer className="border-t border-white/8 bg-background px-6 py-10">
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-8 flex flex-col gap-8 md:flex-row md:items-start md:justify-between">
             <div className="flex items-center gap-3">
-              <Image src={AxyraBotPFP} alt="AxyraBot" width={32} height={32} className="rounded-xl" />
+              <Image src={AxyraBotPFP} alt="AxyraBot" width={36} height={36} className="rounded-2xl ring-1 ring-white/10" />
               <span className="font-bold tracking-tight">
-                <span className="text-accent">Axyra</span>
+                <span className="text-cyan-300">Axyra</span>
                 <span className="text-white">Bot</span>
               </span>
             </div>
