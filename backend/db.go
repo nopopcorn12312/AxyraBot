@@ -1372,8 +1372,34 @@ func GetDiscordSettings(broadcasterLogin, guildID string) (*DiscordSettings, err
 	return &s, nil
 }
 
-// GetAllDiscordSettingsForBroadcaster returns every guild row saved by a
-// broadcaster. Used by notification helpers to fan-out to all linked servers.
+// mergeDiscordSettingsForBroadcaster prefers the broadcaster-specific row for a
+// guild when both a shared guild-wide row and a broadcaster-specific row exist.
+func mergeDiscordSettingsForBroadcaster(broadcasterLogin string, rows []DiscordSettings) []DiscordSettings {
+	broadcasterLogin = strings.ToLower(strings.TrimSpace(broadcasterLogin))
+	if len(rows) == 0 {
+		return nil
+	}
+	out := make([]DiscordSettings, 0, len(rows))
+	indexByGuild := make(map[string]int, len(rows))
+	for _, s := range rows {
+		if strings.TrimSpace(s.GuildID) == "" {
+			continue
+		}
+		if i, found := indexByGuild[s.GuildID]; found {
+			if s.BroadcasterLogin == broadcasterLogin && out[i].BroadcasterLogin == "" {
+				out[i] = s
+			}
+			continue
+		}
+		indexByGuild[s.GuildID] = len(out)
+		out = append(out, s)
+	}
+	return out
+}
+
+// GetAllDiscordSettingsForBroadcaster returns every guild row associated with a
+// broadcaster, including shared guild-wide rows used by admins/managers for the
+// same Discord server. When both rows exist, the broadcaster-specific row wins.
 func GetAllDiscordSettingsForBroadcaster(broadcasterLogin string) ([]DiscordSettings, error) {
 	if db == nil {
 		return nil, fmt.Errorf("db not initialized")
@@ -1381,21 +1407,23 @@ func GetAllDiscordSettingsForBroadcaster(broadcasterLogin string) ([]DiscordSett
 	broadcasterLogin = strings.ToLower(strings.TrimSpace(broadcasterLogin))
 	rows, err := db.QueryContext(context.Background(), `
 		SELECT broadcaster_login, guild_id, live_channel_id, mod_channel_id, bday_channel_id, bday_source_login
-		FROM discord_settings WHERE broadcaster_login = $1
+		FROM discord_settings
+		WHERE broadcaster_login = $1 OR broadcaster_login = ''
+		ORDER BY (broadcaster_login = $1) DESC, guild_id
 	`, broadcasterLogin)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var out []DiscordSettings
+	var raw []DiscordSettings
 	for rows.Next() {
 		var s DiscordSettings
 		if err := rows.Scan(&s.BroadcasterLogin, &s.GuildID, &s.LiveChannelID, &s.ModChannelID, &s.BdayChannelID, &s.BdaySourceLogin); err != nil {
 			return nil, err
 		}
-		out = append(out, s)
+		raw = append(raw, s)
 	}
-	return out, nil
+	return mergeDiscordSettingsForBroadcaster(broadcasterLogin, raw), nil
 }
 
 // GetDiscordSettingsByGuild looks up Discord settings by guild ID, used to
