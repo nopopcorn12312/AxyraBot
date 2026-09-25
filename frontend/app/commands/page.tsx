@@ -74,6 +74,12 @@ const defaultCommands: { name: string; label?: string; description: string; enab
     enabled: true,
   },
   {
+    name: "!whenbday",
+    label: "!whenbday @USER",
+    description: "Shows the saved birthday for a specific user.",
+    enabled: true,
+  },
+  {
     name: "!addbday",
     label: "!addbday NAME MM DD",
     description: "Add or update a named birthday (mods only).",

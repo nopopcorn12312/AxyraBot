@@ -177,6 +177,7 @@ export default function ModulesPage() {
         const birthdayNames = [
           "!birthday",
           "!nextbday",
+          "!whenbday",
           "!addbday",
           "!addmybday",
           "!delbday",

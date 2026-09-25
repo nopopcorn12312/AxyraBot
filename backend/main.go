@@ -60,6 +60,7 @@ const defaultRaidShoutoutTemplate = "Make sure to go check out $(raider)'s chann
 var birthdayCommandNames = []string{
 	"!birthday",
 	"!nextbday",
+	"!whenbday",
 	"!addbday",
 	"!addmybday",
 	"!delbday",
@@ -1233,6 +1234,42 @@ func handleChatMessageEvent(channelLogin, chatterLogin, chatterID, messageID, me
 					return 0, 0, fmt.Errorf("invalid date")
 				}
 				return m, d, nil
+			}
+
+			// !whenbday @USER - show a saved user's birthday.
+			if isChatCommand(lower, "!whenbday") {
+				if !isDefaultCommandEnabled(channelLogin, "!whenbday") {
+					return
+				}
+				args := strings.Fields(msg)
+				if len(args) < 2 {
+					_ = sendHelixChatMessage(channelLogin, "Usage: !whenbday @USER")
+					return
+				}
+				targetLogin := strings.ToLower(strings.TrimPrefix(args[1], "@"))
+				birthday, err := GetBirthdayForUser(channelLogin, targetLogin)
+				if err != nil {
+					log.Println("GetBirthdayForUser(!whenbday) failed:", err)
+					return
+				}
+				if birthday == nil {
+					_ = sendHelixChatMessage(channelLogin, fmt.Sprintf("I couldn't find a saved birthday for @%s.", targetLogin))
+					return
+				}
+				displayName := birthday.DisplayName
+				if strings.TrimSpace(displayName) == "" {
+					displayName = birthday.UserLogin
+				}
+				date := fmt.Sprintf("%02d/%02d", birthday.Month, birthday.Day)
+				text := fmt.Sprintf("%s's birthday is on %s.", displayName, date)
+				text = renderBirthdayCommandMessage(channelLogin, "!whenbday", text, map[string]string{
+					"name": displayName,
+					"date": date,
+				})
+				if err := sendHelixChatMessage(channelLogin, text); err != nil {
+					log.Println("failed to send !whenbday response:", err)
+				}
+				return
 			}
 
 			// !birthday - show today's birthdays in the broadcaster's timezone.
