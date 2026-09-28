@@ -43,4 +43,4 @@ services:
       - key: GITHUB_WEBHOOK_SECRET
         sync: false
       - key: DISCORD_GITHUB_UPDATES_CHANNEL_ID
-        sync: false
+        value: "1553999161265881088"
