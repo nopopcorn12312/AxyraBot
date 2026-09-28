@@ -183,6 +183,7 @@ func startHTTPServer(clientID, clientSecret string) {
 	mux.HandleFunc("/discord/reaction-roles", withCORS(handleDiscordReactionRoles))
 	mux.HandleFunc("/discord/reaction-roles/send", withCORS(handleDiscordReactionRolesSend))
 	mux.HandleFunc("/discord/welcome-settings", withCORS(handleDiscordWelcomeSettings))
+	mux.HandleFunc("/github/webhook", handleGitHubWebhook)
 
 	// Optional Nightbot OAuth integration for importing commands without
 	// copy/paste. These handlers are only registered when all required
@@ -2777,6 +2778,74 @@ func handleEventSubWebhook(w http.ResponseWriter, r *http.Request) {
 	default:
 		w.WriteHeader(http.StatusNoContent)
 	}
+}
+
+type githubPushPayload struct {
+	Pusher struct {
+		Name string `json:"name"`
+	} `json:"pusher"`
+	Sender struct {
+		Login string `json:"login"`
+	} `json:"sender"`
+}
+
+func githubPushAnnouncementMessage(payload []byte) (string, error) {
+	var event githubPushPayload
+	if err := json.Unmarshal(payload, &event); err != nil {
+		return "", err
+	}
+	name := strings.TrimSpace(event.Pusher.Name)
+	if name == "" {
+		name = strings.TrimSpace(event.Sender.Login)
+	}
+	if name == "" {
+		return "", fmt.Errorf("push payload has no pusher name")
+	}
+	return fmt.Sprintf("Github push (%s)", name), nil
+}
+
+func validGitHubWebhookSignature(body []byte, signature, secret string) bool {
+	if secret == "" || !strings.HasPrefix(signature, "sha256=") {
+		return false
+	}
+	mac := hmac.New(sha256.New, []byte(secret))
+	_, _ = mac.Write(body)
+	expected := "sha256=" + fmt.Sprintf("%x", mac.Sum(nil))
+	return hmac.Equal([]byte(expected), []byte(signature))
+}
+
+// handleGitHubWebhook accepts signed GitHub push events and posts the pusher
+// name to the configured Discord bot-updates channel.
+func handleGitHubWebhook(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	secret := strings.TrimSpace(os.Getenv("GITHUB_WEBHOOK_SECRET"))
+	if secret == "" {
+		http.Error(w, "webhook secret not configured", http.StatusInternalServerError)
+		return
+	}
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 1<<20))
+	if err != nil {
+		http.Error(w, "invalid webhook body", http.StatusBadRequest)
+		return
+	}
+	if !validGitHubWebhookSignature(body, r.Header.Get("X-Hub-Signature-256"), secret) {
+		http.Error(w, "invalid signature", http.StatusForbidden)
+		return
+	}
+	if r.Header.Get("X-GitHub-Event") != "push" {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	message, err := githubPushAnnouncementMessage(body)
+	if err != nil {
+		http.Error(w, "invalid push payload", http.StatusBadRequest)
+		return
+	}
+	PostGitHubPushAnnouncement(message)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // handleSpamFilters handles GET (list) and POST (add) for spam filters.

@@ -1,8 +1,8 @@
 # Copilot instructions for this repository
 
 Summary
-- This repository currently contains a single top-level directory: `backend/` (empty on inspection).
-- There are no detected package manifests, README, CI workflows, or agent guidance files to merge.
+- This repository contains a Go backend in `backend/`, a Next.js frontend in `frontend/`, and a Render deployment manifest.
+- Backend routes, Discord integration, and database operations are implemented in the Go service; frontend pages use Next.js and TypeScript.
 
 Primary goal for AI agents
 - Be conservative: the codebase has minimal discoverable structure. Ask the developer before making assumptions about language, runtime, or CI.
@@ -21,7 +21,8 @@ Developer workflows (what to look for and use)
 - Tests: look for `tests/`, `pytest.ini`, `jest.config.js`, or `*_test.go`. Run tests only after confirming the environment and installing deps.
 
 Project-specific conventions
-- At present there are no discoverable conventions in the repo. When you encounter files under `backend/`, capture any idiosyncratic patterns (naming, config locations, environment variables) and add them here.
+- Backend environment settings are read from environment variables; webhook endpoints should authenticate provider signatures before processing events.
+- The Go backend test command is `go test ./...` from `backend/`; the frontend type check is `npx tsc --noEmit` from `frontend/`.
 
 Integration points & external dependencies
 - If `backend/` contains `.env` or references to hosted services, extract keys like `DATABASE_URL`, `REDIS_URL`, `TWITCH_*`, or `DISCORD_*` and confirm with the developer before using real credentials.
@@ -30,15 +31,14 @@ Merge guidance (if an existing copilot-instructions.md is added later)
 - Preserve existing actionable items and examples. Update the top summary to reflect newly discovered components (services, languages, CI). Remove the sentence that claims the repo is empty.
 
 When to ask the user
-- No package manifests, README, or CI detected — ask what language/runtime, test commands, and intended service behavior are before making edits or running builds.
+- Ask when an external integration needs credentials, a destination identifier, or deployment values that are not present in the repository; do not invent or commit secrets.
 
 If you add code or run commands
-- Create or update `README.md` inside `backend/` with the minimal run/build/test steps you used.
-- Add a short note in this file documenting any inferred conventions or commands.
+- Update `backend/README.md` with setup details for new backend integrations.
+- Keep environment variable names and commands documented here when they become stable repository conventions.
 
 Questions for the repo owner
-- What language/runtime should `backend/` target? (Node/Python/Go/Rust/etc.)
-- Are there existing environment variables, CI, or deployment targets I should know about?
+- Are there external credentials or deployment values that are not represented in the repository?
 
 Contact
 - Leave a single-line summary of actions in the PR description when submitting changes (what you changed, how you tested, and what you need reviewed).

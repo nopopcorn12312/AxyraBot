@@ -39,3 +39,8 @@ services:
       # take up to 1 hour to propagate).
       - key: DISCORD_DEV_GUILD_ID
         sync: false
+      # GitHub push webhook signing secret and destination channel ID.
+      - key: GITHUB_WEBHOOK_SECRET
+        sync: false
+      - key: DISCORD_GITHUB_UPDATES_CHANNEL_ID
+        sync: false

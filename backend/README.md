@@ -25,6 +25,8 @@ Key environment variables
 - `TWITCH_EVENTSUB_ENABLED` — set to `1` to register EventSub subscriptions, `0` to skip.
 - `TWITCH_OAUTH_REDIRECT` — external redirect URL override for `/auth/start` (useful on Render).
 - `DATABASE_URL` — Postgres connection string (optional for multi-channel + web join flow).
+- `GITHUB_WEBHOOK_SECRET` — secret used to verify GitHub webhook signatures.
+- `DISCORD_GITHUB_UPDATES_CHANNEL_ID` — Discord channel ID for GitHub push notices.
 
 How to run locally
 1. Populate environment variables (see `.env.example`).
@@ -39,3 +41,8 @@ Deploying on Render (summary)
 - There is a top-level `render.yaml` that defines a Go web service using this `backend` folder.
 - On Render, set the same env vars as above (especially `TWITCH_BOT_OAUTH`, `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET`, `TWITCH_CHANNEL`).
 - The HTTP server will listen on `:$PORT` automatically; EventSub registration can be toggled via `TWITCH_EVENTSUB_ENABLED`.
+
+GitHub push notifications
+- Set `GITHUB_WEBHOOK_SECRET` and `DISCORD_GITHUB_UPDATES_CHANNEL_ID` in the Render environment. The bot needs permission to send messages in that channel.
+- In GitHub repository Settings → Webhooks, add `https://<backend-host>/github/webhook`, select `application/json`, use the same secret, and enable the `push` event.
+- Each push posts `Github push (<pusher name>)`; if GitHub omits the pusher name, the sender's GitHub login is used.
