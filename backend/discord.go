@@ -1402,14 +1402,18 @@ func PostOwnerAnnouncement(message string) {
 }
 
 // PostGitHubPushAnnouncement sends a GitHub push notice to the dedicated
-// updates channel configured by DISCORD_GITHUB_UPDATES_CHANNEL_ID.
+// updates channel configured by DISCORD_GITHUB_UPDATES_CHANNEL_ID, falling
+// back to the bot owner's channel when the environment variable is unset.
+const defaultGitHubUpdatesChannelID = "1553999161265881088"
+
 func PostGitHubPushAnnouncement(message string) error {
 	if discordSession == nil {
 		return fmt.Errorf("Discord session is not initialized")
 	}
 	channelID := strings.TrimSpace(os.Getenv("DISCORD_GITHUB_UPDATES_CHANNEL_ID"))
 	if channelID == "" {
-		return fmt.Errorf("DISCORD_GITHUB_UPDATES_CHANNEL_ID is not set")
+		channelID = defaultGitHubUpdatesChannelID
+		log.Printf("[Discord] DISCORD_GITHUB_UPDATES_CHANNEL_ID is not set; using default channel %s", channelID)
 	}
 	if _, err := discordSession.ChannelMessageSend(channelID, message); err != nil {
 		return fmt.Errorf("send to Discord channel %s: %w", channelID, err)

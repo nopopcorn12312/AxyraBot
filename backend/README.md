@@ -26,7 +26,7 @@ Key environment variables
 - `TWITCH_OAUTH_REDIRECT` — external redirect URL override for `/auth/start` (useful on Render).
 - `DATABASE_URL` — Postgres connection string (optional for multi-channel + web join flow).
 - `GITHUB_WEBHOOK_SECRET` — secret used to verify GitHub webhook signatures.
-- `DISCORD_GITHUB_UPDATES_CHANNEL_ID` — Discord channel ID for GitHub push notices.
+- `DISCORD_GITHUB_UPDATES_CHANNEL_ID` — optional override for the GitHub push notice channel; defaults to the bot owner's configured updates channel.
 
 How to run locally
 1. Populate environment variables (see `.env.example`).
@@ -43,7 +43,7 @@ Deploying on Render (summary)
 - The HTTP server will listen on `:$PORT` automatically; EventSub registration can be toggled via `TWITCH_EVENTSUB_ENABLED`.
 
 GitHub push notifications
-- Set `GITHUB_WEBHOOK_SECRET` and `DISCORD_GITHUB_UPDATES_CHANNEL_ID` in the Render environment. The bot needs permission to send messages in that channel.
+- Set `GITHUB_WEBHOOK_SECRET` in the Render environment. The GitHub notice channel defaults to the bot owner's updates channel and can be overridden with `DISCORD_GITHUB_UPDATES_CHANNEL_ID`. The bot needs permission to send messages there.
 - In GitHub repository Settings → Webhooks, add `https://<backend-host>/github/webhook`, select `application/json`, use the same secret, and enable the `push` event.
 - Each push posts `Github push (<pusher name>)`; if GitHub omits the pusher name, the sender's GitHub login is used.
 - To smoke-test delivery, commit and push a small documentation-only change; the configured Discord channel should receive the pusher notification.
