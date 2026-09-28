@@ -3744,38 +3744,20 @@ func createEventSubSubscription(authToken, clientID, subType, version string, co
 	req.Header.Set("Content-Type", "application/json")
 	client := &http.Client{Timeout: 10 * time.Second}
 
-	// Detailed debug: log request headers and body
-	var hb bytes.Buffer
-	hb.WriteString("--- EventSub Request ---\n")
-	hb.WriteString(req.Method + " " + req.URL.String() + "\n")
-	for k, v := range req.Header {
-		hb.WriteString(k + ": " + strings.Join(v, ",") + "\n")
-	}
-	hb.WriteString("\n")
-	hb.Write(b)
-	hb.WriteString("\n------------------------\n")
-	log.Println(hb.String())
+	log.Printf("[EventSub] creating subscription type=%s transport=%s", subType, transportMethod)
 
 	resp, err := client.Do(req)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
-	// Detailed debug: log response status, headers, and body
+	// Keep the response body for subscription status diagnostics; never log the
+	// request headers or body because they contain bearer and webhook secrets.
 	var rb bytes.Buffer
 	if _, err := rb.ReadFrom(resp.Body); err != nil {
 		return err
 	}
-	var rhb bytes.Buffer
-	rhb.WriteString("--- EventSub Response ---\n")
-	rhb.WriteString(resp.Status + "\n")
-	for k, v := range resp.Header {
-		rhb.WriteString(k + ": " + strings.Join(v, ",") + "\n")
-	}
-	rhb.WriteString("\n")
-	rhb.Write(rb.Bytes())
-	rhb.WriteString("\n-------------------------\n")
-	log.Println(rhb.String())
+	log.Printf("[EventSub] subscription create response type=%s status=%s body=%s", subType, resp.Status, rb.String())
 	return nil
 }
 
