@@ -45,7 +45,7 @@ Deploying on Render (summary)
 GitHub push notifications
 - Set `GITHUB_WEBHOOK_SECRET` in the Render environment. The GitHub notice channel defaults to the bot owner's updates channel and can be overridden with `DISCORD_GITHUB_UPDATES_CHANNEL_ID`. The bot needs permission to send messages there.
 - In GitHub repository Settings → Webhooks, add `https://<backend-host>/github/webhook`, select `application/json`, use the same secret, and enable the `push` event.
-- Each push posts `Github push (<pusher name>)`; if GitHub omits the pusher name, the sender's GitHub login is used.
+- Each push posts `Github push <commit message>` using the latest commit's message, with no parentheses.
 - To smoke-test delivery, commit and push a small documentation-only change; the configured Discord channel should receive the pusher notification.
 - Check the webhook's Recent Deliveries in GitHub after a test push. Discord delivery errors now return HTTP 502 and include the GitHub delivery ID in the backend logs; signature errors return HTTP 403.
 - Push notifications are independent of whether the Twitch channel is live.

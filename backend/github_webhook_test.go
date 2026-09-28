@@ -7,21 +7,21 @@ import (
 	"testing"
 )
 
-func TestGitHubPushAnnouncementMessage(t *testing.T) {
+func TestGitHubPushAnnouncementMessageUsesCommitMessage(t *testing.T) {
 	tests := []struct {
 		name    string
 		payload string
 		want    string
 	}{
 		{
-			name:    "uses pusher name",
-			payload: `{"pusher":{"name":"Nick"},"sender":{"login":"nick-login"}}`,
-			want:    "Github push (Nick)",
+			name:    "uses commit message without parentheses",
+			payload: `{"pusher":{"name":"Nick"},"head_commit":{"message":"Version 0.0.8 Added Github Update in Discord Server"}}`,
+			want:    "Github push Version 0.0.8 Added Github Update in Discord Server",
 		},
 		{
-			name:    "falls back to sender login",
-			payload: `{"pusher":{"name":" "},"sender":{"login":"nick-login"}}`,
-			want:    "Github push (nick-login)",
+			name:    "trims commit message whitespace",
+			payload: `{"head_commit":{"message":"  chore: test webhook  "}}`,
+			want:    "Github push chore: test webhook",
 		},
 	}
 

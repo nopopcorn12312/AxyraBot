@@ -2781,12 +2781,9 @@ func handleEventSubWebhook(w http.ResponseWriter, r *http.Request) {
 }
 
 type githubPushPayload struct {
-	Pusher struct {
-		Name string `json:"name"`
-	} `json:"pusher"`
-	Sender struct {
-		Login string `json:"login"`
-	} `json:"sender"`
+	HeadCommit struct {
+		Message string `json:"message"`
+	} `json:"head_commit"`
 }
 
 func githubPushAnnouncementMessage(payload []byte) (string, error) {
@@ -2794,14 +2791,11 @@ func githubPushAnnouncementMessage(payload []byte) (string, error) {
 	if err := json.Unmarshal(payload, &event); err != nil {
 		return "", err
 	}
-	name := strings.TrimSpace(event.Pusher.Name)
-	if name == "" {
-		name = strings.TrimSpace(event.Sender.Login)
+	commitMessage := strings.TrimSpace(event.HeadCommit.Message)
+	if commitMessage == "" {
+		return "", fmt.Errorf("push payload has no commit message")
 	}
-	if name == "" {
-		return "", fmt.Errorf("push payload has no pusher name")
-	}
-	return fmt.Sprintf("Github push (%s)", name), nil
+	return fmt.Sprintf("Github push %s", commitMessage), nil
 }
 
 func validGitHubWebhookSignature(body []byte, signature, secret string) bool {
@@ -2814,7 +2808,7 @@ func validGitHubWebhookSignature(body []byte, signature, secret string) bool {
 	return hmac.Equal([]byte(expected), []byte(signature))
 }
 
-// handleGitHubWebhook accepts signed GitHub push events and posts the pusher
+// handleGitHubWebhook accepts signed GitHub push events and posts the commit
 // name to the configured Discord bot-updates channel.
 func handleGitHubWebhook(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
