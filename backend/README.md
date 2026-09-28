@@ -49,3 +49,4 @@ GitHub push notifications
 - To smoke-test delivery, commit and push a small documentation-only change; the configured Discord channel should receive the pusher notification.
 - Check the webhook's Recent Deliveries in GitHub after a test push. Discord delivery errors now return HTTP 502 and include the GitHub delivery ID in the backend logs; signature errors return HTTP 403.
 - Push notifications are independent of whether the Twitch channel is live.
+- GitHub webhook ping events verify setup but do not post to Discord; push events do.
