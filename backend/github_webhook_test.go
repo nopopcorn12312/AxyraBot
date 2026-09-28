@@ -16,12 +16,12 @@ func TestGitHubPushAnnouncementMessageUsesCommitMessage(t *testing.T) {
 		{
 			name:    "uses commit message without parentheses",
 			payload: `{"pusher":{"name":"Nick"},"head_commit":{"message":"Version 0.0.8 Added Github Update in Discord Server"}}`,
-			want:    "Github push Version 0.0.8 Added Github Update in Discord Server",
+			want:    "<@&1554007760490729542> Github push Version 0.0.8 Added Github Update in Discord Server",
 		},
 		{
 			name:    "trims commit message whitespace",
 			payload: `{"head_commit":{"message":"  chore: test webhook  "}}`,
-			want:    "Github push chore: test webhook",
+			want:    "<@&1554007760490729542> Github push chore: test webhook",
 		},
 	}
 

@@ -2795,7 +2795,7 @@ func githubPushAnnouncementMessage(payload []byte) (string, error) {
 	if commitMessage == "" {
 		return "", fmt.Errorf("push payload has no commit message")
 	}
-	return fmt.Sprintf("Github push %s", commitMessage), nil
+	return fmt.Sprintf("<@&1554007760490729542> Github push %s", commitMessage), nil
 }
 
 func validGitHubWebhookSignature(body []byte, signature, secret string) bool {
