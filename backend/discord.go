@@ -1403,18 +1403,18 @@ func PostOwnerAnnouncement(message string) {
 
 // PostGitHubPushAnnouncement sends a GitHub push notice to the dedicated
 // updates channel configured by DISCORD_GITHUB_UPDATES_CHANNEL_ID.
-func PostGitHubPushAnnouncement(message string) {
+func PostGitHubPushAnnouncement(message string) error {
 	if discordSession == nil {
-		return
+		return fmt.Errorf("Discord session is not initialized")
 	}
 	channelID := strings.TrimSpace(os.Getenv("DISCORD_GITHUB_UPDATES_CHANNEL_ID"))
 	if channelID == "" {
-		log.Println("[Discord] DISCORD_GITHUB_UPDATES_CHANNEL_ID not set; skipping GitHub push notice")
-		return
+		return fmt.Errorf("DISCORD_GITHUB_UPDATES_CHANNEL_ID is not set")
 	}
 	if _, err := discordSession.ChannelMessageSend(channelID, message); err != nil {
-		log.Println("[Discord] failed to post GitHub push notice:", err)
+		return fmt.Errorf("send to Discord channel %s: %w", channelID, err)
 	}
+	return nil
 }
 
 // BotGuild represents a Discord server the bot is currently in.

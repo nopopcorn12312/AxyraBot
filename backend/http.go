@@ -2844,7 +2844,13 @@ func handleGitHubWebhook(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid push payload", http.StatusBadRequest)
 		return
 	}
-	PostGitHubPushAnnouncement(message)
+	deliveryID := r.Header.Get("X-GitHub-Delivery")
+	if err := PostGitHubPushAnnouncement(message); err != nil {
+		log.Printf("[GitHub webhook] delivery %s: Discord notification failed: %v", deliveryID, err)
+		http.Error(w, "Discord notification failed", http.StatusBadGateway)
+		return
+	}
+	log.Printf("[GitHub webhook] delivery %s: sent %q", deliveryID, message)
 	w.WriteHeader(http.StatusNoContent)
 }
 

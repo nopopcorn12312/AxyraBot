@@ -47,3 +47,4 @@ GitHub push notifications
 - In GitHub repository Settings → Webhooks, add `https://<backend-host>/github/webhook`, select `application/json`, use the same secret, and enable the `push` event.
 - Each push posts `Github push (<pusher name>)`; if GitHub omits the pusher name, the sender's GitHub login is used.
 - To smoke-test delivery, commit and push a small documentation-only change; the configured Discord channel should receive the pusher notification.
+- Check the webhook's Recent Deliveries in GitHub after a test push. Discord delivery errors now return HTTP 502 and include the GitHub delivery ID in the backend logs; signature errors return HTTP 403.
