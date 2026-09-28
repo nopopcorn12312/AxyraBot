@@ -46,3 +46,4 @@ GitHub push notifications
 - Set `GITHUB_WEBHOOK_SECRET` and `DISCORD_GITHUB_UPDATES_CHANNEL_ID` in the Render environment. The bot needs permission to send messages in that channel.
 - In GitHub repository Settings → Webhooks, add `https://<backend-host>/github/webhook`, select `application/json`, use the same secret, and enable the `push` event.
 - Each push posts `Github push (<pusher name>)`; if GitHub omits the pusher name, the sender's GitHub login is used.
+- To smoke-test delivery, commit and push a small documentation-only change; the configured Discord channel should receive the pusher notification.
