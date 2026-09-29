@@ -512,7 +512,7 @@ export default function HomePage() {
             </div>
             <div>
               <p className="text-sm font-bold text-white">Ready to Protect Your Community?</p>
-              <p className="text-xs text-slate-400">Join 10,000+ communities already using AxyraBot.</p>
+              <p className="text-xs text-slate-400">100% Free. Built for Twitch &amp; Discord.</p>
             </div>
           </div>
           <div className="flex gap-3">
