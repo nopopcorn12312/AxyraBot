@@ -293,7 +293,7 @@ export default function HomePage() {
               Protect your community, automate moderation, and keep your chat safe 24/7 with AxyraBot
             </p>
             <div className="flex flex-wrap gap-3 mb-10">
-              <a href={isDiscordConnected ? "/discord" : "https://discord.gg/p4RbzDvnjA"} className="inline-flex items-center gap-2 rounded-lg bg-[#5865f2] hover:bg-[#4752c4] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-violet-500/30 transition">
+              <a href={isDiscordConnected ? "/discord/settings" : "https://discord.gg/p4RbzDvnjA"} className="inline-flex items-center gap-2 rounded-lg bg-[#5865f2] hover:bg-[#4752c4] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-violet-500/30 transition">
                 <img src="/DiscordLogo.png" alt="Discord" className="w-5 h-5 brightness-0 invert" />
                 {isDiscordConnected ? "Discord Integration" : "Add to Discord"}
               </a>
@@ -516,7 +516,7 @@ export default function HomePage() {
             </div>
           </div>
           <div className="flex gap-3">
-            <a href={isDiscordConnected ? "/discord" : "https://discord.gg/p4RbzDvnjA"} className="inline-flex items-center gap-2 rounded-lg bg-[#5865f2] hover:bg-[#4752c4] px-4 py-2 text-sm font-bold text-white transition">
+            <a href={isDiscordConnected ? "/discord/settings" : "https://discord.gg/p4RbzDvnjA"} className="inline-flex items-center gap-2 rounded-lg bg-[#5865f2] hover:bg-[#4752c4] px-4 py-2 text-sm font-bold text-white transition">
               <img src="/DiscordLogo.png" alt="Discord" className="w-5 h-5 brightness-0 invert" />
               {isDiscordConnected ? "Discord Integration" : "Add to Discord"}
             </a>

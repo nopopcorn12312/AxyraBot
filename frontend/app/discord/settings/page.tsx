@@ -4,10 +4,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import AxyraBotPFP from "../images/AxyraBotPFP.png";
-import ManagingChannelBadge from "../components/ManagingChannelBadge";
-import { usePersistentSectionState } from "../hooks/usePersistentSectionState";
-import { useRequireAuth } from "../hooks/useRequireAuth";
+import AxyraBotPFP from "../../images/AxyraBotPFP.png";
+import ManagingChannelBadge from "../../components/ManagingChannelBadge";
+import { usePersistentSectionState } from "../../hooks/usePersistentSectionState";
+import { useRequireAuth } from "../../hooks/useRequireAuth";
 
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://your-backend.onrender.com";
 const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL;
@@ -1155,7 +1155,7 @@ export default function DiscordSettingsPage() {
               <button type="button" onClick={() => {}} className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
                 <span>Integrations</span>
               </button>
-              <Link href="/discord" className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${pathname === "/discord" ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]" : "text-slate-200 hover:bg-slate-800/80"}`}>
+              <Link href="/discord/settings" className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${pathname === "/discord/settings" ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]" : "text-slate-200 hover:bg-slate-800/80"}`}>
                 <span className="text-lg">🎮</span>{sidebarOpen && <span>Discord</span>}
               </Link>
             </div>

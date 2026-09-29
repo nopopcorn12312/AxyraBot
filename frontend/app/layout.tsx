@@ -3,6 +3,7 @@ import AxyraBotPFP from "./images/AxyraBotPFP.png";
 import "../styles/globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://axyrabot.com"),
   title: "AxyraBot — Free Twitch & Discord Moderation Bot",
   description:
     "AxyraBot is a free all-in-one moderation bot for Twitch and Discord. Protect your community, automate moderation, manage commands, and replace multiple bots with one bot.",
