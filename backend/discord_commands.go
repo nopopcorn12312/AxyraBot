@@ -2266,6 +2266,34 @@ func sendTicketPanel(s *discordgo.Session, cfg *DiscordTicketConfig) (string, er
 	return msg.ID, nil
 }
 
+func buildTicketOpenedMessage(userID string, ticketNumber int, supportRoleIDs []string) (string, *discordgo.MessageAllowedMentions) {
+	roleIDs := make([]string, 0, len(supportRoleIDs))
+	roleMentions := make([]string, 0, len(supportRoleIDs))
+	seen := make(map[string]struct{}, len(supportRoleIDs))
+	for _, roleID := range supportRoleIDs {
+		roleID = strings.TrimSpace(roleID)
+		if roleID == "" {
+			continue
+		}
+		if _, exists := seen[roleID]; exists {
+			continue
+		}
+		seen[roleID] = struct{}{}
+		roleIDs = append(roleIDs, roleID)
+		roleMentions = append(roleMentions, fmt.Sprintf("<@&%s>", roleID))
+	}
+
+	content := fmt.Sprintf("<@%s> opened ticket #%04d.", userID, ticketNumber)
+	if len(roleMentions) > 0 {
+		content += " Support team: " + strings.Join(roleMentions, " ")
+	}
+	allowedMentions := &discordgo.MessageAllowedMentions{
+		Users: []string{userID},
+		Roles: roleIDs,
+	}
+	return content, allowedMentions
+}
+
 // handleTicketCreate handles the "Open Ticket" button interaction.
 func handleTicketCreate(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	// Acknowledge immediately with an ephemeral deferred response.
@@ -2376,14 +2404,17 @@ func handleTicketCreate(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	}
 	welcomeEmbed := &discordgo.MessageEmbed{
 		Title:       fmt.Sprintf("🎫 Ticket #%04d", ticketNum),
-		Description: fmt.Sprintf("Welcome <@%s>! Support staff will be with you shortly.\n\nDescribe your issue in this channel.", user.ID),
+		Description: "Welcome! Support staff will be with you shortly.\n\nDescribe your issue in this channel.",
 		Color:       0x57F287, // green
 	}
+	welcomeContent, allowedMentions := buildTicketOpenedMessage(user.ID, ticketNum, cfg.SupportRoleIDs)
 	_, _ = s.ChannelMessageSendComplex(ch.ID, &discordgo.MessageSend{
+		Content: welcomeContent,
 		Embeds: []*discordgo.MessageEmbed{welcomeEmbed},
 		Components: []discordgo.MessageComponent{
 			discordgo.ActionsRow{Components: []discordgo.MessageComponent{closeBtn}},
 		},
+		AllowedMentions: allowedMentions,
 	})
 
 	// Log if configured.
