@@ -28,3 +28,35 @@ func TestMergeDiscordSettingsForBroadcasterPrefersSpecificRows(t *testing.T) {
 		t.Fatalf("expected guild-wide row for guild-3, got %q", byGuild["guild-3"])
 	}
 }
+
+func TestMergeGuildScopedDiscordSettingsUsesSavedGuildValues(t *testing.T) {
+	loginSettings := &DiscordSettings{
+		BroadcasterLogin:   "admin-login",
+		GuildID:            "guild-1",
+		ModLogChannelID:    "stale-log-channel",
+		ModLogEvents:       []string{"stale-event"},
+		HoneypotChannelID:  "stale-honeypot",
+		LiveChannelID:      "login-live-channel",
+	}
+	guildSettings := &DiscordSettings{
+		BroadcasterLogin:   "",
+		GuildID:            "guild-1",
+		ModLogChannelID:    "saved-log-channel",
+		ModLogEvents:       []string{"member_timeout", "member_ban"},
+		HoneypotChannelID:  "saved-honeypot",
+	}
+
+	got := mergeGuildScopedDiscordSettings(loginSettings, guildSettings)
+	if got.ModLogChannelID != "saved-log-channel" {
+		t.Fatalf("mod log channel = %q, want guild value", got.ModLogChannelID)
+	}
+	if len(got.ModLogEvents) != 2 || got.ModLogEvents[0] != "member_timeout" {
+		t.Fatalf("mod log events = %v, want guild values", got.ModLogEvents)
+	}
+	if got.HoneypotChannelID != "saved-honeypot" {
+		t.Fatalf("honeypot channel = %q, want guild value", got.HoneypotChannelID)
+	}
+	if got.LiveChannelID != "login-live-channel" {
+		t.Fatalf("unrelated login-specific setting was overwritten: %q", got.LiveChannelID)
+	}
+}

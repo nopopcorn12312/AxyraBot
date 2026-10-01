@@ -1398,6 +1398,19 @@ func GetDiscordSettings(broadcasterLogin, guildID string) (*DiscordSettings, err
 	return &s, nil
 }
 
+func mergeGuildScopedDiscordSettings(settings, guildSettings *DiscordSettings) *DiscordSettings {
+	if settings == nil {
+		return guildSettings
+	}
+	if guildSettings == nil {
+		return settings
+	}
+	settings.ModLogChannelID = guildSettings.ModLogChannelID
+	settings.ModLogEvents = guildSettings.ModLogEvents
+	settings.HoneypotChannelID = guildSettings.HoneypotChannelID
+	return settings
+}
+
 // mergeDiscordSettingsForBroadcaster prefers the broadcaster-specific row for a
 // guild when both a shared guild-wide row and a broadcaster-specific row exist.
 func mergeDiscordSettingsForBroadcaster(broadcasterLogin string, rows []DiscordSettings) []DiscordSettings {

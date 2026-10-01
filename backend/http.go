@@ -2393,16 +2393,15 @@ func handleDiscordSettings(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "db error", http.StatusInternalServerError)
 			return
 		}
-		// If no per-broadcaster row exists, fall back to the guild-scoped
-		// settings so managers of the same Discord see shared configuration.
-		if settings == nil {
-			settings, err = GetDiscordSettingsByGuild(guildID)
-			if err != nil {
-				log.Println("get discord settings by guild:", err)
-				http.Error(w, "db error", http.StatusInternalServerError)
-				return
-			}
+		// These settings are saved at guild scope; overlay them even when an
+		// older login-specific row exists for this guild.
+		guildSettings, err := GetDiscordSettingsByGuild(guildID)
+		if err != nil {
+			log.Println("get discord settings by guild:", err)
+			http.Error(w, "db error", http.StatusInternalServerError)
+			return
 		}
+		settings = mergeGuildScopedDiscordSettings(settings, guildSettings)
 		if settings == nil {
 			settings = &DiscordSettings{BroadcasterLogin: login, GuildID: guildID}
 		}
