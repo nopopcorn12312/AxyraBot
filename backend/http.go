@@ -2408,24 +2408,26 @@ func handleDiscordSettings(w http.ResponseWriter, r *http.Request) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]any{
-			"guild_id":             settings.GuildID,
-			"live_channel_id":      settings.LiveChannelID,
-			"mod_channel_id":       settings.ModChannelID,
-			"mod_log_channel_id":   settings.ModLogChannelID,
-			"mod_log_events":       settings.ModLogEvents,
-			"bday_channel_id":      settings.BdayChannelID,
-			"bday_source_login":    settings.BdaySourceLogin,
+			"guild_id":           settings.GuildID,
+			"live_channel_id":    settings.LiveChannelID,
+			"mod_channel_id":     settings.ModChannelID,
+			"mod_log_channel_id": settings.ModLogChannelID,
+			"mod_log_events":     settings.ModLogEvents,
+			"honeypot_channel_id": settings.HoneypotChannelID,
+			"bday_channel_id":    settings.BdayChannelID,
+			"bday_source_login":  settings.BdaySourceLogin,
 		})
 	case http.MethodPost:
 		var body struct {
-			Login           string `json:"login"`
-			GuildID         string `json:"guild_id"`
-			LiveChannelID   string `json:"live_channel_id"`
-			ModChannelID    string `json:"mod_channel_id"`
-			ModLogChannelID string `json:"mod_log_channel_id"`
+			Login           string   `json:"login"`
+			GuildID         string   `json:"guild_id"`
+			LiveChannelID   string   `json:"live_channel_id"`
+			ModChannelID    string   `json:"mod_channel_id"`
+			ModLogChannelID string   `json:"mod_log_channel_id"`
 			ModLogEvents    []string `json:"mod_log_events"`
-			BdayChannelID   string `json:"bday_channel_id"`
-			BdaySourceLogin string `json:"bday_source_login"`
+			HoneypotChannelID string `json:"honeypot_channel_id"`
+			BdayChannelID   string   `json:"bday_channel_id"`
+			BdaySourceLogin string   `json:"bday_source_login"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			http.Error(w, "bad json", http.StatusBadRequest)
@@ -2445,6 +2447,7 @@ func handleDiscordSettings(w http.ResponseWriter, r *http.Request) {
 			ModChannelID:     strings.TrimSpace(body.ModChannelID),
 			ModLogChannelID:  strings.TrimSpace(body.ModLogChannelID),
 			ModLogEvents:     body.ModLogEvents,
+			HoneypotChannelID: strings.TrimSpace(body.HoneypotChannelID),
 			BdayChannelID:    strings.TrimSpace(body.BdayChannelID),
 			BdaySourceLogin:  strings.ToLower(strings.TrimSpace(body.BdaySourceLogin)),
 		}); err != nil {

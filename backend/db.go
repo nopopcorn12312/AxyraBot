@@ -794,6 +794,7 @@ func EnsureSchema() error {
 	 mod_channel_id     TEXT NOT NULL DEFAULT '',
 	 mod_log_channel_id TEXT NOT NULL DEFAULT '',
 	 mod_log_events     TEXT NOT NULL DEFAULT '[]',
+	 honeypot_channel_id TEXT NOT NULL DEFAULT '',
 	 bday_channel_id    TEXT NOT NULL DEFAULT '',
 	 updated_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
 	 PRIMARY KEY (broadcaster_login, guild_id)
@@ -1018,6 +1019,9 @@ func EnsureSchema() error {
 		return err
 	}
 	if _, err := db.Exec(`ALTER TABLE discord_settings ADD COLUMN IF NOT EXISTS mod_log_events TEXT NOT NULL DEFAULT '[]'`); err != nil {
+		return err
+	}
+	if _, err := db.Exec(`ALTER TABLE discord_settings ADD COLUMN IF NOT EXISTS honeypot_channel_id TEXT NOT NULL DEFAULT ''`); err != nil {
 		return err
 	}
 	// Migrate PK to include guild_id (only runs if the old PK doesn't already have it).
@@ -1355,6 +1359,7 @@ type DiscordSettings struct {
 	ModChannelID     string
 	ModLogChannelID  string
 	ModLogEvents     []string
+	HoneypotChannelID string
 	BdayChannelID    string
 	// BdaySourceLogin, when set, overrides whose saved birthday list is
 	// announced in this guild (e.g. a friend's channel instead of your own).
@@ -1378,12 +1383,12 @@ func GetDiscordSettings(broadcasterLogin, guildID string) (*DiscordSettings, err
 	broadcasterLogin = strings.ToLower(strings.TrimSpace(broadcasterLogin))
 	guildID = strings.TrimSpace(guildID)
 	row := db.QueryRowContext(context.Background(), `
-		SELECT broadcaster_login, guild_id, live_channel_id, mod_channel_id, mod_log_channel_id, mod_log_events, bday_channel_id, bday_source_login
+		SELECT broadcaster_login, guild_id, live_channel_id, mod_channel_id, mod_log_channel_id, mod_log_events, honeypot_channel_id, bday_channel_id, bday_source_login
 		FROM discord_settings WHERE broadcaster_login = $1 AND guild_id = $2
 	`, broadcasterLogin, guildID)
 	var s DiscordSettings
 	var modLogEvents string
-	if err := row.Scan(&s.BroadcasterLogin, &s.GuildID, &s.LiveChannelID, &s.ModChannelID, &s.ModLogChannelID, &modLogEvents, &s.BdayChannelID, &s.BdaySourceLogin); err != nil {
+	if err := row.Scan(&s.BroadcasterLogin, &s.GuildID, &s.LiveChannelID, &s.ModChannelID, &s.ModLogChannelID, &modLogEvents, &s.HoneypotChannelID, &s.BdayChannelID, &s.BdaySourceLogin); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
@@ -1427,7 +1432,7 @@ func GetAllDiscordSettingsForBroadcaster(broadcasterLogin string) ([]DiscordSett
 	}
 	broadcasterLogin = strings.ToLower(strings.TrimSpace(broadcasterLogin))
 	rows, err := db.QueryContext(context.Background(), `
-		SELECT broadcaster_login, guild_id, live_channel_id, mod_channel_id, mod_log_channel_id, mod_log_events, bday_channel_id, bday_source_login
+		SELECT broadcaster_login, guild_id, live_channel_id, mod_channel_id, mod_log_channel_id, mod_log_events, honeypot_channel_id, bday_channel_id, bday_source_login
 		FROM discord_settings
 		WHERE broadcaster_login = $1 OR broadcaster_login = ''
 		ORDER BY (broadcaster_login = $1) DESC, guild_id
@@ -1440,7 +1445,7 @@ func GetAllDiscordSettingsForBroadcaster(broadcasterLogin string) ([]DiscordSett
 	for rows.Next() {
 		var s DiscordSettings
 		var modLogEvents string
-		if err := rows.Scan(&s.BroadcasterLogin, &s.GuildID, &s.LiveChannelID, &s.ModChannelID, &s.ModLogChannelID, &modLogEvents, &s.BdayChannelID, &s.BdaySourceLogin); err != nil {
+		if err := rows.Scan(&s.BroadcasterLogin, &s.GuildID, &s.LiveChannelID, &s.ModChannelID, &s.ModLogChannelID, &modLogEvents, &s.HoneypotChannelID, &s.BdayChannelID, &s.BdaySourceLogin); err != nil {
 			return nil, err
 		}
 		s.ModLogEvents = parseDiscordModLogEvents(modLogEvents)
@@ -1486,7 +1491,7 @@ func GetDiscordSettingsForBirthdaySource(sourceLogin string) ([]DiscordSettings,
 	sourceLogin = strings.ToLower(strings.TrimSpace(sourceLogin))
 	rows, err := db.QueryContext(context.Background(), `
 		SELECT DISTINCT ON (guild_id)
-			broadcaster_login, guild_id, live_channel_id, mod_channel_id, mod_log_channel_id, mod_log_events, bday_channel_id, bday_source_login
+			broadcaster_login, guild_id, live_channel_id, mod_channel_id, mod_log_channel_id, mod_log_events, honeypot_channel_id, bday_channel_id, bday_source_login
 		FROM discord_settings
 		WHERE lower(btrim(bday_source_login)) = $1 AND bday_channel_id <> ''
 		ORDER BY guild_id, (broadcaster_login = '') DESC
@@ -1499,7 +1504,7 @@ func GetDiscordSettingsForBirthdaySource(sourceLogin string) ([]DiscordSettings,
 	for rows.Next() {
 		var s DiscordSettings
 		var modLogEvents string
-		if err := rows.Scan(&s.BroadcasterLogin, &s.GuildID, &s.LiveChannelID, &s.ModChannelID, &s.ModLogChannelID, &modLogEvents, &s.BdayChannelID, &s.BdaySourceLogin); err != nil {
+		if err := rows.Scan(&s.BroadcasterLogin, &s.GuildID, &s.LiveChannelID, &s.ModChannelID, &s.ModLogChannelID, &modLogEvents, &s.HoneypotChannelID, &s.BdayChannelID, &s.BdaySourceLogin); err != nil {
 			return nil, err
 		}
 		s.ModLogEvents = parseDiscordModLogEvents(modLogEvents)
@@ -1518,14 +1523,14 @@ func GetDiscordSettingsByGuild(guildID string) (*DiscordSettings, error) {
 	// Prefer an explicit guild-level row (broadcaster_login = '') when present,
 	// otherwise fall back to any existing per-broadcaster row for the guild.
 	row := db.QueryRowContext(context.Background(), `
-		SELECT broadcaster_login, guild_id, live_channel_id, mod_channel_id, mod_log_channel_id, mod_log_events, bday_channel_id, bday_source_login
+		SELECT broadcaster_login, guild_id, live_channel_id, mod_channel_id, mod_log_channel_id, mod_log_events, honeypot_channel_id, bday_channel_id, bday_source_login
 		FROM discord_settings WHERE guild_id = $1
 		ORDER BY (broadcaster_login = '') DESC
 		LIMIT 1
 	`, guildID)
 	var s DiscordSettings
 	var modLogEvents string
-	if err := row.Scan(&s.BroadcasterLogin, &s.GuildID, &s.LiveChannelID, &s.ModChannelID, &s.ModLogChannelID, &modLogEvents, &s.BdayChannelID, &s.BdaySourceLogin); err != nil {
+	if err := row.Scan(&s.BroadcasterLogin, &s.GuildID, &s.LiveChannelID, &s.ModChannelID, &s.ModLogChannelID, &modLogEvents, &s.HoneypotChannelID, &s.BdayChannelID, &s.BdaySourceLogin); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
@@ -1547,17 +1552,18 @@ func SaveDiscordSettings(s DiscordSettings) error {
 		return err
 	}
 	_, err = db.ExecContext(context.Background(), `
-		INSERT INTO discord_settings (broadcaster_login, guild_id, live_channel_id, mod_channel_id, mod_log_channel_id, mod_log_events, bday_channel_id, bday_source_login, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+		INSERT INTO discord_settings (broadcaster_login, guild_id, live_channel_id, mod_channel_id, mod_log_channel_id, mod_log_events, honeypot_channel_id, bday_channel_id, bday_source_login, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
 		ON CONFLICT (broadcaster_login, guild_id) DO UPDATE SET
 			live_channel_id   = EXCLUDED.live_channel_id,
 			mod_channel_id    = EXCLUDED.mod_channel_id,
 			mod_log_channel_id = EXCLUDED.mod_log_channel_id,
 			mod_log_events     = EXCLUDED.mod_log_events,
+			honeypot_channel_id = EXCLUDED.honeypot_channel_id,
 			bday_channel_id   = EXCLUDED.bday_channel_id,
 			bday_source_login = EXCLUDED.bday_source_login,
 			updated_at        = NOW()
-	`, s.BroadcasterLogin, s.GuildID, s.LiveChannelID, s.ModChannelID, s.ModLogChannelID, string(modLogEvents), s.BdayChannelID, s.BdaySourceLogin)
+	`, s.BroadcasterLogin, s.GuildID, s.LiveChannelID, s.ModChannelID, s.ModLogChannelID, string(modLogEvents), s.HoneypotChannelID, s.BdayChannelID, s.BdaySourceLogin)
 	return err
 }
 

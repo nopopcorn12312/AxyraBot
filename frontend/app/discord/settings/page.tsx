@@ -242,6 +242,9 @@ export default function DiscordSettingsPage() {
   const [modChannelId, setModChannelId] = useState("");
   const [modLogChannelId, setModLogChannelId] = useState("");
   const [modLogEvents, setModLogEvents] = useState<string[]>([]);
+  const [modLogEventsDraft, setModLogEventsDraft] = useState<string[]>([]);
+  const [editingModLogOptions, setEditingModLogOptions] = useState(false);
+  const [honeypotChannelId, setHoneypotChannelId] = useState("");
   const [bdayChannelId, setBdayChannelId] = useState("");
   const [bdaySourceLogin, setBdaySourceLogin] = useState("");
   const [bdaySourceListOptions, setBdaySourceListOptions] = useState<{ value: string; label: string }[]>([]);
@@ -396,6 +399,7 @@ export default function DiscordSettingsPage() {
     setModChannelId("");
     setModLogChannelId("");
     setModLogEvents([]);
+    setHoneypotChannelId("");
     setBdayChannelId("");
     setBdaySourceLogin("");
     fetch(`${backendUrl}/discord/settings?login=${encodeURIComponent(channelLogin)}&guild_id=${encodeURIComponent(selectedGuildId)}`)
@@ -406,6 +410,7 @@ export default function DiscordSettingsPage() {
           setModChannelId(data.mod_channel_id ?? "");
           setModLogChannelId(data.mod_log_channel_id ?? "");
           setModLogEvents(data.mod_log_events ?? []);
+          setHoneypotChannelId(data.honeypot_channel_id ?? "");
           setBdayChannelId(data.bday_channel_id ?? "");
           setBdaySourceLogin(data.bday_source_login ?? "");
         }
@@ -677,6 +682,7 @@ export default function DiscordSettingsPage() {
           mod_channel_id: modChannelId,
           mod_log_channel_id: modLogChannelId,
           mod_log_events: modLogEvents,
+          honeypot_channel_id: honeypotChannelId,
           bday_channel_id: bdayChannelId,
           bday_source_login: bdaySourceLogin,
         }),
@@ -1398,27 +1404,39 @@ export default function DiscordSettingsPage() {
                               {guildChannels.map((c) => <option key={c.id} value={c.id}>#{c.name}</option>)}
                             </select>
                             {modLogChannelId && (
-                              <div className="grid grid-cols-1 gap-x-4 gap-y-2 pt-2 sm:grid-cols-2">
-                                {discordModLogOptions.map((option) => {
-                                  const checked = modLogEvents.includes(option.key);
-                                  return (
-                                    <label key={option.key} className="flex cursor-pointer items-start gap-2 text-xs text-slate-300">
-                                      <input
-                                        type="checkbox"
-                                        checked={checked}
-                                        onChange={() => setModLogEvents((current) =>
-                                          checked
-                                            ? current.filter((event) => event !== option.key)
-                                            : [...current, option.key]
-                                        )}
-                                        className="mt-0.5 accent-sky-400"
-                                      />
-                                      <span>{option.label}</span>
-                                    </label>
-                                  );
-                                })}
+                              <div className="flex items-center justify-between gap-3 pt-2">
+                                <span className="text-xs text-slate-400">
+                                  {modLogEvents.filter((event) => discordModLogOptions.some((option) => option.key === event)).length} event types selected
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setModLogEventsDraft([...modLogEvents]);
+                                    setEditingModLogOptions(true);
+                                  }}
+                                  className="text-xs text-accent hover:underline"
+                                >
+                                  Edit options
+                                </button>
                               </div>
                             )}
+                          </section>
+
+                          <section className="flex flex-col gap-2 border-t border-slate-800 pt-4">
+                            <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-300">
+                              <span>🍯</span> Honeypot
+                            </label>
+                            <p className="text-xs text-amber-300/80">
+                              Any member or bot account that posts here is immediately banned, and all of their messages in this channel are deleted. AxyraBot and webhook posts are ignored. Requires Ban Members, Manage Messages, View Channel, and Read Message History.
+                            </p>
+                            <select
+                              value={honeypotChannelId}
+                              onChange={(e) => setHoneypotChannelId(e.target.value)}
+                              className={channelSelectClass}
+                            >
+                              <option value="">Disabled</option>
+                              {guildChannels.map((c) => <option key={c.id} value={c.id}>#{c.name}</option>)}
+                            </select>
                           </section>
 
                           <div className="flex flex-col gap-1">
@@ -2474,6 +2492,76 @@ export default function DiscordSettingsPage() {
             </div>
           </div>
         </div>
+      </div>
+    )}
+
+    {editingModLogOptions && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+        <section
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="discord-mod-log-options-title"
+          className="flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-slate-700 bg-slate-900 shadow-2xl"
+        >
+          <header className="flex items-center justify-between border-b border-slate-800 px-5 py-4">
+            <div>
+              <h2 id="discord-mod-log-options-title" className="text-sm font-semibold text-slate-100">
+                Edit Discord mod-log options
+              </h2>
+              <p className="mt-1 text-xs text-slate-500">Choose which events appear in the selected log channel.</p>
+            </div>
+            <button
+              type="button"
+              aria-label="Close mod-log options"
+              onClick={() => setEditingModLogOptions(false)}
+              className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-800 hover:text-slate-200"
+            >
+              <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4"><path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" /></svg>
+            </button>
+          </header>
+          <div className="grid grid-cols-1 gap-x-6 gap-y-3 overflow-y-auto px-5 py-5 sm:grid-cols-2">
+            {discordModLogOptions.map((option) => {
+              const checked = modLogEventsDraft.includes(option.key);
+              return (
+                <label key={option.key} className="flex cursor-pointer items-start gap-2 text-sm text-slate-300">
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => setModLogEventsDraft((current) =>
+                      checked
+                        ? current.filter((event) => event !== option.key)
+                        : [...current, option.key]
+                    )}
+                    className="mt-0.5 accent-sky-400"
+                  />
+                  <span>{option.label}</span>
+                </label>
+              );
+            })}
+          </div>
+          <footer className="flex flex-col-reverse gap-3 border-t border-slate-800 bg-slate-950/40 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs text-slate-500">Press Save Settings on the page to store these selections.</p>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setEditingModLogOptions(false)}
+                className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 transition hover:bg-slate-800"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setModLogEvents([...modLogEventsDraft]);
+                  setEditingModLogOptions(false);
+                }}
+                className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-sky-300"
+              >
+                Apply
+              </button>
+            </div>
+          </footer>
+        </section>
       </div>
     )}
     </>

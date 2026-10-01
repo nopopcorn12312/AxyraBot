@@ -7,12 +7,18 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
 )
 
 var discordSession *discordgo.Session
+
+var (
+	honeypotMu        sync.Mutex
+	honeypotInFlight = map[string]bool{}
+)
 
 // InitDiscord starts the Discord bot. It reads DISCORD_BOT_TOKEN from the
 // environment. If the token is absent the function returns silently and all
@@ -1020,13 +1026,102 @@ func discordInteractionHandler(s *discordgo.Session, i *discordgo.InteractionCre
 // discordMessageHandler listens for regular chat messages and fires custom
 // Twitch-style commands (e.g. "!hello") in any guild channel that has a
 // linked Twitch broadcaster via discord_settings.
+func shouldTriggerHoneypotMessage(m *discordgo.MessageCreate, selfUserID, honeypotChannelID string) bool {
+	if m == nil || m.Message == nil || m.Author == nil || m.GuildID == "" || m.WebhookID != "" {
+		return false
+	}
+	if honeypotChannelID == "" || m.ChannelID != honeypotChannelID || m.Author.ID == selfUserID {
+		return false
+	}
+	return true
+}
+
+func deleteHoneypotMessages(s *discordgo.Session, channelID, userID string) int {
+	deleted := 0
+	beforeID := ""
+	for {
+		messages, err := s.ChannelMessages(channelID, 100, beforeID, "", "")
+		if err != nil {
+			log.Printf("[honeypot] failed to read channel %s history: %v", channelID, err)
+			return deleted
+		}
+		if len(messages) == 0 {
+			return deleted
+		}
+		for _, message := range messages {
+			if message.Author == nil || message.Author.ID != userID {
+				continue
+			}
+			if err := s.ChannelMessageDelete(channelID, message.ID); err != nil {
+				log.Printf("[honeypot] failed to delete message %s: %v", message.ID, err)
+				continue
+			}
+			deleted++
+		}
+		if len(messages) < 100 {
+			return deleted
+		}
+		beforeID = messages[len(messages)-1].ID
+	}
+}
+
+func handleHoneypotMessage(s *discordgo.Session, m *discordgo.MessageCreate) bool {
+	if m == nil || m.Author == nil || m.GuildID == "" || s == nil {
+		return false
+	}
+	settings, err := GetDiscordSettingsByGuild(m.GuildID)
+	if err != nil || settings == nil {
+		return false
+	}
+	selfUserID := ""
+	if s.State != nil && s.State.User != nil {
+		selfUserID = s.State.User.ID
+	}
+	if !shouldTriggerHoneypotMessage(m, selfUserID, settings.HoneypotChannelID) {
+		return false
+	}
+
+	key := m.GuildID + ":" + m.Author.ID
+	honeypotMu.Lock()
+	if honeypotInFlight[key] {
+		honeypotMu.Unlock()
+		return true
+	}
+	honeypotInFlight[key] = true
+	honeypotMu.Unlock()
+
+	go func(message *discordgo.MessageCreate, username string) {
+		defer func() {
+			honeypotMu.Lock()
+			delete(honeypotInFlight, key)
+			honeypotMu.Unlock()
+		}()
+
+		reason := "Posted in the server's honeypot channel"
+		if err := s.GuildBanCreateWithReason(message.GuildID, message.Author.ID, reason, 0); err != nil {
+			log.Printf("[honeypot] failed to ban user %s in guild %s: %v", message.Author.ID, message.GuildID, err)
+		}
+		deleted := deleteHoneypotMessages(s, message.ChannelID, message.Author.ID)
+		log.Printf("[honeypot] handled user %s (%s) in guild %s; deleted %d channel messages", message.Author.ID, username, message.GuildID, deleted)
+	}(m, m.Author.Username)
+	return true
+}
+
 func discordMessageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
-	// Ignore messages from the bot itself.
-	if m.Author == nil || m.Author.Bot {
+	if m == nil || m.Message == nil || m.Author == nil {
 		return
 	}
 	// Only handle guild (server) messages.
 	if m.GuildID == "" {
+		return
+	}
+	// Check honeypot before filtering bot-authored messages so bot accounts that
+	// enter the trap channel are caught too.
+	if handleHoneypotMessage(s, m) {
+		return
+	}
+	// Ignore other bot messages for ordinary command handling.
+	if m.Author.Bot {
 		return
 	}
 	// Must start with "!" to be a potential command.

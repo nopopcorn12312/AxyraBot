@@ -19,25 +19,25 @@ import (
 
 // discordHTTPClient is a shared HTTP client for external API calls.
 const (
-	discordModLogMessageDelete = "message_delete"
+	discordModLogMessageDelete     = "message_delete"
 	discordModLogMessageBulkDelete = "message_bulk_delete"
-	discordModLogMemberTimeout = "member_timeout"
-	discordModLogMemberBan = "member_ban"
-	discordModLogMemberUnban = "member_unban"
-	discordModLogMemberKick = "member_kick"
-	discordModLogMemberPrune = "member_prune"
-	discordModLogMemberRoleAdd = "member_role_add"
-	discordModLogMemberRoleRemove = "member_role_remove"
-	discordModLogVoiceMove = "voice_move"
-	discordModLogVoiceDisconnect = "voice_disconnect"
-	discordModLogAutoMod = "automod_action"
-	discordModLogNickname = "nickname_change"
-	discordModLogChannelCreate = "channel_create"
-	discordModLogChannelUpdate = "channel_update"
-	discordModLogChannelDelete = "channel_delete"
-	discordModLogRoleCreate = "role_create"
-	discordModLogRoleUpdate = "role_update"
-	discordModLogRoleDelete = "role_delete"
+	discordModLogMemberTimeout     = "member_timeout"
+	discordModLogMemberBan         = "member_ban"
+	discordModLogMemberUnban       = "member_unban"
+	discordModLogMemberKick        = "member_kick"
+	discordModLogMemberPrune       = "member_prune"
+	discordModLogMemberRoleAdd     = "member_role_add"
+	discordModLogMemberRoleRemove  = "member_role_remove"
+	discordModLogVoiceMove         = "voice_move"
+	discordModLogVoiceDisconnect   = "voice_disconnect"
+	discordModLogAutoMod           = "automod_action"
+	discordModLogNickname          = "nickname_change"
+	discordModLogChannelCreate     = "channel_create"
+	discordModLogChannelUpdate     = "channel_update"
+	discordModLogChannelDelete     = "channel_delete"
+	discordModLogRoleCreate        = "role_create"
+	discordModLogRoleUpdate        = "role_update"
+	discordModLogRoleDelete        = "role_delete"
 )
 
 var discordModLogEventKeys = map[string]struct{}{
@@ -106,6 +106,7 @@ func postDiscordModLog(s *discordgo.Session, guildID string, record discordModLo
 		log.Println("[Discord mod logs] failed to send entry:", err)
 	}
 }
+
 var discordHTTPClient = &http.Client{Timeout: 10 * time.Second}
 
 // ── Module guard ──────────────────────────────────────────────────────────────
@@ -2498,7 +2499,7 @@ func handleTicketCreate(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	welcomeContent, allowedMentions := buildTicketOpenedMessage(user.ID, ticketNum, cfg.SupportRoleIDs)
 	_, _ = s.ChannelMessageSendComplex(ch.ID, &discordgo.MessageSend{
 		Content: welcomeContent,
-		Embeds: []*discordgo.MessageEmbed{welcomeEmbed},
+		Embeds:  []*discordgo.MessageEmbed{welcomeEmbed},
 		Components: []discordgo.MessageComponent{
 			discordgo.ActionsRow{Components: []discordgo.MessageComponent{closeBtn}},
 		},
