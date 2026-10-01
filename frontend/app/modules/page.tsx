@@ -21,6 +21,8 @@ type ModuleRow = {
   description: string;
   enabled: boolean;
   message: string;
+  native_shoutout_enabled?: boolean;
+  native_shoutout_min_viewers?: number;
 };
 
 type BirthdayCommandConfig = {
@@ -32,16 +34,19 @@ type BirthdayCommandConfig = {
 type ToggleProps = {
   enabled: boolean;
   onChange: (next: boolean) => void;
+  disabled?: boolean;
 };
 
-function ModuleToggle({ enabled, onChange }: ToggleProps) {
+function ModuleToggle({ enabled, onChange, disabled = false }: ToggleProps) {
   return (
     <button
       type="button"
       onClick={() => onChange(!enabled)}
+      disabled={disabled}
+      aria-pressed={enabled}
       className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
         enabled ? "bg-emerald-500" : "bg-slate-600"
-      }`}
+      } ${disabled ? "cursor-not-allowed opacity-50" : ""}`}
     >
       <span
         className={`inline-block h-4 w-4 transform rounded-full bg-slate-950 shadow transition-transform ${
@@ -83,6 +88,8 @@ export default function ModulesPage() {
   const [editingModule, setEditingModule] = useState<string | null>(null);
   const [editMessage, setEditMessage] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
+  const [savingNativeShoutout, setSavingNativeShoutout] = useState(false);
+  const [savingNativeShoutoutThreshold, setSavingNativeShoutoutThreshold] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
   const [birthdayCommands, setBirthdayCommands] = useState<BirthdayCommandConfig[]>([]);
   const [loadingBirthdayCommands, setLoadingBirthdayCommands] = useState(false);
@@ -252,6 +259,62 @@ export default function ModulesPage() {
           m.name === moduleName ? { ...m, enabled: !next } : m,
         ),
       );
+    }
+  };
+
+  const handleNativeShoutoutToggle = async (next: boolean) => {
+    if (!login) return;
+    const previous = modules.find((mod) => mod.name === "raid_shoutout")?.native_shoutout_enabled ?? true;
+    setModules((current) => current.map((mod) =>
+      mod.name === "raid_shoutout" ? { ...mod, native_shoutout_enabled: next } : mod,
+    ));
+    setSavingNativeShoutout(true);
+    setEditError(null);
+    try {
+      const res = await fetch(`${backendUrl}/modules/settings`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ login, module: "raid_native_shoutout", enabled: next }),
+      });
+      if (!res.ok) throw new Error("Failed to save native shoutout setting");
+    } catch (err) {
+      console.error(err);
+      setModules((current) => current.map((mod) =>
+        mod.name === "raid_shoutout" ? { ...mod, native_shoutout_enabled: previous } : mod,
+      ));
+      setEditError("Could not save the native shoutout setting.");
+    } finally {
+      setSavingNativeShoutout(false);
+    }
+  };
+
+  const handleNativeShoutoutThresholdSave = async (module: ModuleRow) => {
+    if (!login) return;
+    const minimumViewers = Math.max(0, Math.floor(module.native_shoutout_min_viewers ?? 0));
+    setSavingNativeShoutoutThreshold(true);
+    setEditError(null);
+    try {
+      const res = await fetch(`${backendUrl}/modules/settings`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          login,
+          module: "raid_native_shoutout",
+          enabled: module.native_shoutout_enabled ?? true,
+          message: String(minimumViewers),
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to save raid viewer threshold");
+      setModules((current) => current.map((entry) =>
+        entry.name === "raid_shoutout"
+          ? { ...entry, native_shoutout_min_viewers: minimumViewers }
+          : entry,
+      ));
+    } catch (err) {
+      console.error(err);
+      setEditError("Could not save the raid viewer threshold.");
+    } finally {
+      setSavingNativeShoutoutThreshold(false);
     }
   };
 
@@ -806,6 +869,51 @@ export default function ModulesPage() {
                               Shoutout message
                             </span>
                           </div>
+                          <div className="flex items-center justify-between gap-4 rounded-md border border-slate-800 bg-slate-950/40 px-3 py-2">
+                            <div className="flex flex-col gap-0.5">
+                              <span className="text-xs font-medium text-slate-200">Native Twitch /shoutout command</span>
+                              <span className="text-[11px] text-slate-500">Independently sends Twitch&apos;s built-in shoutout when a raid arrives.</span>
+                            </div>
+                            <ModuleToggle
+                              enabled={m.native_shoutout_enabled ?? true}
+                              onChange={handleNativeShoutoutToggle}
+                              disabled={savingNativeShoutout}
+                            />
+                          </div>
+                          <div className="flex flex-col gap-2 rounded-md border border-slate-800 bg-slate-950/40 px-3 py-2 sm:flex-row sm:items-end sm:justify-between">
+                            <div className="flex flex-col gap-1">
+                              <label htmlFor="native-shoutout-min-viewers" className="text-xs font-medium text-slate-200">
+                                Minimum raid viewers for native shoutout
+                              </label>
+                              <p className="text-[11px] text-slate-500">0 sends it for every raid. Below the minimum, only the custom chat message is sent.</p>
+                              <input
+                                id="native-shoutout-min-viewers"
+                                type="number"
+                                min={0}
+                                step={1}
+                                value={m.native_shoutout_min_viewers ?? 0}
+                                onChange={(event) => {
+                                  const value = Number(event.target.value);
+                                  if (Number.isInteger(value) && value >= 0) {
+                                    setModules((current) => current.map((entry) =>
+                                      entry.name === "raid_shoutout"
+                                        ? { ...entry, native_shoutout_min_viewers: value }
+                                        : entry,
+                                    ));
+                                  }
+                                }}
+                                className="w-32 rounded-md border border-slate-700 bg-slate-900/80 px-2 py-1 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-accent/60"
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => void handleNativeShoutoutThresholdSave(m)}
+                              disabled={savingNativeShoutoutThreshold}
+                              className="self-start rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white hover:bg-accent/90 disabled:opacity-60 sm:self-auto"
+                            >
+                              {savingNativeShoutoutThreshold ? "Saving..." : "Save threshold"}
+                            </button>
+                          </div>
                           <p className="mb-1 text-xs text-slate-400">
                             Current message: {m.message || defaultRaidShoutoutMessage}
                           </p>
@@ -823,8 +931,7 @@ export default function ModulesPage() {
                               />
                               <p className="text-[11px] text-slate-400">
                                 You can use $(raider) and $(game) as variables.
-                                A native Twitch shoutout is also sent
-                                automatically.
+                                This custom chat message is sent independently of the native shoutout toggle above.
                               </p>
                               {editError && (
                                 <div className="text-xs text-red-400">{editError}</div>

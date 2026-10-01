@@ -42,3 +42,25 @@ func TestShouldTriggerHoneypotMessage(t *testing.T) {
 		t.Fatal("direct messages must not trigger the honeypot")
 	}
 }
+
+func TestIsHoneypotHistoryChannelType(t *testing.T) {
+	messageChannelTypes := []discordgo.ChannelType{
+		discordgo.ChannelTypeGuildText,
+		discordgo.ChannelTypeGuildNews,
+		discordgo.ChannelTypeGuildVoice,
+		discordgo.ChannelTypeGuildStageVoice,
+		discordgo.ChannelTypeGuildNewsThread,
+		discordgo.ChannelTypeGuildPublicThread,
+		discordgo.ChannelTypeGuildPrivateThread,
+		discordgo.ChannelTypeGuildForum,
+		discordgo.ChannelTypeGuildMedia,
+	}
+	for _, channelType := range messageChannelTypes {
+		if !isHoneypotHistoryChannelType(channelType) {
+			t.Errorf("channel type %d should be scanned for messages", channelType)
+		}
+	}
+	if isHoneypotHistoryChannelType(discordgo.ChannelTypeGuildCategory) {
+		t.Fatal("category channels do not contain message history")
+	}
+}

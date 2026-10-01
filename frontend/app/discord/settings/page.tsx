@@ -1427,7 +1427,7 @@ export default function DiscordSettingsPage() {
                               <span>🍯</span> Honeypot
                             </label>
                             <p className="text-xs text-amber-300/80">
-                              Any member or bot account that posts here is immediately banned, and all of their messages in this channel are deleted. AxyraBot and webhook posts are ignored. Requires Ban Members, Manage Messages, View Channel, and Read Message History.
+                              Anyone other than AxyraBot or a webhook that posts here is immediately banned. Their messages are removed across channels the bot can access; the ban also deletes up to 7 days of recent server messages. Grant Ban Members, Manage Messages, View Channel, and Read Message History across channels. Private threads the bot cannot access cannot be cleared.
                             </p>
                             <select
                               value={honeypotChannelId}

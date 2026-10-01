@@ -610,7 +610,7 @@ func sendShoutout(channelLogin, toLogin string) error {
 // handleRaidEvent responds to an incoming channel.raid EventSub notification
 // by issuing a native Twitch shoutout for the raider and posting a chat
 // message pointing viewers to the raider's channel and last-played game.
-func handleRaidEvent(channelLogin, raiderLogin, raiderDisplayName string) {
+func handleRaidEvent(channelLogin, raiderLogin, raiderDisplayName string, raidViewers int) {
 	channelLogin = strings.ToLower(channelLogin)
 	raiderLogin = strings.ToLower(raiderLogin)
 	if channelLogin == "" || raiderLogin == "" {
@@ -619,8 +619,10 @@ func handleRaidEvent(channelLogin, raiderLogin, raiderDisplayName string) {
 	if !isModuleEnabled(channelLogin, "raid_shoutout") {
 		return
 	}
-	if err := sendShoutout(channelLogin, raiderLogin); err != nil {
-		log.Println("failed to send native shoutout for raid:", err)
+	if isModuleEnabled(channelLogin, "raid_native_shoutout") && shouldSendNativeRaidShoutout(raidViewers, getNativeRaidShoutoutMinViewers(channelLogin)) {
+		if err := sendShoutout(channelLogin, raiderLogin); err != nil {
+			log.Println("failed to send native shoutout for raid:", err)
+		}
 	}
 	_, game, err := getChannelTitleAndGame(raiderLogin)
 	if err != nil {
@@ -636,6 +638,26 @@ func handleRaidEvent(channelLogin, raiderLogin, raiderDisplayName string) {
 	if err := InsertAuditLog(channelLogin, "twitch", "raid", fmt.Sprintf("%s raided the channel; auto-shoutout sent", raiderDisplayName)); err != nil {
 		log.Println("failed to insert audit log for raid:", err)
 	}
+}
+
+func shouldSendNativeRaidShoutout(raidViewers, minimumViewers int) bool {
+	if minimumViewers < 0 {
+		minimumViewers = 0
+	}
+	return raidViewers >= minimumViewers
+}
+
+func getNativeRaidShoutoutMinViewers(channelLogin string) int {
+	stored, err := GetModuleMessage(channelLogin, "raid_native_shoutout")
+	if err != nil {
+		log.Println("failed to load native shoutout viewer threshold:", err)
+		return 0
+	}
+	minimumViewers, err := strconv.Atoi(strings.TrimSpace(stored))
+	if err != nil || minimumViewers < 0 {
+		return 0
+	}
+	return minimumViewers
 }
 
 // isChatCommand returns true if the message matches the given command token

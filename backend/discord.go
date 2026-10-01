@@ -1036,7 +1036,61 @@ func shouldTriggerHoneypotMessage(m *discordgo.MessageCreate, selfUserID, honeyp
 	return true
 }
 
-func deleteHoneypotMessages(s *discordgo.Session, channelID, userID string) int {
+func isHoneypotHistoryChannelType(channelType discordgo.ChannelType) bool {
+	switch channelType {
+	case discordgo.ChannelTypeGuildText,
+		discordgo.ChannelTypeGuildNews,
+		discordgo.ChannelTypeGuildVoice,
+		discordgo.ChannelTypeGuildStageVoice,
+		discordgo.ChannelTypeGuildNewsThread,
+		discordgo.ChannelTypeGuildPublicThread,
+		discordgo.ChannelTypeGuildPrivateThread,
+		discordgo.ChannelTypeGuildForum,
+		discordgo.ChannelTypeGuildMedia:
+		return true
+	default:
+		return false
+	}
+}
+
+func collectHoneypotArchivedThreads(s *discordgo.Session, parent *discordgo.Channel, private bool) []*discordgo.Channel {
+	var threads []*discordgo.Channel
+	var before *time.Time
+	for {
+		var page *discordgo.ThreadsList
+		var err error
+		if private {
+			page, err = s.ThreadsPrivateArchived(parent.ID, before, 100)
+			if err != nil {
+				page, err = s.ThreadsPrivateJoinedArchived(parent.ID, before, 100)
+			}
+		} else {
+			page, err = s.ThreadsArchived(parent.ID, before, 100)
+		}
+		if err != nil {
+			log.Printf("[honeypot] failed to list archived threads for channel %s: %v", parent.ID, err)
+			return threads
+		}
+		if page == nil || len(page.Threads) == 0 {
+			return threads
+		}
+		threads = append(threads, page.Threads...)
+		if !page.HasMore {
+			return threads
+		}
+		lastThread := page.Threads[len(page.Threads)-1]
+		if lastThread.ThreadMetadata == nil || lastThread.ThreadMetadata.ArchiveTimestamp.IsZero() {
+			return threads
+		}
+		nextBefore := lastThread.ThreadMetadata.ArchiveTimestamp
+		if before != nil && !nextBefore.Before(*before) {
+			return threads
+		}
+		before = &nextBefore
+	}
+}
+
+func deleteHoneypotMessagesInChannel(s *discordgo.Session, channelID, userID string) int {
 	deleted := 0
 	beforeID := ""
 	for {
@@ -1063,6 +1117,50 @@ func deleteHoneypotMessages(s *discordgo.Session, channelID, userID string) int 
 		}
 		beforeID = messages[len(messages)-1].ID
 	}
+}
+
+func deleteHoneypotMessages(s *discordgo.Session, guildID, userID string) int {
+	channels, err := s.GuildChannels(guildID)
+	if err != nil {
+		log.Printf("[honeypot] failed to list channels in guild %s: %v", guildID, err)
+		return 0
+	}
+	channelByID := make(map[string]*discordgo.Channel)
+	for _, channel := range channels {
+		if isHoneypotHistoryChannelType(channel.Type) {
+			channelByID[channel.ID] = channel
+		}
+	}
+	if active, err := s.GuildThreadsActive(guildID); err != nil {
+		log.Printf("[honeypot] failed to list active threads in guild %s: %v", guildID, err)
+	} else if active != nil {
+		for _, thread := range active.Threads {
+			channelByID[thread.ID] = thread
+		}
+	}
+	for _, parent := range channels {
+		switch parent.Type {
+		case discordgo.ChannelTypeGuildText, discordgo.ChannelTypeGuildNews,
+			discordgo.ChannelTypeGuildForum, discordgo.ChannelTypeGuildMedia:
+			for _, thread := range collectHoneypotArchivedThreads(s, parent, false) {
+				channelByID[thread.ID] = thread
+			}
+			for _, thread := range collectHoneypotArchivedThreads(s, parent, true) {
+				channelByID[thread.ID] = thread
+			}
+		}
+	}
+
+	channelIDs := make([]string, 0, len(channelByID))
+	for channelID := range channelByID {
+		channelIDs = append(channelIDs, channelID)
+	}
+	sort.Strings(channelIDs)
+	deleted := 0
+	for _, channelID := range channelIDs {
+		deleted += deleteHoneypotMessagesInChannel(s, channelID, userID)
+	}
+	return deleted
 }
 
 func handleHoneypotMessage(s *discordgo.Session, m *discordgo.MessageCreate) bool {
@@ -1098,11 +1196,11 @@ func handleHoneypotMessage(s *discordgo.Session, m *discordgo.MessageCreate) boo
 		}()
 
 		reason := "Posted in the server's honeypot channel"
-		if err := s.GuildBanCreateWithReason(message.GuildID, message.Author.ID, reason, 0); err != nil {
+		if err := s.GuildBanCreateWithReason(message.GuildID, message.Author.ID, reason, 7); err != nil {
 			log.Printf("[honeypot] failed to ban user %s in guild %s: %v", message.Author.ID, message.GuildID, err)
 		}
-		deleted := deleteHoneypotMessages(s, message.ChannelID, message.Author.ID)
-		log.Printf("[honeypot] handled user %s (%s) in guild %s; deleted %d channel messages", message.Author.ID, username, message.GuildID, deleted)
+		deleted := deleteHoneypotMessages(s, message.GuildID, message.Author.ID)
+		log.Printf("[honeypot] handled user %s (%s) in guild %s; deleted %d accessible server messages", message.Author.ID, username, message.GuildID, deleted)
 	}(m, m.Author.Username)
 	return true
 }

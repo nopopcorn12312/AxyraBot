@@ -800,6 +800,8 @@ func handleModuleSettings(w http.ResponseWriter, r *http.Request) {
 			Description string `json:"description"`
 			Enabled     bool   `json:"enabled"`
 			Message     string `json:"message"`
+			NativeShoutoutEnabled bool `json:"native_shoutout_enabled"`
+			NativeShoutoutMinViewers int `json:"native_shoutout_min_viewers"`
 		}{}
 		// Live announcement when the broadcaster goes live
 		enabled, err := GetModuleEnabled(login, "live_announcement")
@@ -820,12 +822,16 @@ func handleModuleSettings(w http.ResponseWriter, r *http.Request) {
 			Description string `json:"description"`
 			Enabled     bool   `json:"enabled"`
 			Message     string `json:"message"`
+			NativeShoutoutEnabled bool `json:"native_shoutout_enabled"`
+			NativeShoutoutMinViewers int `json:"native_shoutout_min_viewers"`
 		}{
 			Name:        "live_announcement",
 			Label:       "Go live announcement",
 			Description: "Send a chat message when your stream goes live.",
 			Enabled:     enabled,
 			Message:     msgTmpl,
+			NativeShoutoutEnabled: false,
+			NativeShoutoutMinViewers: 0,
 		})
 
 		// Birthdays module controlling all birthday-related chat commands.
@@ -841,12 +847,16 @@ func handleModuleSettings(w http.ResponseWriter, r *http.Request) {
 			Description string `json:"description"`
 			Enabled     bool   `json:"enabled"`
 			Message     string `json:"message"`
+			NativeShoutoutEnabled bool `json:"native_shoutout_enabled"`
+			NativeShoutoutMinViewers int `json:"native_shoutout_min_viewers"`
 		}{
 			Name:        "birthdays",
 			Label:       "Birthdays",
 			Description: "Enable birthday chat commands like !birthday and !nextbday.",
 			Enabled:     bdayEnabled,
 			Message:     "",
+			NativeShoutoutEnabled: false,
+			NativeShoutoutMinViewers: 0,
 		})
 
 		// Raid auto-shoutout: shout out and announce raiders when they raid.
@@ -854,6 +864,17 @@ func handleModuleSettings(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Println("failed to load raid_shoutout module setting:", err)
 			raidEnabled = true
+		}
+		nativeShoutoutEnabled, err := GetModuleEnabled(login, "raid_native_shoutout")
+		if err != nil {
+			log.Println("failed to load native raid shoutout setting:", err)
+			nativeShoutoutEnabled = true
+		}
+		nativeShoutoutMinViewers := 0
+		if stored, err := GetModuleMessage(login, "raid_native_shoutout"); err != nil {
+			log.Println("failed to load native shoutout viewer threshold:", err)
+		} else if parsed, err := strconv.Atoi(strings.TrimSpace(stored)); err == nil && parsed > 0 {
+			nativeShoutoutMinViewers = parsed
 		}
 		raidMsgTmpl := defaultRaidShoutoutTemplate
 		if msg, err := GetModuleMessage(login, "raid_shoutout"); err != nil {
@@ -867,12 +888,16 @@ func handleModuleSettings(w http.ResponseWriter, r *http.Request) {
 			Description string `json:"description"`
 			Enabled     bool   `json:"enabled"`
 			Message     string `json:"message"`
+			NativeShoutoutEnabled bool `json:"native_shoutout_enabled"`
+			NativeShoutoutMinViewers int `json:"native_shoutout_min_viewers"`
 		}{
 			Name:        "raid_shoutout",
 			Label:       "Raid auto-shoutout",
-			Description: "Automatically shout out and announce a channel when they raid you.",
+			Description: "Post a custom chat message when a channel raids you.",
 			Enabled:     raidEnabled,
 			Message:     raidMsgTmpl,
+			NativeShoutoutEnabled: nativeShoutoutEnabled,
+			NativeShoutoutMinViewers: nativeShoutoutMinViewers,
 		})
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(struct {
@@ -2734,8 +2759,12 @@ func handleEventSubWebhook(w http.ResponseWriter, r *http.Request) {
 				toLogin, _ := event["to_broadcaster_user_login"].(string)
 				fromLogin, _ := event["from_broadcaster_user_login"].(string)
 				fromName, _ := event["from_broadcaster_user_name"].(string)
+				viewers := 0
+				if count, ok := event["viewers"].(float64); ok {
+					viewers = int(count)
+				}
 				if toLogin != "" && fromLogin != "" {
-					handleRaidEvent(toLogin, fromLogin, fromName)
+					handleRaidEvent(toLogin, fromLogin, fromName, viewers)
 				}
 				return
 			}
