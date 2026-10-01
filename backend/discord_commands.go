@@ -18,6 +18,94 @@ import (
 )
 
 // discordHTTPClient is a shared HTTP client for external API calls.
+const (
+	discordModLogMessageDelete = "message_delete"
+	discordModLogMessageBulkDelete = "message_bulk_delete"
+	discordModLogMemberTimeout = "member_timeout"
+	discordModLogMemberBan = "member_ban"
+	discordModLogMemberUnban = "member_unban"
+	discordModLogMemberKick = "member_kick"
+	discordModLogMemberPrune = "member_prune"
+	discordModLogMemberRoleAdd = "member_role_add"
+	discordModLogMemberRoleRemove = "member_role_remove"
+	discordModLogVoiceMove = "voice_move"
+	discordModLogVoiceDisconnect = "voice_disconnect"
+	discordModLogAutoMod = "automod_action"
+	discordModLogNickname = "nickname_change"
+	discordModLogChannelCreate = "channel_create"
+	discordModLogChannelUpdate = "channel_update"
+	discordModLogChannelDelete = "channel_delete"
+	discordModLogRoleCreate = "role_create"
+	discordModLogRoleUpdate = "role_update"
+	discordModLogRoleDelete = "role_delete"
+)
+
+var discordModLogEventKeys = map[string]struct{}{
+	discordModLogMessageDelete: {}, discordModLogMessageBulkDelete: {},
+	discordModLogMemberTimeout: {}, discordModLogMemberBan: {}, discordModLogMemberUnban: {},
+	discordModLogMemberKick: {}, discordModLogMemberPrune: {},
+	discordModLogMemberRoleAdd: {}, discordModLogMemberRoleRemove: {},
+	discordModLogVoiceMove: {}, discordModLogVoiceDisconnect: {}, discordModLogAutoMod: {},
+	discordModLogNickname: {}, discordModLogChannelCreate: {}, discordModLogChannelUpdate: {},
+	discordModLogChannelDelete: {}, discordModLogRoleCreate: {}, discordModLogRoleUpdate: {},
+	discordModLogRoleDelete: {},
+}
+
+type discordModLogRecord struct {
+	Event       string
+	Title       string
+	Description string
+	ActorID     string
+	Reason      string
+}
+
+func discordModLogEventEnabled(settings *DiscordSettings, event string) bool {
+	if settings == nil || strings.TrimSpace(settings.ModLogChannelID) == "" {
+		return false
+	}
+	if _, supported := discordModLogEventKeys[event]; !supported {
+		return false
+	}
+	for _, selected := range settings.ModLogEvents {
+		if selected == event {
+			return true
+		}
+	}
+	return false
+}
+
+func postDiscordModLog(s *discordgo.Session, guildID string, record discordModLogRecord) {
+	if s == nil || guildID == "" {
+		return
+	}
+	settings, err := GetDiscordSettingsByGuild(guildID)
+	if err != nil {
+		log.Println("[Discord mod logs] failed to load settings:", err)
+		return
+	}
+	if !discordModLogEventEnabled(settings, record.Event) {
+		return
+	}
+	embed := &discordgo.MessageEmbed{
+		Title:       record.Title,
+		Description: record.Description,
+		Color:       0x5865F2,
+		Timestamp:   time.Now().UTC().Format(time.RFC3339),
+	}
+	if record.ActorID != "" {
+		embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
+			Name: "Moderator", Value: fmt.Sprintf("<@%s>", record.ActorID), Inline: true,
+		})
+	}
+	if strings.TrimSpace(record.Reason) != "" {
+		embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
+			Name: "Reason", Value: record.Reason, Inline: false,
+		})
+	}
+	if _, err := s.ChannelMessageSendEmbed(settings.ModLogChannelID, embed); err != nil {
+		log.Println("[Discord mod logs] failed to send entry:", err)
+	}
+}
 var discordHTTPClient = &http.Client{Timeout: 10 * time.Second}
 
 // ── Module guard ──────────────────────────────────────────────────────────────

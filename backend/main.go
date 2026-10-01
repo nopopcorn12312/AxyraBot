@@ -1691,19 +1691,20 @@ func isBroadcasterOrModerator(channelLogin, chatterLogin string) (bool, error) {
 	return len(modsRes.Data) > 0, nil
 }
 
-// StartBirthdayScheduler runs a per-broadcaster goroutine that fires at
-// midnight in each broadcaster's configured timezone. It announces today's
-// birthdays to Twitch chat and (if Discord is configured) to the Discord
-// birthday channel.
+// StartBirthdayScheduler runs midnight watchers for joined Twitch channels
+// and for birthday sources selected by Discord guilds.
 func StartBirthdayScheduler() {
 	// Give the DB a moment to be ready on cold-start.
 	time.Sleep(5 * time.Second)
 
-	// Keep a set of channels we've already spawned a watcher for, so that
-	// when new channels join we can pick them up on the next daily rescan.
-	spawned := map[string]bool{}
-	spawnWatcher := func(login string) {
-		spawned[login] = true
+	spawnedChannels := map[string]bool{}
+	spawnedDiscordSources := map[string]bool{}
+	spawnChannelWatcher := func(login string) {
+		key := strings.ToLower(strings.TrimSpace(login))
+		if key == "" || spawnedChannels[key] {
+			return
+		}
+		spawnedChannels[key] = true
 		go func(login string) {
 			for {
 				loc := getBroadcasterLocation(login)
@@ -1719,27 +1720,52 @@ func StartBirthdayScheduler() {
 			}
 		}(login)
 	}
-
-	// Initial seed: spawn watchers for every currently-joined channel.
-	if channels, err := GetJoinedChannels(); err == nil {
-		for _, ch := range channels {
-			spawnWatcher(ch)
+	spawnDiscordSourceWatcher := func(sourceLogin string) {
+		key := strings.ToLower(strings.TrimSpace(sourceLogin))
+		if key == "" || spawnedChannels[key] || spawnedDiscordSources[key] {
+			return
 		}
+		spawnedDiscordSources[key] = true
+		go func(sourceLogin string) {
+			for {
+				loc := getBroadcasterLocation(sourceLogin)
+				now := time.Now().In(loc)
+				nextMidnight := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, loc)
+				sleepDur := time.Until(nextMidnight)
+				log.Printf("birthday scheduler: Discord source %s sleeping %s until midnight (%s)", sourceLogin, sleepDur.Round(time.Second), loc)
+				time.Sleep(sleepDur)
+
+				names, count := computeTodaysBirthdayNames(sourceLogin)
+				if count > 0 {
+					PostDiscordBirthdayAnnouncementForSource(sourceLogin, names)
+				}
+			}
+		}(key)
 	}
 
-	// Re-check every hour for newly joined channels.
+	refreshWatchers := func() {
+		channels, err := GetJoinedChannels()
+		if err == nil {
+			for _, ch := range channels {
+				spawnChannelWatcher(ch)
+			}
+		}
+		sources, err := GetDiscordBirthdaySources()
+		if err != nil {
+			log.Println("birthday scheduler: failed to load Discord birthday sources:", err)
+			return
+		}
+		for _, source := range sources {
+			spawnDiscordSourceWatcher(source)
+		}
+	}
+	refreshWatchers()
+
+	// Re-check periodically for new channels and Discord birthday sources.
 	ticker := time.NewTicker(time.Hour)
 	defer ticker.Stop()
 	for range ticker.C {
-		channels, err := GetJoinedChannels()
-		if err != nil {
-			continue
-		}
-		for _, ch := range channels {
-			if !spawned[ch] {
-				spawnWatcher(ch)
-			}
-		}
+		refreshWatchers()
 	}
 }
 
@@ -1788,26 +1814,26 @@ func computeTodaysBirthdayNames(channelLogin string) (string, int) {
 // configured timezone) and sends announcements to Twitch chat and Discord.
 func fireBirthdayAnnouncement(channelLogin string) {
 	namesStr, count := computeTodaysBirthdayNames(channelLogin)
-	if count == 0 {
-		return
+	if count > 0 {
+		// Twitch chat announces this channel's own list only. Discord sources are
+		// evaluated independently per guild below.
+		var text string
+		if count == 1 {
+			text = fmt.Sprintf("Today's birthday is %s!", namesStr)
+		} else {
+			text = fmt.Sprintf("Today's birthdays are %s!", namesStr)
+		}
+		text = renderBirthdayCommandMessage(channelLogin, "!birthday", text, map[string]string{
+			"names": namesStr,
+			"count": strconv.Itoa(count),
+		})
+		if err := sendHelixChatMessage(channelLogin, text); err != nil {
+			log.Printf("birthday scheduler: send chat (%s): %v", channelLogin, err)
+		}
 	}
 
-	// Twitch chat announcement.
-	var text string
-	if count == 1 {
-		text = fmt.Sprintf("Today's birthday is %s!", namesStr)
-	} else {
-		text = fmt.Sprintf("Today's birthdays are %s!", namesStr)
-	}
-	text = renderBirthdayCommandMessage(channelLogin, "!birthday", text, map[string]string{
-		"names": namesStr,
-		"count": strconv.Itoa(count),
-	})
-	if err := sendHelixChatMessage(channelLogin, text); err != nil {
-		log.Printf("birthday scheduler: send chat (%s): %v", channelLogin, err)
-	}
-
-	// Discord announcement.
+	// Discord may use a different channel or custom list, so dispatch even when
+	// this broadcaster has no birthdays today.
 	PostDiscordBirthdayAnnouncement(channelLogin, namesStr)
 }
 

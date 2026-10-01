@@ -31,7 +31,7 @@ func InitDiscord() {
 		return
 	}
 
-	discordSession.Identify.Intents = discordgo.IntentsGuilds | discordgo.IntentsGuildMessages | discordgo.IntentsGuildMembers | discordgo.IntentsMessageContent | discordgo.IntentsGuildMessageReactions
+	discordSession.Identify.Intents = discordgo.IntentsGuilds | discordgo.IntentsGuildMessages | discordgo.IntentsGuildMembers | discordgo.IntentsGuildBans | discordgo.IntentsGuildVoiceStates | discordgo.IntentsMessageContent | discordgo.IntentsGuildMessageReactions | discordgo.IntentAutoModerationExecution
 
 	discordSession.AddHandler(func(s *discordgo.Session, r *discordgo.Ready) {
 		log.Printf("[Discord] logged in as %s\n", r.User.Username)
@@ -52,11 +52,176 @@ func InitDiscord() {
 	discordSession.AddHandler(discordGuildMemberRemoveHandler)
 	discordSession.AddHandler(discordReactionAddHandler)
 	discordSession.AddHandler(discordReactionRemoveHandler)
+	discordSession.AddHandler(discordGuildAuditLogEntryCreateHandler)
+	discordSession.AddHandler(discordAutoModerationActionExecutionHandler)
 
 	if err = discordSession.Open(); err != nil {
 		log.Println("[Discord] failed to open connection:", err)
 		discordSession = nil
 	}
+}
+
+func discordAuditLogTarget(targetID string) string {
+	if targetID == "" {
+		return "Unknown target"
+	}
+	return fmt.Sprintf("<@%s>", targetID)
+}
+
+func discordAuditRoleSummary(value interface{}) string {
+	roles, ok := value.([]interface{})
+	if !ok || len(roles) == 0 {
+		return "roles"
+	}
+	var summaries []string
+	for _, item := range roles {
+		role, ok := item.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		id, _ := role["id"].(string)
+		name, _ := role["name"].(string)
+		switch {
+		case id != "" && name != "":
+			summaries = append(summaries, fmt.Sprintf("<@&%s> (%s)", id, name))
+		case id != "":
+			summaries = append(summaries, fmt.Sprintf("<@&%s>", id))
+		case name != "":
+			summaries = append(summaries, name)
+		}
+	}
+	if len(summaries) == 0 {
+		return "roles"
+	}
+	return strings.Join(summaries, ", ")
+}
+
+func discordAuditLogRecords(entry *discordgo.AuditLogEntry) []discordModLogRecord {
+	if entry == nil || entry.ActionType == nil {
+		return nil
+	}
+	target := discordAuditLogTarget(entry.TargetID)
+	actorID := entry.UserID
+	reason := strings.TrimSpace(entry.Reason)
+	makeRecord := func(event, title, description string) discordModLogRecord {
+		return discordModLogRecord{Event: event, Title: title, Description: description, ActorID: actorID, Reason: reason}
+	}
+	switch *entry.ActionType {
+	case discordgo.AuditLogActionMemberKick:
+		return []discordModLogRecord{makeRecord(discordModLogMemberKick, "Member kicked", target)}
+	case discordgo.AuditLogActionMemberPrune:
+		count := "unknown"
+		if entry.Options != nil && entry.Options.MembersRemoved != "" {
+			count = entry.Options.MembersRemoved
+		}
+		return []discordModLogRecord{makeRecord(discordModLogMemberPrune, "Members pruned", fmt.Sprintf("%s members removed", count))}
+	case discordgo.AuditLogActionMemberBanAdd:
+		return []discordModLogRecord{makeRecord(discordModLogMemberBan, "Member banned", target)}
+	case discordgo.AuditLogActionMemberBanRemove:
+		return []discordModLogRecord{makeRecord(discordModLogMemberUnban, "Member unbanned", target)}
+	case discordgo.AuditLogActionMemberUpdate:
+		var records []discordModLogRecord
+		for _, change := range entry.Changes {
+			if change == nil || change.Key == nil {
+				continue
+			}
+			switch string(*change.Key) {
+			case "communication_disabled_until":
+				state := "removed"
+				if change.NewValue != nil && fmt.Sprint(change.NewValue) != "" {
+					state = "set until " + fmt.Sprint(change.NewValue)
+				}
+				records = append(records, makeRecord(discordModLogMemberTimeout, "Member timeout changed", fmt.Sprintf("%s — timeout %s", target, state)))
+			case "nick":
+				oldName, newName := "none", "none"
+				if change.OldValue != nil && fmt.Sprint(change.OldValue) != "" {
+					oldName = fmt.Sprint(change.OldValue)
+				}
+				if change.NewValue != nil && fmt.Sprint(change.NewValue) != "" {
+					newName = fmt.Sprint(change.NewValue)
+				}
+				records = append(records, makeRecord(discordModLogNickname, "Member nickname changed", fmt.Sprintf("%s — `%s` → `%s`", target, oldName, newName)))
+			}
+		}
+		return records
+	case discordgo.AuditLogActionMemberRoleUpdate:
+		var records []discordModLogRecord
+		for _, change := range entry.Changes {
+			if change == nil || change.Key == nil {
+				continue
+			}
+			switch string(*change.Key) {
+			case "$add":
+				records = append(records, makeRecord(discordModLogMemberRoleAdd, "Role given to member", fmt.Sprintf("%s — %s", target, discordAuditRoleSummary(change.NewValue))))
+			case "$remove":
+				records = append(records, makeRecord(discordModLogMemberRoleRemove, "Role removed from member", fmt.Sprintf("%s — %s", target, discordAuditRoleSummary(change.OldValue))))
+			}
+		}
+		return records
+	case discordgo.AuditLogActionMemberMove:
+		details := target
+		if entry.Options != nil && entry.Options.ChannelID != "" {
+			details += fmt.Sprintf(" moved to <#%s>", entry.Options.ChannelID)
+		}
+		return []discordModLogRecord{makeRecord(discordModLogVoiceMove, "Member moved in voice", details)}
+	case discordgo.AuditLogActionMemberDisconnect:
+		return []discordModLogRecord{makeRecord(discordModLogVoiceDisconnect, "Member disconnected from voice", target)}
+	case discordgo.AuditLogActionMessageDelete:
+		channel := "unknown channel"
+		if entry.Options != nil && entry.Options.ChannelID != "" {
+			channel = fmt.Sprintf("<#%s>", entry.Options.ChannelID)
+		}
+		return []discordModLogRecord{makeRecord(discordModLogMessageDelete, "Message deleted", fmt.Sprintf("A message by %s was deleted in %s", target, channel))}
+	case discordgo.AuditLogActionMessageBulkDelete:
+		channel, count := "unknown channel", "multiple"
+		if entry.Options != nil {
+			if entry.Options.ChannelID != "" {
+				channel = fmt.Sprintf("<#%s>", entry.Options.ChannelID)
+			}
+			if entry.Options.Count != "" {
+				count = entry.Options.Count
+			}
+		}
+		return []discordModLogRecord{makeRecord(discordModLogMessageBulkDelete, "Messages bulk-deleted", fmt.Sprintf("%s messages deleted in %s", count, channel))}
+	case discordgo.AuditLogActionChannelCreate:
+		return []discordModLogRecord{makeRecord(discordModLogChannelCreate, "Channel created", fmt.Sprintf("Channel ID `%s`", entry.TargetID))}
+	case discordgo.AuditLogActionChannelUpdate:
+		return []discordModLogRecord{makeRecord(discordModLogChannelUpdate, "Channel settings changed", fmt.Sprintf("Channel ID `%s`", entry.TargetID))}
+	case discordgo.AuditLogActionChannelDelete:
+		return []discordModLogRecord{makeRecord(discordModLogChannelDelete, "Channel deleted", fmt.Sprintf("Channel ID `%s`", entry.TargetID))}
+	case discordgo.AuditLogActionRoleCreate:
+		return []discordModLogRecord{makeRecord(discordModLogRoleCreate, "Server role created", fmt.Sprintf("Role ID `%s`", entry.TargetID))}
+	case discordgo.AuditLogActionRoleUpdate:
+		return []discordModLogRecord{makeRecord(discordModLogRoleUpdate, "Server role changed", fmt.Sprintf("Role ID `%s`", entry.TargetID))}
+	case discordgo.AuditLogActionRoleDelete:
+		return []discordModLogRecord{makeRecord(discordModLogRoleDelete, "Server role deleted", fmt.Sprintf("Role ID `%s`", entry.TargetID))}
+	}
+	return nil
+}
+
+func discordGuildAuditLogEntryCreateHandler(s *discordgo.Session, event *discordgo.GuildAuditLogEntryCreate) {
+	if event == nil || event.AuditLogEntry == nil {
+		return
+	}
+	for _, record := range discordAuditLogRecords(event.AuditLogEntry) {
+		postDiscordModLog(s, event.GuildID, record)
+	}
+}
+
+func discordAutoModerationActionExecutionHandler(s *discordgo.Session, event *discordgo.AutoModerationActionExecution) {
+	if event == nil {
+		return
+	}
+	details := fmt.Sprintf("AutoMod action `%d` for <@%s>", event.Action.Type, event.UserID)
+	if event.ChannelID != "" {
+		details += fmt.Sprintf(" in <#%s>", event.ChannelID)
+	}
+	if keyword := strings.TrimSpace(event.MatchedKeyword); keyword != "" {
+		details += fmt.Sprintf(" — matched `%s`", keyword)
+	}
+	postDiscordModLog(s, event.GuildID, discordModLogRecord{
+		Event: discordModLogAutoMod, Title: "Discord AutoMod action", Description: details,
+	})
 }
 
 // registerSlashCommands registers global (or guild-scoped if DISCORD_DEV_GUILD_ID
@@ -1334,10 +1499,35 @@ func PostDiscordModAlert(broadcasterLogin, moderator, target, action, reason str
 	}
 }
 
-// PostDiscordBirthdayAnnouncement sends a birthday message to every Discord
-// server the broadcaster has configured for birthday announcements. Guilds
-// with a BdaySourceLogin override announce a different broadcaster's saved
-// birthday list instead of the caller's own.
+// PostDiscordBirthdayAnnouncement sends the broadcaster's birthday list to
+// Discord destinations with no source override or a matching source. Other
+// configured sources are handled by their own scheduler watcher.
+func shouldPostDiscordBirthday(settings DiscordSettings, broadcasterLogin, names string) bool {
+	if strings.TrimSpace(settings.BdayChannelID) == "" {
+		return false
+	}
+	sourceLogin := strings.ToLower(strings.TrimSpace(settings.BdaySourceLogin))
+	if sourceLogin != "" && sourceLogin != strings.ToLower(strings.TrimSpace(broadcasterLogin)) {
+		return false
+	}
+	return strings.TrimSpace(names) != ""
+}
+
+func shouldPostDiscordBirthdaySource(settings DiscordSettings, sourceLogin, names string) bool {
+	return strings.TrimSpace(settings.BdayChannelID) != "" &&
+		strings.EqualFold(strings.TrimSpace(settings.BdaySourceLogin), strings.TrimSpace(sourceLogin)) &&
+		strings.TrimSpace(names) != ""
+}
+
+func sendDiscordBirthdayAnnouncement(templateLogin, announceChannel, names string, settings DiscordSettings) {
+	const defaultBdayTmpl = "🎂 Happy Birthday to **$(names)** in **$(channel)**'s community! 🎉"
+	bdayVars := map[string]string{"names": names, "channel": announceChannel}
+	msg := renderDiscordTemplate(templateLogin, settings.GuildID, "birthday", defaultBdayTmpl, bdayVars)
+	if _, err := discordSession.ChannelMessageSend(settings.BdayChannelID, msg); err != nil {
+		log.Println("[Discord] failed to post birthday announcement:", err)
+	}
+}
+
 func PostDiscordBirthdayAnnouncement(broadcasterLogin, names string) {
 	if discordSession == nil {
 		return
@@ -1346,26 +1536,33 @@ func PostDiscordBirthdayAnnouncement(broadcasterLogin, names string) {
 	if err != nil || len(all) == 0 {
 		return
 	}
-	const defaultBdayTmpl = "🎂 Happy Birthday to **$(names)** in **$(channel)**'s community! 🎉"
 	for _, settings := range all {
-		if settings.BdayChannelID == "" {
+		if !shouldPostDiscordBirthday(settings, broadcasterLogin, names) {
 			continue
 		}
-		announceNames := names
 		announceChannel := broadcasterLogin
 		sourceLogin := strings.ToLower(strings.TrimSpace(settings.BdaySourceLogin))
-		if sourceLogin != "" && sourceLogin != strings.ToLower(broadcasterLogin) {
-			overrideNames, count := computeTodaysBirthdayNames(sourceLogin)
-			if count == 0 {
-				continue
-			}
-			announceNames = overrideNames
+		if sourceLogin != "" {
 			announceChannel = sourceLogin
 		}
-		bdayVars := map[string]string{"names": announceNames, "channel": announceChannel}
-		msg := renderDiscordTemplate(broadcasterLogin, settings.GuildID, "birthday", defaultBdayTmpl, bdayVars)
-		if _, err := discordSession.ChannelMessageSend(settings.BdayChannelID, msg); err != nil {
-			log.Println("[Discord] failed to post birthday announcement:", err)
+		sendDiscordBirthdayAnnouncement(broadcasterLogin, announceChannel, names, settings)
+	}
+}
+
+// PostDiscordBirthdayAnnouncementForSource sends to only the guilds that
+// explicitly selected sourceLogin, including custom birthday-list keys.
+func PostDiscordBirthdayAnnouncementForSource(sourceLogin, names string) {
+	if discordSession == nil || strings.TrimSpace(names) == "" {
+		return
+	}
+	settings, err := GetDiscordSettingsForBirthdaySource(sourceLogin)
+	if err != nil {
+		log.Println("[Discord] failed to load birthday source settings:", err)
+		return
+	}
+	for _, setting := range settings {
+		if shouldPostDiscordBirthdaySource(setting, sourceLogin, names) {
+			sendDiscordBirthdayAnnouncement(sourceLogin, sourceLogin, names, setting)
 		}
 	}
 }

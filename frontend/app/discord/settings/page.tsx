@@ -33,6 +33,28 @@ type ModuleCommand = {
 };
 type ModuleConfig = { key: string; icon: string; label: string; description: string; commands: ModuleCommand[] };
 
+const discordModLogOptions = [
+  { key: "message_delete", label: "Message deleted" },
+  { key: "message_bulk_delete", label: "Messages bulk-deleted" },
+  { key: "member_timeout", label: "Timeout added or removed" },
+  { key: "member_ban", label: "Member banned" },
+  { key: "member_unban", label: "Member unbanned" },
+  { key: "member_kick", label: "Member kicked" },
+  { key: "member_prune", label: "Inactive members pruned" },
+  { key: "member_role_add", label: "Role given to member" },
+  { key: "member_role_remove", label: "Role removed from member" },
+  { key: "voice_move", label: "Member moved between voice channels" },
+  { key: "voice_disconnect", label: "Member disconnected from voice" },
+  { key: "automod_action", label: "Discord AutoMod action" },
+  { key: "nickname_change", label: "Nickname changed" },
+  { key: "channel_create", label: "Channel created" },
+  { key: "channel_update", label: "Channel settings changed" },
+  { key: "channel_delete", label: "Channel deleted" },
+  { key: "role_create", label: "Server role created" },
+  { key: "role_update", label: "Server role changed" },
+  { key: "role_delete", label: "Server role deleted" },
+] as const;
+
 const discordModuleConfig: ModuleConfig[] = [
   {
     key: "moderation",
@@ -218,6 +240,8 @@ export default function DiscordSettingsPage() {
   const [loadingChannels, setLoadingChannels] = useState(false);
   const [liveChannelId, setLiveChannelId] = useState("");
   const [modChannelId, setModChannelId] = useState("");
+  const [modLogChannelId, setModLogChannelId] = useState("");
+  const [modLogEvents, setModLogEvents] = useState<string[]>([]);
   const [bdayChannelId, setBdayChannelId] = useState("");
   const [bdaySourceLogin, setBdaySourceLogin] = useState("");
   const [bdaySourceListOptions, setBdaySourceListOptions] = useState<{ value: string; label: string }[]>([]);
@@ -370,6 +394,8 @@ export default function DiscordSettingsPage() {
     setLoadingSettings(true);
     setLiveChannelId("");
     setModChannelId("");
+    setModLogChannelId("");
+    setModLogEvents([]);
     setBdayChannelId("");
     setBdaySourceLogin("");
     fetch(`${backendUrl}/discord/settings?login=${encodeURIComponent(channelLogin)}&guild_id=${encodeURIComponent(selectedGuildId)}`)
@@ -378,6 +404,8 @@ export default function DiscordSettingsPage() {
         if (data) {
           setLiveChannelId(data.live_channel_id ?? "");
           setModChannelId(data.mod_channel_id ?? "");
+          setModLogChannelId(data.mod_log_channel_id ?? "");
+          setModLogEvents(data.mod_log_events ?? []);
           setBdayChannelId(data.bday_channel_id ?? "");
           setBdaySourceLogin(data.bday_source_login ?? "");
         }
@@ -647,6 +675,8 @@ export default function DiscordSettingsPage() {
           guild_id: selectedGuildId,
           live_channel_id: liveChannelId,
           mod_channel_id: modChannelId,
+          mod_log_channel_id: modLogChannelId,
+          mod_log_events: modLogEvents,
           bday_channel_id: bdayChannelId,
           bday_source_login: bdaySourceLogin,
         }),
@@ -1351,6 +1381,45 @@ export default function DiscordSettingsPage() {
                               {guildChannels.map((c) => <option key={c.id} value={c.id}>#{c.name}</option>)}
                             </select>
                           </div>
+
+                          <section className="flex flex-col gap-2 border-t border-slate-800 pt-4">
+                            <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-300">
+                              <span>🛡️</span> Discord Mod Logs
+                            </label>
+                            <p className="text-xs text-slate-500">
+                              Log moderation and server changes separately from Twitch mod alerts. Give AxyraBot View Audit Log permission for moderator details.
+                            </p>
+                            <select
+                              value={modLogChannelId}
+                              onChange={(e) => setModLogChannelId(e.target.value)}
+                              className={channelSelectClass}
+                            >
+                              <option value="">Disabled</option>
+                              {guildChannels.map((c) => <option key={c.id} value={c.id}>#{c.name}</option>)}
+                            </select>
+                            {modLogChannelId && (
+                              <div className="grid grid-cols-1 gap-x-4 gap-y-2 pt-2 sm:grid-cols-2">
+                                {discordModLogOptions.map((option) => {
+                                  const checked = modLogEvents.includes(option.key);
+                                  return (
+                                    <label key={option.key} className="flex cursor-pointer items-start gap-2 text-xs text-slate-300">
+                                      <input
+                                        type="checkbox"
+                                        checked={checked}
+                                        onChange={() => setModLogEvents((current) =>
+                                          checked
+                                            ? current.filter((event) => event !== option.key)
+                                            : [...current, option.key]
+                                        )}
+                                        className="mt-0.5 accent-sky-400"
+                                      />
+                                      <span>{option.label}</span>
+                                    </label>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </section>
 
                           <div className="flex flex-col gap-1">
                             <div className="flex items-center gap-2">
