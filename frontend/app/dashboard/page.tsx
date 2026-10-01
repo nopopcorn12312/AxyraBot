@@ -58,6 +58,7 @@ export default function DashboardPage() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [login, setLogin] = useState<string | null>(null);
   const [activeChannel, setActiveChannel] = useState<string | null>(null);
   const [editorChannels, setEditorChannels] = useState<string[]>([]);
@@ -102,6 +103,10 @@ export default function DashboardPage() {
     unique_chatters: number;
     history: { label: string; msgs: number; chatters: number }[];
   } | null>(null);
+
+  useEffect(() => {
+    setMobileSidebarOpen(false);
+  }, [pathname]);
 
   // Close category dropdown when clicking outside
   useEffect(() => {
@@ -351,31 +356,38 @@ export default function DashboardPage() {
   };
 
   return (
-    <main className="h-screen flex flex-col overflow-hidden bg-[radial-gradient(circle_at_top,_#1e293b,_#020617)]">
-      <header className="w-full flex items-center justify-between px-6 py-4">
-        <div className="flex items-center gap-4 flex-1">
+    <main className="min-h-screen flex flex-col bg-[radial-gradient(circle_at_top,_#1e293b,_#020617)] md:h-screen md:overflow-hidden">
+      <header className="w-full flex items-center justify-between gap-2 px-3 py-3 sm:px-4 md:px-6 md:py-4">
+        <div className="flex min-w-0 items-center gap-2 flex-1 sm:gap-4">
           <button
             type="button"
-            onClick={() => setSidebarOpen((open: boolean) => !open)}
-            className="mr-2 rounded-lg bg-slate-900/70 px-3 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800 border border-slate-700"
+            aria-label="Open dashboard menu"
+            onClick={() => {
+              if (window.matchMedia("(min-width: 768px)").matches) {
+                setSidebarOpen((open: boolean) => !open);
+              } else {
+                setMobileSidebarOpen(true);
+              }
+            }}
+            className="shrink-0 rounded-lg border border-slate-700 bg-slate-900/70 p-2 text-sm font-medium text-slate-200 hover:bg-slate-800 sm:mr-2 sm:px-3 sm:py-2"
           >
             ☰
           </button>
-          <Link href="/" className="flex items-center gap-4">
+          <Link href="/" className="flex min-w-0 items-center gap-2 sm:gap-4">
             <Image
               src={AxyraBotPFP}
               alt="AxyraBot logo"
-              width={32}
-              height={32}
-              className="rounded-full"
+              width={30}
+              height={30}
+              className="shrink-0 rounded-full"
             />
-            <div className="text-2xl font-semibold tracking-tight">
+            <div className="truncate text-lg font-semibold tracking-tight sm:text-xl md:text-2xl">
               <span className="text-accent">Axyra</span>
               <span className="text-white">Bot</span>
             </div>
           </Link>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-4">
           <a href={primaryHref} className="hidden">
             {primaryLabel}
           </a>
@@ -384,7 +396,7 @@ export default function DashboardPage() {
               <ManagingChannelBadge />
               <Link
                 href="/import"
-                className="inline-flex items-center gap-1 rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1.5 text-xs font-medium text-slate-100 hover:bg-slate-800 hover:border-slate-500 transition"
+                className="hidden items-center gap-1 rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1.5 text-xs font-medium text-slate-100 transition hover:border-slate-500 hover:bg-slate-800 md:inline-flex"
               >
                 <span className="text-xs">⬆</span>
                 <span>Import</span>
@@ -422,11 +434,29 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <div className="flex flex-1 w-full gap-6 px-4 pb-6 items-stretch min-h-0">
+      {mobileSidebarOpen && (
+        <button
+          type="button"
+          aria-label="Close dashboard menu"
+          onClick={() => setMobileSidebarOpen(false)}
+          className="fixed inset-0 z-40 bg-black/60 md:hidden"
+        />
+      )}
+      <div className="flex flex-1 w-full items-stretch gap-3 px-3 pb-4 md:min-h-0 md:gap-6 md:px-4 md:pb-6">
         <div
-          className={`${sidebarOpen ? "w-60" : "w-16"} flex flex-col rounded-2xl border border-slate-800 bg-slate-900/80 p-3 transition-all duration-200`}
+          className={`${mobileSidebarOpen ? "fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] rounded-none shadow-2xl" : "hidden"} ${sidebarOpen ? "md:w-60" : "md:w-16"} flex-col border border-slate-800 bg-slate-900/95 p-3 transition-all duration-200 md:relative md:inset-auto md:z-auto md:flex md:max-w-none md:rounded-2xl md:bg-slate-900/80 md:shadow-none`}
         >
-          <nav className="mt-1 flex flex-col gap-4 text-sm text-slate-200">
+          <div className="mb-3 flex items-center justify-between border-b border-slate-800 px-2 pb-3 md:hidden">
+            <span className="text-sm font-semibold text-slate-100">Dashboard menu</span>
+            <button
+              type="button"
+              onClick={() => setMobileSidebarOpen(false)}
+              className="rounded-md px-2 py-1 text-sm text-slate-400 hover:bg-slate-800 hover:text-white"
+            >
+              Close
+            </button>
+          </div>
+          <nav className="mt-1 flex flex-1 flex-col gap-4 overflow-y-auto text-sm text-slate-200">
             {/* Main section */}
             <div className="flex flex-col gap-2">
               <button
@@ -631,11 +661,11 @@ export default function DashboardPage() {
           </nav>
         </div>
 
-        <div className="flex-1 flex flex-col gap-3 text-slate-50 min-h-0">
-          <div className="flex-1 flex flex-col lg:flex-row gap-6 min-h-0">
-          <div className="flex-1 lg:basis-2/3 rounded-2xl border border-slate-800 bg-slate-900/80 p-6 flex flex-col min-h-0">
-            <div className="flex items-center justify-between mb-3">
-              <h1 className="text-2xl font-semibold">Recent Activity</h1>
+        <div className="flex min-w-0 flex-1 flex-col gap-3 text-slate-50 md:min-h-0">
+          <div className="flex flex-col gap-3 lg:flex-row lg:gap-6 lg:min-h-0">
+          <div className="w-full flex-none rounded-2xl border border-slate-800 bg-slate-900/80 p-4 sm:p-5 md:flex-1 md:p-6 lg:basis-2/3 lg:min-h-0">
+            <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+              <h1 className="text-xl font-semibold sm:text-2xl">Recent Activity</h1>
               <span className="text-xs text-slate-400">Latest changes from Twitch &amp; AxyraBot</span>
             </div>
             {!activeChannel && (
@@ -644,7 +674,7 @@ export default function DashboardPage() {
               </p>
             )}
             {activeChannel && (
-              <div className="flex-1 flex flex-col overflow-y-auto pr-1">
+              <div className="flex flex-col pr-1 md:flex-1 md:overflow-y-auto">
                 {loadingActivity && (
                   <p className="text-sm text-slate-400">Loading activity…</p>
                 )}
@@ -706,12 +736,12 @@ export default function DashboardPage() {
             )}
           </div>
 
-          <div className="w-full lg:basis-1/3 flex flex-col gap-3 min-h-0">
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-6 flex flex-col justify-between">
+          <div className="flex w-full flex-col gap-3 md:min-h-0 lg:basis-1/3">
+          <div className="flex flex-col justify-between rounded-2xl border border-slate-800 bg-slate-900/80 p-4 sm:p-5 md:p-6">
             <div>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold">Stream Details</h2>
-                <div className="flex items-center gap-2 text-sm md:text-base font-medium text-slate-200">
+              <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <h2 className="text-lg font-semibold sm:text-xl">Stream Details</h2>
+                <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-slate-200 sm:text-sm md:text-base">
                   <span
                     className={`h-3 w-3 rounded-full ${
                       joined ? "bg-emerald-400" : "bg-red-500"

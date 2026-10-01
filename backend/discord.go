@@ -16,7 +16,7 @@ import (
 var discordSession *discordgo.Session
 
 var (
-	honeypotMu        sync.Mutex
+	honeypotMu       sync.Mutex
 	honeypotInFlight = map[string]bool{}
 )
 

@@ -1353,14 +1353,14 @@ func ListEditorChannels(username string) ([]string, error) {
 
 // DiscordSettings holds per-broadcaster Discord configuration.
 type DiscordSettings struct {
-	BroadcasterLogin string
-	GuildID          string
-	LiveChannelID    string
-	ModChannelID     string
-	ModLogChannelID  string
-	ModLogEvents     []string
+	BroadcasterLogin  string
+	GuildID           string
+	LiveChannelID     string
+	ModChannelID      string
+	ModLogChannelID   string
+	ModLogEvents      []string
 	HoneypotChannelID string
-	BdayChannelID    string
+	BdayChannelID     string
 	// BdaySourceLogin, when set, overrides whose saved birthday list is
 	// announced in this guild (e.g. a friend's channel instead of your own).
 	BdaySourceLogin string

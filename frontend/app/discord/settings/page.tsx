@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import AxyraBotPFP from "../../images/AxyraBotPFP.png";
 import ManagingChannelBadge from "../../components/ManagingChannelBadge";
 import { usePersistentSectionState } from "../../hooks/usePersistentSectionState";
+import { responsiveSidebarClassName, useResponsiveSidebar } from "../../hooks/useResponsiveSidebar";
 import { useRequireAuth } from "../../hooks/useRequireAuth";
 
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://your-backend.onrender.com";
@@ -221,7 +222,7 @@ export default function DiscordSettingsPage() {
   const [channelLogin, setChannelLogin] = useState<string | null>(null);
   const [viewerLogin, setViewerLogin] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { sidebarOpen, mobileSidebarOpen, toggleSidebar, closeMobileSidebar } = useResponsiveSidebar();
   const [mainSectionOpen, setMainSectionOpen] = usePersistentSectionState("axyra.sidebar.mainSectionOpen", true);
   const [vanitySectionOpen, setVanitySectionOpen] = usePersistentSectionState("axyra.sidebar.vanitySectionOpen", true);
   const [otherSectionOpen, setOtherSectionOpen] = usePersistentSectionState("axyra.sidebar.otherSectionOpen", true);
@@ -1066,12 +1067,12 @@ export default function DiscordSettingsPage() {
 
   return (
     <>
-    <main className="h-screen overflow-hidden flex flex-col bg-[radial-gradient(circle_at_top,_#1e293b,_#020617)]">
+    <main className="min-h-screen flex flex-col bg-[radial-gradient(circle_at_top,_#1e293b,_#020617)] md:h-screen md:overflow-hidden">
       <header className="w-full flex items-center justify-between px-6 py-4">
         <div className="flex items-center gap-4 flex-1">
           <button
             type="button"
-            onClick={() => setSidebarOpen((open) => !open)}
+            onClick={toggleSidebar}
             className="mr-2 rounded-lg bg-slate-900/70 px-3 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800 border border-slate-700"
           >
             ☰
@@ -1123,9 +1124,13 @@ export default function DiscordSettingsPage() {
         </div>
       </header>
 
-      <div className="flex flex-1 w-full gap-6 px-4 pb-6 items-stretch min-h-0">
-        {/* Sidebar */}
-        <div className={`${sidebarOpen ? "w-60" : "w-16"} flex flex-col rounded-2xl border border-slate-800 bg-slate-900/80 p-3 transition-all duration-200`}>
+      <div className="flex flex-1 w-full flex-col items-stretch gap-3 px-3 pb-4 md:flex-row md:gap-6 md:px-4 md:pb-6 md:min-h-0">
+        {mobileSidebarOpen && <button type="button" aria-label="Close dashboard menu" onClick={closeMobileSidebar} className="fixed inset-0 z-40 bg-black/60 md:hidden" />}
+        <div className={responsiveSidebarClassName(sidebarOpen, mobileSidebarOpen)}>
+          <div className="mb-3 flex items-center justify-between border-b border-slate-800 px-2 pb-3 md:hidden">
+            <span className="text-sm font-semibold text-slate-100">Dashboard menu</span>
+            <button type="button" onClick={closeMobileSidebar} className="rounded-md px-2 py-1 text-sm text-slate-400 hover:bg-slate-800 hover:text-white">Close</button>
+          </div>
           <nav className="mt-1 flex flex-col gap-4 text-sm text-slate-200">
             {/* Main section */}
             <div className="flex flex-col gap-2">

@@ -31,19 +31,19 @@ func TestMergeDiscordSettingsForBroadcasterPrefersSpecificRows(t *testing.T) {
 
 func TestMergeGuildScopedDiscordSettingsUsesSavedGuildValues(t *testing.T) {
 	loginSettings := &DiscordSettings{
-		BroadcasterLogin:   "admin-login",
-		GuildID:            "guild-1",
-		ModLogChannelID:    "stale-log-channel",
-		ModLogEvents:       []string{"stale-event"},
-		HoneypotChannelID:  "stale-honeypot",
-		LiveChannelID:      "login-live-channel",
+		BroadcasterLogin:  "admin-login",
+		GuildID:           "guild-1",
+		ModLogChannelID:   "stale-log-channel",
+		ModLogEvents:      []string{"stale-event"},
+		HoneypotChannelID: "stale-honeypot",
+		LiveChannelID:     "login-live-channel",
 	}
 	guildSettings := &DiscordSettings{
-		BroadcasterLogin:   "",
-		GuildID:            "guild-1",
-		ModLogChannelID:    "saved-log-channel",
-		ModLogEvents:       []string{"member_timeout", "member_ban"},
-		HoneypotChannelID:  "saved-honeypot",
+		BroadcasterLogin:  "",
+		GuildID:           "guild-1",
+		ModLogChannelID:   "saved-log-channel",
+		ModLogEvents:      []string{"member_timeout", "member_ban"},
+		HoneypotChannelID: "saved-honeypot",
 	}
 
 	got := mergeGuildScopedDiscordSettings(loginSettings, guildSettings)
