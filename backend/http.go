@@ -2098,7 +2098,6 @@ func handleDiscordGuilds(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	viewerLogin := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("viewer_login")))
-	channelLogin := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("channel_login")))
 
 	allGuilds := GetBotGuilds()
 	if allGuilds == nil {
