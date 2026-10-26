@@ -2105,14 +2105,16 @@ func handleDiscordGuilds(w http.ResponseWriter, r *http.Request) {
 		allGuilds = []BotGuild{}
 	}
 
-	// If the viewer is the channel owner (or no context provided), return everything.
-	if viewerLogin == "" || channelLogin == "" || viewerLogin == channelLogin {
+	// Anonymous viewers (no login) see all guilds — public invite page.
+	if viewerLogin == "" {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]any{"guilds": allGuilds})
 		return
 	}
 
-	// Viewer is an editor — filter to guilds they are explicitly authorised for.
+	// Users with an active dashboard channel (editor) must be filtered to only guilds they manage.
+	// Viewer == Channel owner means they are logged into their own dashboard for THIS server,
+	// not a cross-server editor session — still requires filtering.
 	authorisedIDs, err := GetGuildsForManager(viewerLogin)
 	if err != nil {
 		log.Println("get guilds for manager:", err)
@@ -2120,6 +2122,15 @@ func handleDiscordGuilds(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(map[string]any{"guilds": []BotGuild{}})
 		return
 	}
+
+	if len(authorisedIDs) == 0 {
+		// No guild managerships registered for this user — they must log into Discord first,
+		// then the bot owner/admin can grant them access to specific servers via /addmod.
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{"guilds": []BotGuild{}})
+		return
+	}
+
 	allowed := make(map[string]bool, len(authorisedIDs))
 	for _, id := range authorisedIDs {
 		allowed[id] = true
