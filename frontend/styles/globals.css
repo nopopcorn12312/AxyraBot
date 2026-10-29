@@ -7,5 +7,19 @@
 }
 
 body {
-  @apply bg-ax-bg text-ax-body antialiased;
+  @apply bg-ax-bg font-landing text-ax-body antialiased;
+}
+
+/* Page and section titles use the display face across the app. */
+h1,
+h2 {
+  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: -0.015em;
+}
+
+/* Native checkboxes, radios and sliders use the brand accent. */
+input[type="checkbox"],
+input[type="radio"],
+input[type="range"] {
+  accent-color: #38bdf8;
 }

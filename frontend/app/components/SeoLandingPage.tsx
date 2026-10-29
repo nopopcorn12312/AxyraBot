@@ -50,7 +50,7 @@ export default function SeoLandingPage({ page }: { page: SeoLandingPageData }) {
             <div className="mt-8 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
               <a
                 href={installUrl}
-                className="inline-flex min-h-12 items-center justify-center rounded-lg bg-accent px-6 py-3 text-sm font-bold text-ax-btn-text transition hover:bg-ax-btn-hover"
+                className="inline-flex min-h-12 items-center justify-center rounded-md bg-accent px-6 py-3 text-sm font-bold text-ax-btn-text transition hover:bg-ax-btn-hover"
               >
                 Add AxyraBot
               </a>
@@ -67,8 +67,8 @@ export default function SeoLandingPage({ page }: { page: SeoLandingPageData }) {
           </div>
 
           <figure className="relative mx-auto w-full max-w-xl">
-            <div className="absolute -inset-3 rounded-2xl bg-accent/10 blur-2xl" aria-hidden="true" />
-            <div className="relative overflow-hidden rounded-xl border border-ax-border bg-ax-section shadow-2xl shadow-black/40">
+            <div className="absolute -inset-3 rounded-md bg-accent/10 blur-2xl" aria-hidden="true" />
+            <div className="relative overflow-hidden rounded-md border border-ax-border bg-ax-section shadow-2xl ">
               <Image
                 src={dashboardImage}
                 alt="AxyraBot dashboard for managing community tools"
@@ -90,7 +90,7 @@ export default function SeoLandingPage({ page }: { page: SeoLandingPageData }) {
                 key={section.heading}
                 className="border-b border-ax-subtle py-10 sm:py-12"
               >
-                <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-ax-accent-text">
+                <p className="mb-3 font-mono text-[11px] font-medium uppercase tracking-[0.08em]st text-ax-accent-text">
                   {String(index + 1).padStart(2, "0")}
                 </p>
                 <h2 className="text-2xl font-bold leading-snug text-ax-heading sm:text-3xl">
@@ -147,7 +147,7 @@ export default function SeoLandingPage({ page }: { page: SeoLandingPageData }) {
           </div>
           <a
             href={installUrl}
-            className="inline-flex min-h-12 items-center justify-center rounded-lg border border-accent/50 bg-accent/10 px-6 py-3 text-sm font-bold text-ax-heading transition hover:bg-accent/20"
+            className="inline-flex min-h-12 items-center justify-center rounded-md border border-accent/50 bg-accent/10 px-6 py-3 text-sm font-bold text-ax-heading transition hover:bg-accent/20"
           >
             Add AxyraBot
           </a>

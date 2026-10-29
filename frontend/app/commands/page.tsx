@@ -122,13 +122,13 @@ function CommandToggle({ enabled, onChange }: CommandToggleProps) {
     type="button"
     onClick={() => onChange(!enabled)}
     className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-      enabled ? "bg-emerald-500" : "bg-ax-border"
-    }`}
+ enabled ? "bg-emerald-500" : "bg-ax-border"
+ }`}
   >
     <span
       className={`inline-block h-4 w-4 transform rounded-full bg-ax-section shadow transition-transform ${
-        enabled ? "translate-x-4" : "translate-x-1"
-      }`}
+ enabled ? "translate-x-4" : "translate-x-1"
+ }`}
     />
   </button>
   );
@@ -323,13 +323,13 @@ function CommandsPage() {
 
   return (
     <main className="min-h-screen flex flex-col bg-ax-bg md:h-screen md:overflow-hidden">
-      <header className="w-full flex items-center justify-between px-6 py-4">
+      <header className="w-full flex h-14 shrink-0 items-center justify-between border-b border-ax-subtle px-4 md:px-5">
         <div className="flex items-center gap-4 flex-1">
           <button
             aria-label="Toggle navigation"
             type="button"
             onClick={toggleSidebar}
-            className="mr-2 rounded-lg bg-ax-section px-3 py-2 text-sm font-medium text-ax-body hover:bg-ax-raised border border-ax-border"
+            className="mr-2 rounded-md bg-ax-section px-3 py-2 text-sm font-medium text-ax-body hover:bg-ax-raised border border-ax-border"
           >
             <NavIcon name="menu" size={20} tone="inherit" />
           </button>
@@ -341,7 +341,7 @@ function CommandsPage() {
               height={32}
               className="rounded-full"
             />
-            <div className="text-2xl font-semibold tracking-tight">
+            <div className="font-display text-xl font-semibold tracking-tight">
               <span className="text-ax-accent-text">Axyra</span>
               <span className="text-ax-heading">Bot</span>
             </div>
@@ -359,7 +359,7 @@ function CommandsPage() {
               <ManagingChannelBadge />
               <Link
                 href="/import"
-                className="inline-flex items-center gap-1 rounded-full border border-ax-border bg-ax-section px-3 py-1.5 text-xs font-medium text-ax-body hover:bg-ax-raised hover:border-ax-muted transition"
+                className="inline-flex items-center gap-1 rounded-md border border-ax-border bg-ax-section px-3 py-1.5 text-xs font-medium text-ax-body hover:bg-ax-raised hover:border-ax-muted transition"
               >
                 <NavIcon name="import" size={16} tone="inherit" />
                 <span>Import</span>
@@ -368,7 +368,7 @@ function CommandsPage() {
                 <button
                   type="button"
                   aria-expanded={menuOpen} onClick={() => setMenuOpen((open) => !open)}
-                  className="flex items-center gap-2 rounded-full bg-ax-section px-1.5 py-1 hover:bg-ax-raised transition"
+                  className="flex items-center gap-2 rounded-md bg-ax-section px-1.5 py-1 hover:bg-ax-raised transition"
                 >
                   {avatarUrl && (
                     <Image
@@ -381,7 +381,7 @@ function CommandsPage() {
                   )}
                 </button>
                 {menuOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-36 rounded-lg border border-ax-border bg-ax-section py-2 shadow-lg">
+                  <div className="absolute right-0 top-full mt-2 w-36 rounded-md border border-ax-border bg-ax-section py-2 ">
                     <button
                       type="button"
                       onClick={handleLogout}
@@ -397,7 +397,7 @@ function CommandsPage() {
         </div>
       </header>
 
-      <div className="flex flex-1 w-full flex-col items-stretch gap-3 px-3 pb-4 md:flex-row md:gap-6 md:px-4 md:pb-6 md:min-h-0">
+      <div className="flex flex-1 w-full flex-col items-stretch gap-3 px-3 pb-4 pt-3 md:flex-row md:gap-6 md:px-4 md:pb-6 md:pt-6 md:min-h-0">
         {mobileSidebarOpen && <button type="button" aria-label="Close dashboard menu" onClick={closeMobileSidebar} className="fixed inset-0 z-40 bg-black/60 md:hidden" />}
         <div className={responsiveSidebarClassName(sidebarOpen, mobileSidebarOpen)}>
           <div className="mb-3 flex items-center justify-between border-b border-ax-subtle px-2 pb-3 md:hidden">
@@ -410,7 +410,7 @@ function CommandsPage() {
               <button
                 type="button"
                 aria-expanded={mainSectionOpen} onClick={() => setMainSectionOpen((open) => !open)}
-                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary hover:text-ax-body"
+                className="flex items-center justify-between px-3 font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-ax-secondary hover:text-ax-body"
               >
                 {sidebarOpen ? (
                   <span>Main</span>
@@ -427,11 +427,11 @@ function CommandsPage() {
                   <Link
                     href="/dashboard"
                     aria-current={pathname === "/dashboard" ? "page" : undefined}
-                    className={`group flex items-center gap-3 rounded-xl py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
-                      pathname === "/dashboard"
-                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
-                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
-                    }`}
+                    className={`group flex items-center gap-3 rounded-md py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+ pathname === "/dashboard"
+ ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+ : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}
                   >
                     <NavIcon name="dashboard" />
                     {sidebarOpen ? <span>Dashboard</span> : <span className="sr-only">Dashboard</span>}
@@ -440,11 +440,11 @@ function CommandsPage() {
                   <Link
                     href="/commands"
                     aria-current={pathname === "/commands" ? "page" : undefined}
-                    className={`group flex items-center gap-3 rounded-xl py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
-                      pathname === "/commands"
-                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
-                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
-                    }`}
+                    className={`group flex items-center gap-3 rounded-md py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+ pathname === "/commands"
+ ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+ : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}
                   >
                     <NavIcon name="commands" />
                     {sidebarOpen ? <span>Commands</span> : <span className="sr-only">Commands</span>}
@@ -459,7 +459,7 @@ function CommandsPage() {
               <button
                 type="button"
                 aria-expanded={moderationOpen} onClick={() => setModerationOpen((open) => !open)}
-                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary hover:text-ax-body"
+                className="flex items-center justify-between px-3 font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-ax-secondary hover:text-ax-body"
               >
                 {sidebarOpen ? (
                   <span>Moderation</span>
@@ -478,11 +478,11 @@ function CommandsPage() {
                   <Link
                     href="/moderation/blocked-terms"
                     aria-current={pathname === "/moderation/blocked-terms" ? "page" : undefined}
-                    className={`group flex items-center gap-3 rounded-xl py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
-                      pathname === "/moderation/blocked-terms"
-                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
-                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
-                    }`}
+                    className={`group flex items-center gap-3 rounded-md py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+ pathname === "/moderation/blocked-terms"
+ ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+ : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}
                   >
                     <NavIcon name="blockedTerms" />
                     {sidebarOpen ? <span>Blocked Terms</span> : <span className="sr-only">Blocked Terms</span>}
@@ -490,11 +490,11 @@ function CommandsPage() {
                   <Link
                     href="/moderation/spam-filters"
                     aria-current={pathname === "/moderation/spam-filters" ? "page" : undefined}
-                    className={`group flex items-center gap-3 rounded-xl py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
-                      pathname === "/moderation/spam-filters"
-                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
-                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
-                    }`}
+                    className={`group flex items-center gap-3 rounded-md py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+ pathname === "/moderation/spam-filters"
+ ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+ : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}
                   >
                     <NavIcon name="spamFilters" />
                     {sidebarOpen ? <span>Spam Filters</span> : <span className="sr-only">Spam Filters</span>}
@@ -508,7 +508,7 @@ function CommandsPage() {
               <button
                 type="button"
                 aria-expanded={vanitySectionOpen} onClick={() => setVanitySectionOpen((open) => !open)}
-                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary hover:text-ax-body"
+                className="flex items-center justify-between px-3 font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-ax-secondary hover:text-ax-body"
               >
                 {sidebarOpen ? (
                   <span>Vanity</span>
@@ -525,11 +525,11 @@ function CommandsPage() {
                   <Link
                     href="/modules"
                     aria-current={pathname === "/modules" ? "page" : undefined}
-                    className={`group flex items-center gap-3 rounded-xl py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
-                      pathname === "/modules"
-                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
-                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
-                    }`}
+                    className={`group flex items-center gap-3 rounded-md py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+ pathname === "/modules"
+ ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+ : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}
                   >
                     <NavIcon name="modules" />
                     {sidebarOpen ? <span>Modules</span> : <span className="sr-only">Modules</span>}
@@ -537,11 +537,11 @@ function CommandsPage() {
                   <Link
                     href="/birthdays"
                     aria-current={pathname === "/birthdays" ? "page" : undefined}
-                    className={`group flex items-center gap-3 rounded-xl py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
-                      pathname === "/birthdays"
-                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
-                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
-                    }`}
+                    className={`group flex items-center gap-3 rounded-md py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+ pathname === "/birthdays"
+ ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+ : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}
                   >
                     <NavIcon name="birthdays" />
                     {sidebarOpen ? <span>Birthdays</span> : <span className="sr-only">Birthdays</span>}
@@ -549,11 +549,11 @@ function CommandsPage() {
                   <Link
                     href="/giveaways"
                     aria-current={pathname === "/giveaways" ? "page" : undefined}
-                    className={`group flex items-center gap-3 rounded-xl py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
-                      pathname === "/giveaways"
-                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
-                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
-                    }`}
+                    className={`group flex items-center gap-3 rounded-md py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+ pathname === "/giveaways"
+ ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+ : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}
                   >
                     <NavIcon name="giveaways" />
                     {sidebarOpen ? <span>Giveaways</span> : <span className="sr-only">Giveaways</span>}
@@ -562,11 +562,11 @@ function CommandsPage() {
                   <Link
                     href="/roles"
                     aria-current={pathname === "/roles" ? "page" : undefined}
-                    className={`group flex items-center gap-3 rounded-xl py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
-                      pathname === "/roles"
-                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
-                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
-                    }`}
+                    className={`group flex items-center gap-3 rounded-md py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+ pathname === "/roles"
+ ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+ : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}
                   >
                     <NavIcon name="roles" />
                     {sidebarOpen ? <span>Roles</span> : <span className="sr-only">Roles</span>}
@@ -578,7 +578,7 @@ function CommandsPage() {
 
             {/* Integrations section */}
             <div className="flex flex-col gap-2">
-              <button type="button" onClick={() => {}} className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary">
+              <button type="button" onClick={() => {}} className="flex items-center justify-between px-3 font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-ax-secondary">
                 {sidebarOpen ? (
                   <span>Integrations</span>
                 ) : (
@@ -589,10 +589,10 @@ function CommandsPage() {
                 )}
               </button>
               <Link href="/discord/settings" aria-current={pathname === "/discord/settings" ? "page" : undefined}
- className={`group flex items-center gap-3 rounded-xl py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
-   pathname === "/discord/settings"
-     ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
-     : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ className={`group flex items-center gap-3 rounded-md py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+ pathname === "/discord/settings"
+ ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+ : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
  }`}>
                 <NavIcon name="discord" />{sidebarOpen ? <span>Discord</span> : <span className="sr-only">Discord</span>}
               </Link>
@@ -603,7 +603,7 @@ function CommandsPage() {
               <button
                 type="button"
                 aria-expanded={otherSectionOpen} onClick={() => setOtherSectionOpen((open) => !open)}
-                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary hover:text-ax-body"
+                className="flex items-center justify-between px-3 font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-ax-secondary hover:text-ax-body"
               >
                 {sidebarOpen ? (
                   <span>Other</span>
@@ -620,11 +620,11 @@ function CommandsPage() {
                   <Link
                     href="/privacy"
                     aria-current={pathname === "/privacy" ? "page" : undefined}
-                    className={`group flex items-center gap-3 rounded-xl py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
-                      pathname === "/privacy"
-                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
-                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
-                    }`}
+                    className={`group flex items-center gap-3 rounded-md py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+ pathname === "/privacy"
+ ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+ : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}
                   >
                     <NavIcon name="privacy" />
                     {sidebarOpen ? <span>Privacy</span> : <span className="sr-only">Privacy</span>}
@@ -632,11 +632,11 @@ function CommandsPage() {
                   <Link
                     href="/terms"
                     aria-current={pathname === "/terms" ? "page" : undefined}
-                    className={`group flex items-center gap-3 rounded-xl py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
-                      pathname === "/terms"
-                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
-                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
-                    }`}
+                    className={`group flex items-center gap-3 rounded-md py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+ pathname === "/terms"
+ ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+ : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}
                   >
                     <NavIcon name="terms" />
                     {sidebarOpen ? <span>Terms</span> : <span className="sr-only">Terms</span>}
@@ -644,11 +644,11 @@ function CommandsPage() {
                   <Link
                     href="/api-docs"
                     aria-current={pathname === "/api-docs" ? "page" : undefined}
-                    className={`group flex items-center gap-3 rounded-xl py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
-                      pathname === "/api-docs"
-                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
-                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
-                    }`}
+                    className={`group flex items-center gap-3 rounded-md py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+ pathname === "/api-docs"
+ ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+ : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}
                   >
                     <NavIcon name="apiDocs" />
                     {sidebarOpen ? <span>API Docs</span> : <span className="sr-only">API Docs</span>}
@@ -660,20 +660,20 @@ function CommandsPage() {
         </div>
 
         <div className="flex-1 flex flex-col gap-6 text-ax-heading min-h-0">
-          <div className="w-full flex-1 flex flex-col rounded-2xl border border-ax-subtle bg-ax-section p-6 min-h-0">
+          <div className="w-full flex-1 flex flex-col rounded-md border border-ax-subtle bg-ax-section p-6 min-h-0">
             <div className="flex items-center justify-between mb-4">
               <div className="flex flex-wrap items-center gap-3">
                 <h1 className="text-3xl font-semibold">Commands</h1>
-                <div className="inline-flex rounded-full bg-ax-section border border-ax-border p-1.5 text-sm">
+                <div className="inline-flex rounded-md border border-ax-border bg-ax-section p-1 text-sm">
                   <button
                     type="button"
                     onClick={() => setView("default")}
                     aria-pressed={view === "default"}
-                    className={`whitespace-nowrap rounded-full px-3 py-1.5 font-medium transition sm:px-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
-                      view === "default"
-                        ? "bg-ax-accent text-ax-btn-text"
-                        : "text-ax-body hover:bg-ax-raised hover:text-ax-heading"
-                    }`}
+                    className={`whitespace-nowrap rounded-md px-3 py-1.5 font-medium transition sm:px-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+ view === "default"
+ ? "bg-ax-accent text-ax-btn-text"
+ : "text-ax-body hover:bg-ax-raised hover:text-ax-heading"
+ }`}
                   >
                     Default commands
                   </button>
@@ -681,11 +681,11 @@ function CommandsPage() {
                     type="button"
                     onClick={() => setView("custom")}
                     aria-pressed={view === "custom"}
-                    className={`ml-1 whitespace-nowrap rounded-full px-3 py-1.5 font-medium transition sm:px-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
-                      view === "custom"
-                        ? "bg-ax-accent text-ax-btn-text"
-                        : "text-ax-body hover:bg-ax-raised hover:text-ax-heading"
-                    }`}
+                    className={`ml-1 whitespace-nowrap rounded-md px-3 py-1.5 font-medium transition sm:px-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+ view === "custom"
+ ? "bg-ax-accent text-ax-btn-text"
+ : "text-ax-body hover:bg-ax-raised hover:text-ax-heading"
+ }`}
                   >
                     Custom commands
                   </button>
@@ -702,13 +702,13 @@ function CommandsPage() {
                       placeholder="Search commands..."
                       value={commandSearch}
                       onChange={(e) => setCommandSearch(e.target.value)}
-                      className="pl-10 pr-4 py-2 rounded-lg border border-ax-border bg-ax-section text-base text-ax-body placeholder-ax-muted focus:outline-none focus:ring-2 focus:ring-accent/60 w-64"
+                      className="pl-10 pr-4 py-2 rounded-md border border-ax-border bg-ax-section text-base text-ax-body placeholder-ax-muted focus:outline-none focus:ring-2 focus:ring-accent/60 w-64"
                     />
                   </div>
                   <button
                     type="button"
                     onClick={() => { setNewCmdName(""); setNewCmdResponse(""); setNewCmdRole("all"); setAddCmdError(null); setShowAddModal(true); }}
-                    className="px-4 py-2 rounded-lg bg-accent text-ax-btn-text text-sm font-medium hover:bg-accent/90 transition shadow-[0_0_14px_rgba(56,189,248,0.35)] whitespace-nowrap"
+                    className="px-4 py-2 rounded-md bg-accent text-ax-btn-text text-sm font-medium hover:bg-accent/90 transition whitespace-nowrap"
                   >
                     Add +
                   </button>
@@ -716,8 +716,8 @@ function CommandsPage() {
               )}
             </div>
 
-            <div className="flex-1 overflow-auto rounded-xl border border-ax-subtle bg-ax-section min-h-0">
-              <table className="min-w-full w-full table-fixed h-full text-sm text-left">
+            <div className="min-h-0 overflow-auto rounded-md border border-ax-subtle bg-ax-section">
+              <table className="min-w-full w-full table-fixed text-sm text-left [&_tbody_tr:last-child]:border-b-0">
                 <thead className="bg-ax-section text-ax-secondary">
                   <tr>
                     <th className="px-4 py-3 font-semibold w-36">Command</th>
@@ -853,7 +853,7 @@ function CommandsPage() {
                                       setDeleteTarget(row.name);
                                       setDeleteError(null);
                                     }}
-                                    className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-red-700 bg-red-700/80 text-ax-heading hover:bg-red-600/90"
+                                    className="inline-flex h-8 w-8 items-center justify-center rounded-md text-ax-secondary transition hover:bg-red-500/15 hover:text-red-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ax-focus disabled:opacity-50"
                                   >
                                     <span className="sr-only">Delete command</span>
                                     <svg
@@ -1043,7 +1043,7 @@ function CommandsPage() {
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
           onMouseDown={(e) => { if (e.target === e.currentTarget) setShowAddModal(false); }}
         >
-          <div ref={addModalRef} className="w-full max-w-md rounded-2xl border border-ax-border bg-ax-section p-6 shadow-2xl">
+          <div ref={addModalRef} className="w-full max-w-md rounded-md border border-ax-border bg-ax-section p-6 shadow-2xl">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-lg font-semibold text-ax-heading">Add Custom Command</h2>
               <button
@@ -1062,7 +1062,7 @@ function CommandsPage() {
                   placeholder="e.g. !socials"
                   value={newCmdName}
                   onChange={(e) => setNewCmdName(e.target.value)}
-                  className="rounded-lg border border-ax-border bg-ax-section px-3 py-2 text-sm text-ax-body placeholder-ax-muted focus:outline-none focus:ring-2 focus:ring-accent/60"
+                  className="rounded-md border border-ax-border bg-ax-section px-3 py-2 text-sm text-ax-body placeholder-ax-muted focus:outline-none focus:ring-2 focus:ring-accent/60"
                   autoFocus
                 />
               </div>
@@ -1073,7 +1073,7 @@ function CommandsPage() {
                   value={newCmdResponse}
                   onChange={(e) => setNewCmdResponse(e.target.value)}
                   rows={3}
-                  className="rounded-lg border border-ax-border bg-ax-section px-3 py-2 text-sm text-ax-body placeholder-ax-muted focus:outline-none focus:ring-2 focus:ring-accent/60 resize-none"
+                  className="rounded-md border border-ax-border bg-ax-section px-3 py-2 text-sm text-ax-body placeholder-ax-muted focus:outline-none focus:ring-2 focus:ring-accent/60 resize-none"
                 />
               </div>
               <div className="flex flex-col gap-1">
@@ -1081,7 +1081,7 @@ function CommandsPage() {
                 <select
                   value={newCmdRole}
                   onChange={(e) => setNewCmdRole(e.target.value as CustomCommandRole)}
-                  className="rounded-lg border border-ax-border bg-ax-section px-3 py-2 text-sm text-ax-body focus:outline-none focus:ring-2 focus:ring-accent/60"
+                  className="rounded-md border border-ax-border bg-ax-section px-3 py-2 text-sm text-ax-body focus:outline-none focus:ring-2 focus:ring-accent/60"
                 >
                   <option value="all">Everyone</option>
                   <option value="vip">VIP+</option>
@@ -1094,7 +1094,7 @@ function CommandsPage() {
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="rounded-lg border border-ax-border px-4 py-2 text-sm font-medium text-ax-body hover:bg-ax-raised transition"
+                  className="rounded-md border border-ax-border px-4 py-2 text-sm font-medium text-ax-body hover:bg-ax-raised transition"
                   disabled={addingCmd}
                 >
                   Cancel
@@ -1102,7 +1102,7 @@ function CommandsPage() {
                 <button
                   type="button"
                   disabled={!newCmdName.trim() || !newCmdResponse.trim() || addingCmd}
-                  className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-ax-btn-text hover:bg-accent/90 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-ax-btn-text hover:bg-accent/90 transition disabled:opacity-40 disabled:cursor-not-allowed"
                   onClick={async () => {
                     if (!channelLogin || !newCmdName.trim() || !newCmdResponse.trim()) return;
                     setAddingCmd(true);
@@ -1193,7 +1193,7 @@ function DeleteCommandModal({
 }) {
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60">
-      <div className="w-full max-w-sm rounded-xl border border-ax-subtle bg-ax-section p-5 shadow-xl">
+      <div className="w-full max-w-sm rounded-md border border-ax-subtle bg-ax-section p-5 shadow-xl">
         <h2 className="text-lg font-semibold text-ax-body mb-2">Delete command</h2>
         <p className="text-sm text-ax-secondary mb-3">
           Are you sure you want to delete

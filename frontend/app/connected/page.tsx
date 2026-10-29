@@ -9,7 +9,7 @@ export default async function ConnectedPage({ searchParams }: ConnectedPageProps
 
   return (
     <main className="min-h-screen flex items-center justify-center px-4 bg-ax-bg">
-      <div className="max-w-md w-full rounded-3xl border border-ax-subtle bg-ax-section p-8 text-center shadow-glow backdrop-blur-md">
+      <div className="max-w-md w-full rounded-md border border-ax-subtle bg-ax-section p-8 text-center shadow-glow backdrop-blur-md">
         <h1 className="text-2xl sm:text-3xl font-semibold text-ax-heading">
           Twitch connected
         </h1>

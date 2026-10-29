@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import AxyraBotPFP from "./images/AxyraBotPFP.png";
 import SessionFetch from "./components/SessionFetch";
+import { bodyFont, displayFont, monoFont } from "./fonts";
 import "../styles/globals.css";
 
 export const metadata: Metadata = {
@@ -19,7 +20,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="scroll-smooth">
+    <html lang="en" className={`scroll-smooth ${displayFont.variable} ${bodyFont.variable} ${monoFont.variable}`}>
       <body>
         <SessionFetch />
         {children}

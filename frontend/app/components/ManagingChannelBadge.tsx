@@ -88,7 +88,7 @@ export default function ManagingChannelBadge() {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-2.5 rounded-xl border border-ax-border bg-ax-section px-3 py-1.5 hover:bg-ax-raised hover:border-ax-muted transition"
+        className="flex items-center gap-2.5 rounded-md border border-ax-border bg-ax-section px-3 py-1.5 hover:bg-ax-raised hover:border-ax-muted transition"
       >
         {active.avatarUrl ? (
           <Image
@@ -103,7 +103,7 @@ export default function ManagingChannelBadge() {
           <div className="w-8 h-8 rounded-full bg-ax-raised flex-shrink-0" />
         )}
         <div className="flex flex-col items-start leading-tight">
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-ax-secondary">
+          <span className="font-mono text-[10px] font-medium uppercase tracking-[0.08em] text-ax-secondary">
             Managing Channel
           </span>
           <span className="text-sm font-bold text-ax-heading">{active.login}</span>
@@ -120,8 +120,8 @@ export default function ManagingChannelBadge() {
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full mt-2 w-52 rounded-xl border border-ax-border bg-ax-section shadow-xl py-1.5 z-50">
-          <p className="px-3 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-wide text-ax-muted">
+        <div className="absolute left-0 top-full mt-2 w-52 rounded-md border border-ax-border bg-ax-section shadow-xl py-1.5 z-50">
+          <p className="px-3 pb-1 pt-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.08em] text-ax-muted">
             Switch channel
           </p>
           {options.map((opt) => (

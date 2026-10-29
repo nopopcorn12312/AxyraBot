@@ -39,6 +39,8 @@ const config: Config = {
         display: ["var(--font-display)", "ui-sans-serif", "system-ui", "sans-serif"],
         landing: ["var(--font-body)", "ui-sans-serif", "system-ui", "sans-serif"],
         code: ["var(--font-code)", "ui-monospace", "SFMono-Regular", "monospace"],
+        // App-wide monospace is the brand mono (Geist Mono) for data and labels.
+        mono: ["var(--font-code)", "ui-monospace", "SFMono-Regular", "monospace"],
       },
       boxShadow: {
         glow: "0 0 80px rgba(56, 189, 248, 0.4)",

@@ -360,7 +360,7 @@ export default function DashboardPage() {
 
   return (
     <main className="min-h-screen flex flex-col bg-ax-bg md:h-screen md:overflow-hidden">
-      <header className="w-full flex items-center justify-between gap-2 px-3 py-3 sm:px-4 md:px-6 md:py-4">
+      <header className="w-full flex h-14 shrink-0 items-center justify-between gap-2 border-b border-ax-subtle px-3 sm:px-4 md:px-5">
         <div className="flex min-w-0 items-center gap-2 flex-1 sm:gap-4">
           <button
             type="button"
@@ -372,7 +372,7 @@ export default function DashboardPage() {
                 setMobileSidebarOpen(true);
               }
             }}
-            className="shrink-0 rounded-lg border border-ax-border bg-ax-section p-2 text-sm font-medium text-ax-body hover:bg-ax-raised sm:mr-2 sm:px-3 sm:py-2"
+            className="shrink-0 rounded-md border border-ax-border bg-ax-section p-2 text-sm font-medium text-ax-body hover:bg-ax-raised sm:mr-2 sm:px-3 sm:py-2"
           >
             <NavIcon name="menu" size={20} tone="inherit" />
           </button>
@@ -384,7 +384,7 @@ export default function DashboardPage() {
               height={30}
               className="shrink-0 rounded-full"
             />
-            <div className="truncate text-lg font-semibold tracking-tight sm:text-xl md:text-2xl">
+            <div className="truncate font-display text-lg font-semibold tracking-tight sm:text-xl">
               <span className="text-ax-accent-text">Axyra</span>
               <span className="text-ax-heading">Bot</span>
             </div>
@@ -399,7 +399,7 @@ export default function DashboardPage() {
               <ManagingChannelBadge />
               <Link
                 href="/import"
-                className="hidden items-center gap-1 rounded-full border border-ax-border bg-ax-section px-3 py-1.5 text-xs font-medium text-ax-body transition hover:border-ax-muted hover:bg-ax-raised md:inline-flex"
+                className="hidden items-center gap-1 rounded-md border border-ax-border bg-ax-section px-3 py-1.5 text-xs font-medium text-ax-body transition hover:border-ax-muted hover:bg-ax-raised md:inline-flex"
               >
                 <NavIcon name="import" size={16} tone="inherit" />
                 <span>Import</span>
@@ -408,7 +408,7 @@ export default function DashboardPage() {
                 <button
                   type="button"
                   aria-expanded={menuOpen} onClick={() => setMenuOpen((open: boolean) => !open)}
-                  className="flex items-center gap-2 rounded-full bg-ax-section px-1.5 py-1 hover:bg-ax-raised transition"
+                  className="flex items-center gap-2 rounded-md bg-ax-section px-1.5 py-1 hover:bg-ax-raised transition"
                 >
                   {avatarUrl && (
                     <Image
@@ -421,7 +421,7 @@ export default function DashboardPage() {
                   )}
                 </button>
                 {menuOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-36 rounded-lg border border-ax-border bg-ax-section py-2 shadow-lg">
+                  <div className="absolute right-0 top-full mt-2 w-36 rounded-md border border-ax-border bg-ax-section py-2 ">
                     <button
                       type="button"
                       onClick={handleLogout}
@@ -445,9 +445,9 @@ export default function DashboardPage() {
           className="fixed inset-0 z-40 bg-black/60 md:hidden"
         />
       )}
-      <div className="flex flex-1 w-full items-stretch gap-3 px-3 pb-4 md:min-h-0 md:gap-6 md:px-4 md:pb-6">
+      <div className="flex flex-1 w-full items-stretch gap-3 px-3 pb-4 pt-3 md:min-h-0 md:gap-6 md:px-4 md:pb-6 md:pt-6">
         <div
-          className={`${mobileSidebarOpen ? "fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] rounded-none shadow-2xl" : "hidden"} ${sidebarOpen ? "md:w-60" : "md:invisible md:w-0 md:-mr-6 md:-translate-x-4 md:overflow-hidden md:!border-0 md:!p-0 md:opacity-0"} flex-col border border-ax-subtle bg-ax-section p-3 transition-all duration-200 whitespace-nowrap motion-reduce:transition-none md:relative md:inset-auto md:z-auto md:flex md:max-w-none md:rounded-2xl md:bg-ax-section md:shadow-none`}
+          className={`${mobileSidebarOpen ? "fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] rounded-none shadow-2xl" : "hidden"} ${sidebarOpen ? "md:w-60 md:-ml-4 md:-mt-6 md:-mb-6" : "md:invisible md:w-0 md:-mr-6 md:-translate-x-4 md:overflow-hidden md:!border-0 md:!p-0 md:opacity-0"} flex-col border-r border-ax-subtle bg-ax-section p-3 transition-all duration-200 whitespace-nowrap motion-reduce:transition-none md:relative md:inset-auto md:z-auto md:flex md:max-w-none md:rounded-none md:bg-ax-section md:shadow-none`}
         >
           <div className="mb-3 flex items-center justify-between border-b border-ax-subtle px-2 pb-3 md:hidden">
             <span className="text-sm font-semibold text-ax-body">Dashboard menu</span>
@@ -465,7 +465,7 @@ export default function DashboardPage() {
               <button
                 type="button"
                 aria-expanded={mainSectionOpen} onClick={() => setMainSectionOpen((open: boolean) => !open)}
-                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary hover:text-ax-body"
+                className="flex items-center justify-between px-3 font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-ax-secondary hover:text-ax-body"
               >
                 {sidebarOpen ? (
                   <span>Main</span>
@@ -482,11 +482,11 @@ export default function DashboardPage() {
                   <Link
                     href="/dashboard"
                     aria-current={pathname === "/dashboard" ? "page" : undefined}
-                    className={`group flex items-center gap-3 rounded-xl py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
-                      pathname === "/dashboard"
-                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
-                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
-                    }`}
+                    className={`group flex items-center gap-3 rounded-md py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+ pathname === "/dashboard"
+ ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+ : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}
                   >
                     <NavIcon name="dashboard" />
                     {sidebarOpen ? <span>Dashboard</span> : <span className="sr-only">Dashboard</span>}
@@ -495,11 +495,11 @@ export default function DashboardPage() {
                   <Link
                     href="/commands"
                     aria-current={pathname === "/commands" ? "page" : undefined}
-                    className={`group flex items-center gap-3 rounded-xl py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
-                      pathname === "/commands"
-                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
-                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
-                    }`}
+                    className={`group flex items-center gap-3 rounded-md py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+ pathname === "/commands"
+ ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+ : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}
                   >
                     <NavIcon name="commands" />
                     {sidebarOpen ? <span>Commands</span> : <span className="sr-only">Commands</span>}
@@ -513,7 +513,7 @@ export default function DashboardPage() {
               <button
                 type="button"
                 aria-expanded={moderationOpen} onClick={() => setModerationOpen((open: boolean) => !open)}
-                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary hover:text-ax-body"
+                className="flex items-center justify-between px-3 font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-ax-secondary hover:text-ax-body"
               >
                 {sidebarOpen ? (
                   <span>Moderation</span>
@@ -532,11 +532,11 @@ export default function DashboardPage() {
                   <Link
                     href="/moderation/blocked-terms"
                     aria-current={pathname === "/moderation/blocked-terms" ? "page" : undefined}
-                    className={`group flex items-center gap-3 rounded-xl py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
-                      pathname === "/moderation/blocked-terms"
-                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
-                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
-                    }`}
+                    className={`group flex items-center gap-3 rounded-md py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+ pathname === "/moderation/blocked-terms"
+ ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+ : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}
                   >
                     <NavIcon name="blockedTerms" />
                     {sidebarOpen ? <span>Blocked Terms</span> : <span className="sr-only">Blocked Terms</span>}
@@ -544,11 +544,11 @@ export default function DashboardPage() {
                   <Link
                     href="/moderation/spam-filters"
                     aria-current={pathname === "/moderation/spam-filters" ? "page" : undefined}
-                    className={`group flex items-center gap-3 rounded-xl py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
-                      pathname === "/moderation/spam-filters"
-                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
-                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
-                    }`}
+                    className={`group flex items-center gap-3 rounded-md py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+ pathname === "/moderation/spam-filters"
+ ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+ : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}
                   >
                     <NavIcon name="spamFilters" />
                     {sidebarOpen ? <span>Spam Filters</span> : <span className="sr-only">Spam Filters</span>}
@@ -562,7 +562,7 @@ export default function DashboardPage() {
               <button
                 type="button"
                 aria-expanded={vanitySectionOpen} onClick={() => setVanitySectionOpen((open: boolean) => !open)}
-                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary hover:text-ax-body"
+                className="flex items-center justify-between px-3 font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-ax-secondary hover:text-ax-body"
               >
                 {sidebarOpen ? (
                   <span>Vanity</span>
@@ -579,11 +579,11 @@ export default function DashboardPage() {
                   <Link
                     href="/modules"
                     aria-current={pathname === "/modules" ? "page" : undefined}
-                    className={`group flex items-center gap-3 rounded-xl py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
-                      pathname === "/modules"
-                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
-                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
-                    }`}
+                    className={`group flex items-center gap-3 rounded-md py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+ pathname === "/modules"
+ ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+ : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}
                   >
                     <NavIcon name="modules" />
                     {sidebarOpen ? <span>Modules</span> : <span className="sr-only">Modules</span>}
@@ -591,11 +591,11 @@ export default function DashboardPage() {
                   <Link
                     href="/birthdays"
                     aria-current={pathname === "/birthdays" ? "page" : undefined}
-                    className={`group flex items-center gap-3 rounded-xl py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
-                      pathname === "/birthdays"
-                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
-                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
-                    }`}
+                    className={`group flex items-center gap-3 rounded-md py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+ pathname === "/birthdays"
+ ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+ : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}
                   >
                     <NavIcon name="birthdays" />
                     {sidebarOpen ? <span>Birthdays</span> : <span className="sr-only">Birthdays</span>}
@@ -603,11 +603,11 @@ export default function DashboardPage() {
                   <Link
                     href="/giveaways"
                     aria-current={pathname === "/giveaways" ? "page" : undefined}
-                    className={`group flex items-center gap-3 rounded-xl py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
-                      pathname === "/giveaways"
-                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
-                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
-                    }`}
+                    className={`group flex items-center gap-3 rounded-md py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+ pathname === "/giveaways"
+ ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+ : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}
                   >
                     <NavIcon name="giveaways" />
                     {sidebarOpen ? <span>Giveaways</span> : <span className="sr-only">Giveaways</span>}
@@ -616,11 +616,11 @@ export default function DashboardPage() {
                   <Link
                     href="/roles"
                     aria-current={pathname === "/roles" ? "page" : undefined}
-                    className={`group flex items-center gap-3 rounded-xl py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
-                      pathname === "/roles"
-                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
-                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
-                    }`}
+                    className={`group flex items-center gap-3 rounded-md py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+ pathname === "/roles"
+ ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+ : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}
                   >
                     <NavIcon name="roles" />
                     {sidebarOpen ? <span>Roles</span> : <span className="sr-only">Roles</span>}
@@ -632,7 +632,7 @@ export default function DashboardPage() {
 
             {/* Integrations section */}
             <div className="flex flex-col gap-2">
-              <button type="button" onClick={() => {}} className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary">
+              <button type="button" onClick={() => {}} className="flex items-center justify-between px-3 font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-ax-secondary">
                 {sidebarOpen ? (
                   <span>Integrations</span>
                 ) : (
@@ -643,10 +643,10 @@ export default function DashboardPage() {
                 )}
               </button>
               <Link href="/discord/settings" aria-current={pathname === "/discord/settings" ? "page" : undefined}
- className={`group flex items-center gap-3 rounded-xl py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
-   pathname === "/discord/settings"
-     ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
-     : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ className={`group flex items-center gap-3 rounded-md py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+ pathname === "/discord/settings"
+ ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+ : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
  }`}>
                 <NavIcon name="discord" />{sidebarOpen ? <span>Discord</span> : <span className="sr-only">Discord</span>}
               </Link>
@@ -657,7 +657,7 @@ export default function DashboardPage() {
               <button
                 type="button"
                 aria-expanded={otherSectionOpen} onClick={() => setOtherSectionOpen((open: boolean) => !open)}
-                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary hover:text-ax-body"
+                className="flex items-center justify-between px-3 font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-ax-secondary hover:text-ax-body"
               >
                 {sidebarOpen ? (
                   <span>Other</span>
@@ -674,11 +674,11 @@ export default function DashboardPage() {
                   <Link
                     href="/privacy"
                     aria-current={pathname === "/privacy" ? "page" : undefined}
-                    className={`group flex items-center gap-3 rounded-xl py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
-                      pathname === "/privacy"
-                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
-                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
-                    }`}
+                    className={`group flex items-center gap-3 rounded-md py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+ pathname === "/privacy"
+ ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+ : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}
                   >
                     <NavIcon name="privacy" />
                     {sidebarOpen ? <span>Privacy</span> : <span className="sr-only">Privacy</span>}
@@ -686,11 +686,11 @@ export default function DashboardPage() {
                   <Link
                     href="/terms"
                     aria-current={pathname === "/terms" ? "page" : undefined}
-                    className={`group flex items-center gap-3 rounded-xl py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
-                      pathname === "/terms"
-                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
-                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
-                    }`}
+                    className={`group flex items-center gap-3 rounded-md py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+ pathname === "/terms"
+ ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+ : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}
                   >
                     <NavIcon name="terms" />
                     {sidebarOpen ? <span>Terms</span> : <span className="sr-only">Terms</span>}
@@ -698,11 +698,11 @@ export default function DashboardPage() {
                   <Link
                     href="/api-docs"
                     aria-current={pathname === "/api-docs" ? "page" : undefined}
-                    className={`group flex items-center gap-3 rounded-xl py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
-                      pathname === "/api-docs"
-                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
-                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
-                    }`}
+                    className={`group flex items-center gap-3 rounded-md py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+ pathname === "/api-docs"
+ ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+ : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}
                   >
                     <NavIcon name="apiDocs" />
                     {sidebarOpen ? <span>API Docs</span> : <span className="sr-only">API Docs</span>}
@@ -715,7 +715,7 @@ export default function DashboardPage() {
 
         <div className="flex min-w-0 flex-1 flex-col gap-3 text-ax-heading md:min-h-0">
           <div className="flex flex-col gap-3 md:min-h-0 md:flex-1 lg:flex-row lg:gap-6">
-          <div className="flex w-full flex-none flex-col rounded-2xl border border-ax-subtle bg-ax-section p-4 sm:p-5 md:min-h-0 md:flex-1 md:overflow-hidden md:p-6 lg:basis-2/3">
+          <div className="flex w-full flex-none flex-col rounded-md border border-ax-subtle bg-ax-section p-4 sm:p-5 md:min-h-0 md:flex-1 md:overflow-hidden md:p-6 lg:basis-2/3">
             <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
               <h1 className="text-xl font-semibold sm:text-2xl">Recent Activity</h1>
               <span className="text-xs text-ax-secondary">Latest changes from Twitch &amp; AxyraBot</span>
@@ -745,40 +745,33 @@ export default function DashboardPage() {
                     {activity.map((item, idx) => {
                       const source = item.source?.toLowerCase();
                       const isTwitch = source === "twitch";
-                      const badgeClasses = isTwitch
-                        ? "bg-violet-600/80 text-violet-50 border-violet-400/60"
-                        : "bg-sky-600/80 text-sky-50 border-sky-400/60";
-                      const badgeLabel = isTwitch ? "Twitch" : "AxyraBot";
-                      const isEven = idx % 2 === 0;
+                      const badgeLabel = isTwitch ? "twitch" : "bot";
                       return (
                         <li
                           key={`${item.timestamp}-${idx}`}
-                          className={`flex items-start gap-3 px-2 py-2.5 rounded-lg ${
-                            isEven
-                              ? "bg-ax-section"
-                              : "bg-ax-section"
-                          }`}
+                          className="grid grid-cols-[4.5rem_3.25rem_1fr] items-baseline gap-x-3 px-1 py-2.5 sm:grid-cols-[5rem_3.5rem_1fr]"
                         >
+                          <time
+                            dateTime={item.timestamp}
+                            title={new Date(item.timestamp).toLocaleString()}
+                            className="font-mono text-[11px] tabular-nums text-ax-muted"
+                          >
+                            {formatTimeAgo(item.timestamp)}
+                          </time>
                           <span
-                            className={`mt-1 h-2 w-2 shrink-0 rounded-full ${
-                              isTwitch ? "bg-violet-400" : "bg-ax-accent"
+                            className={`inline-flex items-center gap-1.5 font-mono text-[11px] ${
+                              isTwitch ? "text-violet-300" : "text-ax-accent-text"
                             }`}
-                          />
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-0.5">
-                              <span
-                                className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${badgeClasses}`}
-                              >
-                                {badgeLabel}
-                              </span>
-                              <span className="text-[11px] text-ax-muted">
-                                {formatTimeAgo(item.timestamp)}
-                              </span>
-                            </div>
-                            <p className="text-ax-body leading-snug">
-                              {item.description}
-                            </p>
-                          </div>
+                          >
+                            <span
+                              aria-hidden="true"
+                              className={`h-1.5 w-1.5 shrink-0 rounded-[1px] ${isTwitch ? "bg-violet-400" : "bg-ax-accent"}`}
+                            />
+                            {badgeLabel}
+                          </span>
+                          <p className="min-w-0 break-words leading-snug text-ax-body">
+                            {item.description}
+                          </p>
                         </li>
                       );
                     })}
@@ -789,15 +782,15 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex w-full flex-col gap-3 md:min-h-0 lg:basis-1/3">
-          <div className="flex flex-col justify-between rounded-2xl border border-ax-subtle bg-ax-section p-4 sm:p-5 md:p-6">
+          <div className="flex flex-col justify-between rounded-md border border-ax-subtle bg-ax-section p-4 sm:p-5 md:p-6">
             <div>
               <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <h2 className="text-lg font-semibold sm:text-xl">Stream Details</h2>
                 <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-ax-body sm:text-sm md:text-base">
                   <span
                     className={`h-3 w-3 rounded-full ${
-                      joined ? "bg-emerald-400" : "bg-red-500"
-                    }`}
+ joined ? "bg-emerald-400" : "bg-red-500"
+ }`}
                   />
                   <span>{joined ? "Bot is connected" : "Bot is not connected"}</span>
                 </div>
@@ -807,7 +800,7 @@ export default function DashboardPage() {
               </label>
               <input
                 type="text"
-                className="mb-5 w-full rounded-lg border border-ax-border bg-ax-section px-3 py-2 text-sm text-ax-body placeholder-ax-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent/70"
+                className="mb-5 w-full rounded-md border border-ax-border bg-ax-section px-3 py-2 text-sm text-ax-body placeholder-ax-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent/70"
                 placeholder="Current stream title"
                 value={streamTitle}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
@@ -821,7 +814,7 @@ export default function DashboardPage() {
               <div className="relative" ref={categoryWrapperRef}>
                 <input
                   type="text"
-                  className="w-full rounded-lg border border-ax-border bg-ax-section px-3 py-2 text-sm text-ax-body placeholder-ax-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent/70"
+                  className="w-full rounded-md border border-ax-border bg-ax-section px-3 py-2 text-sm text-ax-body placeholder-ax-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent/70"
                   placeholder="Search Twitch categories…"
                   value={streamCategory}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
@@ -843,7 +836,7 @@ export default function DashboardPage() {
                   autoComplete="off"
                 />
                 {showSuggestions && categorySuggestions.length > 0 && (
-                  <ul className="absolute z-50 mt-1 w-full rounded-lg border border-ax-border bg-ax-section shadow-xl overflow-hidden">
+                  <ul className="absolute z-50 mt-1 w-full rounded-md border border-ax-border bg-ax-section shadow-xl overflow-hidden">
                     {categorySuggestions.map((cat) => (
                       <li key={cat.id}>
                         <button
@@ -876,11 +869,11 @@ export default function DashboardPage() {
                 <button
                   onClick={handleJoinChannel}
                   disabled={!activeChannel || joining}
-                  className={`flex-1 inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-semibold text-ax-heading shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition ${
-                    joined
-                      ? "bg-red-500 hover:bg-red-400 shadow-red-500/40"
-                      : "bg-emerald-500 hover:bg-emerald-400 shadow-emerald-500/40"
-                  }`}
+                  className={`flex-1 inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-semibold text-ax-heading disabled:opacity-50 disabled:cursor-not-allowed transition ${
+ joined
+ ? "bg-red-500 hover:bg-red-400 "
+ : "bg-emerald-500 hover:bg-emerald-400 "
+ }`}
                 >
                   {joining
                     ? joined
@@ -893,11 +886,11 @@ export default function DashboardPage() {
                 <button
                   onClick={handleConfirmChanges}
                   disabled={!activeChannel || savingStream}
-                  className={`flex-1 inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-semibold shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition ${
-                    changesConfirmed
-                      ? "bg-emerald-500 text-ax-heading shadow-emerald-500/40 hover:bg-emerald-400"
-                      : "bg-accent text-ax-btn-text shadow-sky-500/40 hover:bg-ax-accent"
-                  }`}
+                  className={`flex-1 inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition ${
+ changesConfirmed
+ ? "bg-emerald-500 text-ax-heading hover:bg-emerald-400"
+ : "bg-accent text-ax-btn-text hover:bg-ax-accent"
+ }`}
                 >
                   {savingStream
                     ? "Saving..."
@@ -911,10 +904,10 @@ export default function DashboardPage() {
           {/* Chat Stats Charts */}
           {activeChannel && (
             <div className="flex flex-col gap-3">
-              <div className="rounded-2xl border border-ax-subtle bg-ax-section p-5">
+              <div className="rounded-md border border-ax-subtle bg-ax-section p-5">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-semibold uppercase tracking-wide text-ax-secondary">Messages / min</h3>
-                  <span className="text-2xl font-bold text-ax-accent-text tabular-nums">
+                  <h3 className="font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-ax-secondary">Messages / min</h3>
+                  <span className="font-mono text-2xl font-semibold tabular-nums text-ax-accent-text">
                     {chatStats ? chatStats.msgs_per_min : "—"}
                   </span>
                 </div>
@@ -924,9 +917,9 @@ export default function DashboardPage() {
                   gradId="grad-msgs"
                 />
               </div>
-              <div className="rounded-2xl border border-ax-subtle bg-ax-section p-5">
+              <div className="rounded-md border border-ax-subtle bg-ax-section p-5">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-semibold uppercase tracking-wide text-ax-secondary">Unique Chatters</h3>
+                  <h3 className="font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-ax-secondary">Unique Chatters</h3>
                   <span className="text-2xl font-bold text-violet-300 tabular-nums">
                     {chatStats ? chatStats.unique_chatters : "—"}
                   </span>

@@ -23,7 +23,7 @@ test("recent activity list stays inside its card", async ({ page }) => {
   await expect(heading).toBeVisible();
   await expect(page.getByText('title="Test stream 0"')).toBeVisible();
 
-  const card = heading.locator("xpath=ancestor::div[contains(@class,'rounded-2xl')][1]");
+  const card = heading.locator("xpath=ancestor::div[contains(@class,'border-ax-subtle') and contains(@class,'bg-ax-section')][1]");
   const list = card.locator("ul");
   const cardBox = (await card.boundingBox())!;
   const listViewport = (await list.locator("xpath=..").boundingBox())!;
@@ -37,7 +37,7 @@ test("recent activity list scrolls when it is longer than the card", async ({ pa
   await page.goto("/dashboard");
   await expect(page.getByText('title="Test stream 0"')).toBeVisible();
   const scroller = page.getByRole("heading", { name: "Recent Activity" })
-    .locator("xpath=ancestor::div[contains(@class,'rounded-2xl')][1]")
+    .locator("xpath=ancestor::div[contains(@class,'border-ax-subtle') and contains(@class,'bg-ax-section')][1]")
     .locator("ul")
     .locator("xpath=..");
   const { scrollHeight, clientHeight } = await scroller.evaluate((el) => ({

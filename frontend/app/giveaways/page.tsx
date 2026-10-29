@@ -244,19 +244,19 @@ export default function GiveawaysPage() {
   return (
     <main className="min-h-screen flex flex-col bg-ax-bg">
       {/* ── Header ── */}
-      <header className="w-full flex items-center justify-between px-6 py-4">
+      <header className="w-full flex h-14 shrink-0 items-center justify-between border-b border-ax-subtle px-4 md:px-5">
         <div className="flex items-center gap-4 flex-1">
           <button
             aria-label="Toggle navigation"
             type="button"
             onClick={toggleSidebar}
-            className="mr-2 rounded-lg bg-ax-section px-3 py-2 text-sm font-medium text-ax-body hover:bg-ax-raised border border-ax-border"
+            className="mr-2 rounded-md bg-ax-section px-3 py-2 text-sm font-medium text-ax-body hover:bg-ax-raised border border-ax-border"
           >
             <NavIcon name="menu" size={20} tone="inherit" />
           </button>
           <Link href="/" className="flex items-center gap-4">
             <Image src={AxyraBotPFP} alt="AxyraBot logo" width={32} height={32} className="rounded-full" />
-            <div className="text-2xl font-semibold tracking-tight">
+            <div className="font-display text-xl font-semibold tracking-tight">
               <span className="text-ax-accent-text">Axyra</span>
               <span className="text-ax-heading">Bot</span>
             </div>
@@ -268,7 +268,7 @@ export default function GiveawaysPage() {
               <ManagingChannelBadge />
               <Link
                 href="/import"
-                className="inline-flex items-center gap-1 rounded-full border border-ax-border bg-ax-section px-3 py-1.5 text-xs font-medium text-ax-body hover:bg-ax-raised hover:border-ax-muted transition"
+                className="inline-flex items-center gap-1 rounded-md border border-ax-border bg-ax-section px-3 py-1.5 text-xs font-medium text-ax-body hover:bg-ax-raised hover:border-ax-muted transition"
               >
                 <NavIcon name="import" size={16} tone="inherit" />
                 <span>Import</span>
@@ -277,14 +277,14 @@ export default function GiveawaysPage() {
                 <button
                   type="button"
                   aria-expanded={menuOpen} onClick={() => setMenuOpen((o) => !o)}
-                  className="flex items-center gap-2 rounded-full bg-ax-section px-1.5 py-1 hover:bg-ax-raised transition"
+                  className="flex items-center gap-2 rounded-md bg-ax-section px-1.5 py-1 hover:bg-ax-raised transition"
                 >
                   {avatarUrl && (
                     <Image src={avatarUrl} alt="Twitch profile picture" width={32} height={32} className="rounded-full" />
                   )}
                 </button>
                 {menuOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-36 rounded-lg border border-ax-border bg-ax-section py-2 shadow-lg">
+                  <div className="absolute right-0 top-full mt-2 w-36 rounded-md border border-ax-border bg-ax-section py-2 ">
                     <button
                       type="button"
                       onClick={handleLogout}
@@ -301,7 +301,7 @@ export default function GiveawaysPage() {
       </header>
 
       {/* ── Body ── */}
-      <div className="flex flex-1 w-full flex-col items-stretch gap-3 px-3 pb-4 md:flex-row md:gap-6 md:px-4 md:pb-6 md:min-h-0">
+      <div className="flex flex-1 w-full flex-col items-stretch gap-3 px-3 pb-4 pt-3 md:flex-row md:gap-6 md:px-4 md:pb-6 md:pt-6 md:min-h-0">
         {mobileSidebarOpen && <button type="button" aria-label="Close dashboard menu" onClick={closeMobileSidebar} className="fixed inset-0 z-40 bg-black/60 md:hidden" />}
         {/* Sidebar */}
         <div className={responsiveSidebarClassName(sidebarOpen, mobileSidebarOpen)}>
@@ -312,7 +312,7 @@ export default function GiveawaysPage() {
           <nav className="mt-1 flex flex-col gap-4 text-sm text-ax-body">
             {/* Main */}
             <div className="flex flex-col gap-2">
-              <button type="button" aria-expanded={mainSectionOpen} onClick={() => setMainSectionOpen((o) => !o)} className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary hover:text-ax-body">
+              <button type="button" aria-expanded={mainSectionOpen} onClick={() => setMainSectionOpen((o) => !o)} className="flex items-center justify-between px-3 font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-ax-secondary hover:text-ax-body">
                 {sidebarOpen ? (
                   <span>Main</span>
                 ) : (
@@ -326,18 +326,18 @@ export default function GiveawaysPage() {
               {mainSectionOpen && (
                 <>
                   <Link href="/dashboard" aria-current={pathname === "/dashboard" ? "page" : undefined}
- className={`group flex items-center gap-3 rounded-xl py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
-   pathname === "/dashboard"
-     ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
-     : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ className={`group flex items-center gap-3 rounded-md py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+ pathname === "/dashboard"
+ ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+ : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
  }`}>
                     <NavIcon name="dashboard" />{sidebarOpen ? <span>Dashboard</span> : <span className="sr-only">Dashboard</span>}
                   </Link>
                   <Link href="/commands" aria-current={pathname === "/commands" ? "page" : undefined}
- className={`group flex items-center gap-3 rounded-xl py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
-   pathname === "/commands"
-     ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
-     : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ className={`group flex items-center gap-3 rounded-md py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+ pathname === "/commands"
+ ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+ : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
  }`}>
                     <NavIcon name="commands" />{sidebarOpen ? <span>Commands</span> : <span className="sr-only">Commands</span>}
                   </Link>
@@ -346,7 +346,7 @@ export default function GiveawaysPage() {
             </div>
             {/* Moderation */}
             <div className="flex flex-col gap-2">
-              <button type="button" aria-expanded={moderationOpen} onClick={() => setModerationOpen((o) => !o)} className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary hover:text-ax-body">
+              <button type="button" aria-expanded={moderationOpen} onClick={() => setModerationOpen((o) => !o)} className="flex items-center justify-between px-3 font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-ax-secondary hover:text-ax-body">
                 {sidebarOpen ? (
                   <span>Moderation</span>
                 ) : (
@@ -360,18 +360,18 @@ export default function GiveawaysPage() {
               {moderationOpen && (
                 <>
                   <Link href="/moderation/blocked-terms" aria-current={pathname === "/moderation/blocked-terms" ? "page" : undefined}
- className={`group flex items-center gap-3 rounded-xl py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
-   pathname === "/moderation/blocked-terms"
-     ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
-     : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ className={`group flex items-center gap-3 rounded-md py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+ pathname === "/moderation/blocked-terms"
+ ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+ : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
  }`}>
                     <NavIcon name="blockedTerms" />{sidebarOpen ? <span>Blocked Terms</span> : <span className="sr-only">Blocked Terms</span>}
                   </Link>
                   <Link href="/moderation/spam-filters" aria-current={pathname === "/moderation/spam-filters" ? "page" : undefined}
- className={`group flex items-center gap-3 rounded-xl py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
-   pathname === "/moderation/spam-filters"
-     ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
-     : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ className={`group flex items-center gap-3 rounded-md py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+ pathname === "/moderation/spam-filters"
+ ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+ : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
  }`}>
                     <NavIcon name="spamFilters" />{sidebarOpen ? <span>Spam Filters</span> : <span className="sr-only">Spam Filters</span>}
                   </Link>
@@ -380,7 +380,7 @@ export default function GiveawaysPage() {
             </div>
             {/* Vanity */}
             <div className="flex flex-col gap-2">
-              <button type="button" aria-expanded={vanitySectionOpen} onClick={() => setVanitySectionOpen((o) => !o)} className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary hover:text-ax-body">
+              <button type="button" aria-expanded={vanitySectionOpen} onClick={() => setVanitySectionOpen((o) => !o)} className="flex items-center justify-between px-3 font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-ax-secondary hover:text-ax-body">
                 {sidebarOpen ? (
                   <span>Vanity</span>
                 ) : (
@@ -394,35 +394,35 @@ export default function GiveawaysPage() {
               {vanitySectionOpen && (
                 <>
                   <Link href="/modules" aria-current={pathname === "/modules" ? "page" : undefined}
- className={`group flex items-center gap-3 rounded-xl py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
-   pathname === "/modules"
-     ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
-     : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ className={`group flex items-center gap-3 rounded-md py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+ pathname === "/modules"
+ ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+ : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
  }`}>
                     <NavIcon name="modules" />{sidebarOpen ? <span>Modules</span> : <span className="sr-only">Modules</span>}
                   </Link>
                   <Link href="/birthdays" aria-current={pathname === "/birthdays" ? "page" : undefined}
- className={`group flex items-center gap-3 rounded-xl py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
-   pathname === "/birthdays"
-     ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
-     : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ className={`group flex items-center gap-3 rounded-md py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+ pathname === "/birthdays"
+ ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+ : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
  }`}>
                     <NavIcon name="birthdays" />{sidebarOpen ? <span>Birthdays</span> : <span className="sr-only">Birthdays</span>}
                   </Link>
                   <Link href="/giveaways" aria-current={pathname === "/giveaways" ? "page" : undefined}
- className={`group flex items-center gap-3 rounded-xl py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
-   pathname === "/giveaways"
-     ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
-     : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ className={`group flex items-center gap-3 rounded-md py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+ pathname === "/giveaways"
+ ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+ : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
  }`}>
                     <NavIcon name="giveaways" />{sidebarOpen ? <span>Giveaways</span> : <span className="sr-only">Giveaways</span>}
                   </Link>
                   {!isEditor && (
                     <Link href="/roles" aria-current={pathname === "/roles" ? "page" : undefined}
- className={`group flex items-center gap-3 rounded-xl py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
-   pathname === "/roles"
-     ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
-     : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ className={`group flex items-center gap-3 rounded-md py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+ pathname === "/roles"
+ ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+ : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
  }`}>
                       <NavIcon name="roles" />{sidebarOpen ? <span>Roles</span> : <span className="sr-only">Roles</span>}
                     </Link>
@@ -432,7 +432,7 @@ export default function GiveawaysPage() {
             </div>
             {/* Integrations */}
             <div className="flex flex-col gap-2">
-              <button type="button" onClick={() => {}} className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary">
+              <button type="button" onClick={() => {}} className="flex items-center justify-between px-3 font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-ax-secondary">
                 {sidebarOpen ? (
                   <span>Integrations</span>
                 ) : (
@@ -443,17 +443,17 @@ export default function GiveawaysPage() {
                 )}
               </button>
               <Link href="/discord/settings" aria-current={pathname === "/discord/settings" ? "page" : undefined}
- className={`group flex items-center gap-3 rounded-xl py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
-   pathname === "/discord/settings"
-     ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
-     : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ className={`group flex items-center gap-3 rounded-md py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+ pathname === "/discord/settings"
+ ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+ : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
  }`}>
                 <NavIcon name="discord" />{sidebarOpen ? <span>Discord</span> : <span className="sr-only">Discord</span>}
               </Link>
             </div>
             {/* Other */}
             <div className="flex flex-col gap-2">
-              <button type="button" aria-expanded={otherSectionOpen} onClick={() => setOtherSectionOpen((o) => !o)} className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary hover:text-ax-body">
+              <button type="button" aria-expanded={otherSectionOpen} onClick={() => setOtherSectionOpen((o) => !o)} className="flex items-center justify-between px-3 font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-ax-secondary hover:text-ax-body">
                 {sidebarOpen ? (
                   <span>Other</span>
                 ) : (
@@ -467,26 +467,26 @@ export default function GiveawaysPage() {
               {otherSectionOpen && (
                 <>
                   <Link href="/privacy" aria-current={pathname === "/privacy" ? "page" : undefined}
- className={`group flex items-center gap-3 rounded-xl py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
-   pathname === "/privacy"
-     ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
-     : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ className={`group flex items-center gap-3 rounded-md py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+ pathname === "/privacy"
+ ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+ : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
  }`}>
                     <NavIcon name="privacy" />{sidebarOpen ? <span>Privacy</span> : <span className="sr-only">Privacy</span>}
                   </Link>
                   <Link href="/terms" aria-current={pathname === "/terms" ? "page" : undefined}
- className={`group flex items-center gap-3 rounded-xl py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
-   pathname === "/terms"
-     ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
-     : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ className={`group flex items-center gap-3 rounded-md py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+ pathname === "/terms"
+ ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+ : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
  }`}>
                     <NavIcon name="terms" />{sidebarOpen ? <span>Terms</span> : <span className="sr-only">Terms</span>}
                   </Link>
                   <Link href="/api-docs" aria-current={pathname === "/api-docs" ? "page" : undefined}
- className={`group flex items-center gap-3 rounded-xl py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
-   pathname === "/api-docs"
-     ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
-     : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ className={`group flex items-center gap-3 rounded-md py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+ pathname === "/api-docs"
+ ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+ : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
  }`}>
                     <NavIcon name="apiDocs" />{sidebarOpen ? <span>API Docs</span> : <span className="sr-only">API Docs</span>}
                   </Link>
@@ -500,7 +500,7 @@ export default function GiveawaysPage() {
         <div className="flex flex-1 gap-4 text-ax-heading min-h-0 overflow-hidden">
 
           {/* Users Panel */}
-          <div className="flex w-64 shrink-0 flex-col rounded-2xl border border-ax-subtle bg-ax-section p-4">
+          <div className="flex w-64 shrink-0 flex-col rounded-md border border-ax-subtle bg-ax-section p-4">
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-semibold text-ax-body">Users</h2>
               <div className="flex items-center gap-2">
@@ -531,7 +531,7 @@ export default function GiveawaysPage() {
                 placeholder="Search Users..."
                 value={userSearch}
                 onChange={(e) => setUserSearch(e.target.value)}
-                className="w-full rounded-lg border border-ax-border bg-ax-raised py-1.5 pl-8 pr-3 text-xs text-ax-body placeholder-ax-muted focus:outline-none focus:ring-1 focus:ring-ax-focus"
+                className="w-full rounded-md border border-ax-border bg-ax-raised py-1.5 pl-8 pr-3 text-xs text-ax-body placeholder-ax-muted focus:outline-none focus:ring-1 focus:ring-ax-focus"
               />
             </div>
             {/* Entry list */}
@@ -544,7 +544,7 @@ export default function GiveawaysPage() {
               {filteredEntries.map((e) => (
                 <div
                   key={e.login}
-                  className="flex items-center justify-between rounded-lg px-2 py-1.5 text-xs hover:bg-ax-raised group"
+                  className="flex items-center justify-between rounded-md px-2 py-1.5 text-xs hover:bg-ax-raised group"
                 >
                   <div className="flex items-center gap-1.5 min-w-0">
                     {e.isMod && <span title="Moderator" className="text-xs font-bold text-green-300">MOD</span>}
@@ -572,7 +572,7 @@ export default function GiveawaysPage() {
           </div>
 
           {/* Settings Panel */}
-          <div className="flex flex-1 flex-col rounded-2xl border border-ax-subtle bg-ax-section p-6 overflow-y-auto">
+          <div className="flex flex-1 flex-col rounded-md border border-ax-subtle bg-ax-section p-6 overflow-y-auto">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
               <div>
@@ -583,11 +583,11 @@ export default function GiveawaysPage() {
                 type="button"
                 onClick={handleToggle}
                 disabled={loadingToggle || !login}
-                className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold transition disabled:opacity-50 ${
-                  isActive
-                    ? "bg-red-600 hover:bg-red-500 text-ax-heading"
-                    : "bg-emerald-600 hover:bg-emerald-500 text-ax-heading"
-                }`}
+                className={`inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-bold transition disabled:opacity-50 ${
+ isActive
+ ? "bg-red-600 hover:bg-red-500 text-ax-heading"
+ : "bg-emerald-600 hover:bg-emerald-500 text-ax-heading"
+ }`}
               >
                 {isActive ? (
                   <>
@@ -613,7 +613,7 @@ export default function GiveawaysPage() {
                     type="checkbox"
                     checked={chatAnnounce}
                     onChange={(e) => setChatAnnounce(e.target.checked)}
-                    className="h-4 w-4 rounded accent-indigo-500 cursor-pointer"
+                    className="h-4 w-4 rounded accent-ax-accent cursor-pointer"
                   />
                 </label>
               </div>
@@ -622,7 +622,7 @@ export default function GiveawaysPage() {
                 placeholder="Keyword Phrase"
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
-                className="w-full rounded-lg border border-ax-border bg-ax-raised px-4 py-3 text-sm text-ax-body placeholder-ax-muted focus:outline-none focus:ring-2 focus:ring-ax-focus"
+                className="w-full rounded-md border border-ax-border bg-ax-raised px-4 py-3 text-sm text-ax-body placeholder-ax-muted focus:outline-none focus:ring-2 focus:ring-ax-focus"
               />
               <p className="mt-1.5 text-xs text-ax-muted">
                 The message must exactly match the keyword — case-sensitive. No extra text allowed.
@@ -642,7 +642,7 @@ export default function GiveawaysPage() {
                   step={1}
                   value={subMultiplier}
                   onChange={(e) => setSubMultiplier(Number(e.target.value))}
-                  className="flex-1 accent-indigo-500"
+                  className="flex-1 accent-ax-accent"
                 />
                 <div className="flex h-8 w-16 items-center justify-center rounded border border-ax-border bg-ax-raised text-sm text-ax-body">
                   {subMultiplier}x
@@ -657,7 +657,7 @@ export default function GiveawaysPage() {
 
             {/* Winner display / Pick button */}
             {winner ? (
-              <div className="rounded-xl border border-yellow-500/40 bg-yellow-500/10 p-4 text-center">
+              <div className="rounded-md border border-yellow-500/40 bg-yellow-500/10 p-4 text-center">
                 <p className="mb-1 flex items-center justify-center gap-1.5 text-xs uppercase tracking-wide text-yellow-300"><Trophy aria-hidden="true" strokeWidth={1.75} size={16} /> Winner</p>
                 <p className="text-2xl font-bold text-yellow-200">{winner.displayName || winner.login}</p>
                 <p className="text-xs text-ax-secondary mt-1">@{winner.login}{winner.isSubscriber ? " · Subscriber" : ""}</p>
@@ -666,14 +666,14 @@ export default function GiveawaysPage() {
                     type="button"
                     onClick={handlePickWinner}
                     disabled={pickingWinner || entries.length === 0}
-                    className="rounded-lg border border-ax-border bg-ax-raised px-3 py-1.5 text-xs text-ax-body hover:bg-ax-raised disabled:opacity-40 transition"
+                    className="rounded-md border border-ax-border bg-ax-raised px-3 py-1.5 text-xs text-ax-body hover:bg-ax-raised disabled:opacity-40 transition"
                   >
                     Reroll
                   </button>
                   <button
                     type="button"
                     onClick={handleClear}
-                    className="rounded-lg border border-ax-border bg-ax-raised px-3 py-1.5 text-xs text-ax-body hover:bg-ax-raised transition"
+                    className="rounded-md border border-ax-border bg-ax-raised px-3 py-1.5 text-xs text-ax-body hover:bg-ax-raised transition"
                   >
                     Clear
                   </button>
@@ -684,7 +684,7 @@ export default function GiveawaysPage() {
                 type="button"
                 onClick={handlePickWinner}
                 disabled={pickingWinner || entries.length === 0}
-                className="w-full rounded-lg bg-ax-raised py-3 text-sm font-semibold uppercase tracking-widest text-ax-body hover:bg-ax-border hover:text-ax-heading disabled:cursor-not-allowed disabled:opacity-50 transition"
+                className="w-full rounded-md bg-ax-raised py-3 font-mono text-xs font-medium uppercase tracking-[0.08em]st text-ax-body hover:bg-ax-border hover:text-ax-heading disabled:cursor-not-allowed disabled:opacity-50 transition"
               >
                 {entries.length === 0 ? "NO ENTRIES YET" : pickingWinner ? "PICKING…" : "PICK WINNER"}
               </button>
@@ -692,7 +692,7 @@ export default function GiveawaysPage() {
           </div>
 
           {/* Chat Panel */}
-          <div className="flex w-96 shrink-0 flex-col rounded-2xl border border-ax-subtle bg-ax-section overflow-hidden">
+          <div className="flex w-96 shrink-0 flex-col rounded-md border border-ax-subtle bg-ax-section overflow-hidden">
             <div className="flex items-center justify-between border-b border-ax-subtle px-4 py-3">
               <h2 className="font-semibold text-ax-body">Stream Chat</h2>
               {chatChannel && (
