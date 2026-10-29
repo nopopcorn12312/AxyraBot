@@ -46,6 +46,11 @@ services:
       # random one is generated on boot and everyone is logged out on restart.
       - key: SESSION_SECRET
         sync: false
+      # Long random string used to encrypt stored Twitch/Discord OAuth tokens.
+      # Keep it stable: changing it makes stored tokens unreadable, so users
+      # would need to log in again.
+      - key: TOKEN_ENCRYPTION_KEY
+        sync: false
       # Optional: set to your Discord server/guild ID for instant slash-command
       # registration during development (omit for global registration, which can
       # take up to 1 hour to propagate).

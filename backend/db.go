@@ -74,8 +74,15 @@ func SetChannelJoined(login string, joined bool) error {
 }
 
 func SaveUserTokens(login, access, refresh string) error {
+	access, err := encryptToken(access)
+	if err != nil {
+		return err
+	}
+	if refresh, err = encryptToken(refresh); err != nil {
+		return err
+	}
 	// upsert user tokens
-	_, err := db.Exec(`INSERT INTO users (login, access_token, refresh_token) VALUES ($1,$2,$3) ON CONFLICT (login) DO UPDATE SET access_token=EXCLUDED.access_token, refresh_token=EXCLUDED.refresh_token`, login, access, refresh)
+	_, err = db.Exec(`INSERT INTO users (login, access_token, refresh_token) VALUES ($1,$2,$3) ON CONFLICT (login) DO UPDATE SET access_token=EXCLUDED.access_token, refresh_token=EXCLUDED.refresh_token`, login, access, refresh)
 	return err
 }
 
@@ -89,7 +96,7 @@ func GetUserAccessToken(login string) (string, error) {
 	if err := row.Scan(&token); err != nil {
 		return "", err
 	}
-	return token, nil
+	return decryptToken(token)
 }
 
 // GetUserTokens returns both access and refresh tokens for a given Twitch login.
@@ -100,6 +107,14 @@ func GetUserTokens(login string) (string, string, error) {
 	var access, refresh string
 	row := db.QueryRow(`SELECT access_token, refresh_token FROM users WHERE login = $1`, login)
 	if err := row.Scan(&access, &refresh); err != nil {
+		return "", "", err
+	}
+	access, err := decryptToken(access)
+	if err != nil {
+		return "", "", err
+	}
+	refresh, err = decryptToken(refresh)
+	if err != nil {
 		return "", "", err
 	}
 	return access, refresh, nil
@@ -955,6 +970,12 @@ func EnsureSchema() error {
 	ALTER TABLE discord_user_links ADD COLUMN IF NOT EXISTS access_token  TEXT NOT NULL DEFAULT '';
 	ALTER TABLE discord_user_links ADD COLUMN IF NOT EXISTS refresh_token TEXT NOT NULL DEFAULT '';
 	ALTER TABLE discord_user_links ADD COLUMN IF NOT EXISTS expires_at    TIMESTAMPTZ NOT NULL DEFAULT now();
+	CREATE TABLE IF NOT EXISTS dashboard_sessions (
+	 id           TEXT NOT NULL PRIMARY KEY,
+	 twitch_login TEXT NOT NULL,
+	 created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+	 expires_at   TIMESTAMPTZ NOT NULL
+	);
 	CREATE TABLE IF NOT EXISTS discord_welcome_settings (
 	 guild_id           TEXT NOT NULL PRIMARY KEY,
 	 welcome_channel_id TEXT NOT NULL DEFAULT '',
@@ -1907,6 +1928,42 @@ func GetDiscordGuildManagers(guildID string) ([]string, error) {
 	return logins, nil
 }
 
+// CreateDashboardSession records a new dashboard login so it can be revoked
+// later, and prunes expired ones.
+func CreateDashboardSession(id, twitchLogin string, expiresAt time.Time) error {
+	if db == nil {
+		return fmt.Errorf("db not initialized")
+	}
+	if _, err := db.Exec(`DELETE FROM dashboard_sessions WHERE expires_at < now()`); err != nil {
+		return err
+	}
+	_, err := db.Exec(`INSERT INTO dashboard_sessions (id, twitch_login, expires_at) VALUES ($1, $2, $3)`,
+		id, strings.ToLower(twitchLogin), expiresAt)
+	return err
+}
+
+// DashboardSessionValid reports whether a session exists, hasn't expired and
+// belongs to the given login.
+func DashboardSessionValid(id, twitchLogin string) (bool, error) {
+	if db == nil {
+		return false, fmt.Errorf("db not initialized")
+	}
+	var ok bool
+	err := db.QueryRow(`
+		SELECT EXISTS (SELECT 1 FROM dashboard_sessions WHERE id=$1 AND twitch_login=$2 AND expires_at > now())
+	`, id, strings.ToLower(twitchLogin)).Scan(&ok)
+	return ok, err
+}
+
+// DeleteDashboardSession revokes a dashboard login (used on logout).
+func DeleteDashboardSession(id string) error {
+	if db == nil {
+		return fmt.Errorf("db not initialized")
+	}
+	_, err := db.Exec(`DELETE FROM dashboard_sessions WHERE id=$1`, id)
+	return err
+}
+
 // DiscordUserLink is a Twitch user's linked Discord account and the OAuth
 // tokens used to list the servers they're in.
 type DiscordUserLink struct {
@@ -1921,7 +1978,15 @@ func SetDiscordUserLink(twitchLogin string, link DiscordUserLink) error {
 	if db == nil {
 		return fmt.Errorf("db not initialized")
 	}
-	_, err := db.Exec(`
+	access, err := encryptToken(link.AccessToken)
+	if err != nil {
+		return err
+	}
+	refresh, err := encryptToken(link.RefreshToken)
+	if err != nil {
+		return err
+	}
+	_, err = db.Exec(`
 		INSERT INTO discord_user_links (twitch_login, discord_user_id, access_token, refresh_token, expires_at)
 		VALUES ($1, $2, $3, $4, $5)
 		ON CONFLICT (twitch_login) DO UPDATE SET
@@ -1930,7 +1995,7 @@ func SetDiscordUserLink(twitchLogin string, link DiscordUserLink) error {
 		 refresh_token   = EXCLUDED.refresh_token,
 		 expires_at      = EXCLUDED.expires_at,
 		 linked_at       = now()
-	`, strings.ToLower(twitchLogin), link.DiscordUserID, link.AccessToken, link.RefreshToken, link.ExpiresAt)
+	`, strings.ToLower(twitchLogin), link.DiscordUserID, access, refresh, link.ExpiresAt)
 	return err
 }
 
@@ -1949,6 +2014,12 @@ func GetDiscordUserLink(twitchLogin string) (*DiscordUserLink, error) {
 		return nil, nil
 	}
 	if err != nil {
+		return nil, err
+	}
+	if link.AccessToken, err = decryptToken(link.AccessToken); err != nil {
+		return nil, err
+	}
+	if link.RefreshToken, err = decryptToken(link.RefreshToken); err != nil {
 		return nil, err
 	}
 	return &link, nil
@@ -3180,6 +3251,14 @@ func CreateOrUpdateReactionRolePanel(guildID, channelID, title, description stri
 func SetReactionRoleEntries(panelID int64, guildID string, entries []*ReactionRoleEntry) error {
 	if db == nil {
 		return fmt.Errorf("db not initialized")
+	}
+	// Only touch the panel if it belongs to this guild.
+	var exists bool
+	if err := db.QueryRow(`SELECT EXISTS (SELECT 1 FROM discord_reaction_role_panels WHERE id=$1 AND guild_id=$2)`, panelID, guildID).Scan(&exists); err != nil {
+		return err
+	}
+	if !exists {
+		return fmt.Errorf("panel %d not found in guild", panelID)
 	}
 	if _, err := db.Exec(`DELETE FROM discord_reaction_role_entries WHERE panel_id=$1`, panelID); err != nil {
 		return err

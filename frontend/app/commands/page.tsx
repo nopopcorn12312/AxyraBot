@@ -9,6 +9,7 @@ import ManagingChannelBadge from "../components/ManagingChannelBadge";
 import { usePersistentSectionState } from "../hooks/usePersistentSectionState";
 import { responsiveSidebarClassName, useResponsiveSidebar } from "../hooks/useResponsiveSidebar";
 import { useRequireAuth } from "../hooks/useRequireAuth";
+import { revokeSession } from "../lib/session";
 
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://your-backend.onrender.com";
 const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL;
@@ -304,7 +305,7 @@ function CommandsPage() {
       const _prevLogin = window.localStorage.getItem("axyra.login") ?? "";
       if (_prevLogin) window.localStorage.setItem("axyra.lastLogin", _prevLogin);
       window.localStorage.removeItem("axyra.login");
-      window.localStorage.removeItem("axyra.session");
+      revokeSession();
       window.localStorage.removeItem("axyra.avatar");
     }
     setIsLoggedIn(false);

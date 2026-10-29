@@ -9,6 +9,7 @@ import { useRequireAuth } from "../../hooks/useRequireAuth";
 
 import AxyraLogo from "../../images/AxyraBotPFP.png";
 import ManagingChannelBadge from "../../components/ManagingChannelBadge";
+import { revokeSession } from "../../lib/session";
 
 const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL || "";
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://your-backend.onrender.com";
@@ -71,7 +72,7 @@ export default function BlockedTermsPage() {
       const _prevLogin = window.localStorage.getItem("axyra.login") ?? "";
       if (_prevLogin) window.localStorage.setItem("axyra.lastLogin", _prevLogin);
       window.localStorage.removeItem("axyra.login");
-      window.localStorage.removeItem("axyra.session");
+      revokeSession();
       window.localStorage.removeItem("axyra.avatar");
     }
     setIsLoggedIn(false);

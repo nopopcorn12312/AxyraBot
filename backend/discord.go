@@ -399,7 +399,7 @@ func registerSlashCommands(s *discordgo.Session, appID, guildID string) {
 		{
 			Name:                     "temprole",
 			Description:              "Assign a role to a member for a limited time",
-			DefaultMemberPermissions: &permTimeout,
+			DefaultMemberPermissions: &permManRoles,
 			Options: []*discordgo.ApplicationCommandOption{
 				{Type: discordgo.ApplicationCommandOptionUser, Name: "user", Description: "The member", Required: true},
 				{Type: discordgo.ApplicationCommandOptionRole, Name: "role", Description: "The role to assign", Required: true},
@@ -410,7 +410,7 @@ func registerSlashCommands(s *discordgo.Session, appID, guildID string) {
 		{
 			Name:                     "rolepersist",
 			Description:              "Toggle a role that re-applies when the user rejoins the server",
-			DefaultMemberPermissions: &permTimeout,
+			DefaultMemberPermissions: &permManRoles,
 			Options: []*discordgo.ApplicationCommandOption{
 				{Type: discordgo.ApplicationCommandOptionUser, Name: "user", Description: "The member", Required: true},
 				{Type: discordgo.ApplicationCommandOptionRole, Name: "role", Description: "The role to persist", Required: true},
@@ -1372,7 +1372,7 @@ func respondEphemeral(s *discordgo.Session, i *discordgo.InteractionCreate, msg 
 func respondPublic(s *discordgo.Session, i *discordgo.InteractionCreate, msg string) {
 	_ = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
-		Data: &discordgo.InteractionResponseData{Content: msg},
+		Data: &discordgo.InteractionResponseData{Content: msg, AllowedMentions: userPingsOnly()},
 	})
 }
 
@@ -1640,7 +1640,7 @@ func PostDiscordLiveNotification(broadcasterLogin, title, game string) {
 	const defaultLiveTmpl = "🔴 **$(channel) is now live!**\n🎮 $(title)\n📺 $(game)\nhttps://twitch.tv/$(channel)"
 	vars := map[string]string{"channel": broadcasterLogin, "title": title, "game": game}
 	for _, settings := range all {
-		if settings.LiveChannelID == "" {
+		if settings.LiveChannelID == "" || !ChannelInGuild(settings.GuildID, settings.LiveChannelID) {
 			continue
 		}
 		msg := renderDiscordTemplate(broadcasterLogin, settings.GuildID, "live", defaultLiveTmpl, vars)
@@ -1682,7 +1682,7 @@ func PostDiscordModAlert(broadcasterLogin, moderator, target, action, reason str
 		"action": action, "verb": verb, "emoji": emoji, "reason": reason,
 	}
 	for _, settings := range all {
-		if settings.ModChannelID == "" {
+		if settings.ModChannelID == "" || !ChannelInGuild(settings.GuildID, settings.ModChannelID) {
 			continue
 		}
 		msg := renderDiscordTemplate(broadcasterLogin, settings.GuildID, "mod", defaultModTmpl, modVars)
@@ -1716,6 +1716,10 @@ func sendDiscordBirthdayAnnouncement(templateLogin, announceChannel, names strin
 	const defaultBdayTmpl = "🎂 Happy Birthday to **$(names)** in **$(channel)**'s community! 🎉"
 	bdayVars := map[string]string{"names": names, "channel": announceChannel}
 	msg := renderDiscordTemplate(templateLogin, settings.GuildID, "birthday", defaultBdayTmpl, bdayVars)
+	if !ChannelInGuild(settings.GuildID, settings.BdayChannelID) {
+		log.Printf("[Discord] birthday channel %s is not in guild %s; skipping", settings.BdayChannelID, settings.GuildID)
+		return
+	}
 	if _, err := discordSession.ChannelMessageSend(settings.BdayChannelID, msg); err != nil {
 		log.Println("[Discord] failed to post birthday announcement:", err)
 	}

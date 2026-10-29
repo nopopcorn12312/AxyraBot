@@ -12,6 +12,7 @@ import NightbotPFP from "../images/NightbotPFP.png";
 import NightbotBanner from "../images/NightbotBanner.png";
 import SteamelementsBanner from "../images/SteamelementsBanner.png";
 import FossabotBanner from "../images/FossabotBanner.png";
+import { revokeSession } from "../lib/session";
 
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://your-backend.onrender.com";
 const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL;
@@ -125,7 +126,7 @@ export default function ImportPage() {
       const _prevLogin = window.localStorage.getItem("axyra.login") ?? "";
       if (_prevLogin) window.localStorage.setItem("axyra.lastLogin", _prevLogin);
       window.localStorage.removeItem("axyra.login");
-      window.localStorage.removeItem("axyra.session");
+      revokeSession();
       window.localStorage.removeItem("axyra.avatar");
     }
     setIsLoggedIn(false);

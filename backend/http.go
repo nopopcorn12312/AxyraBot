@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -144,6 +145,8 @@ func startHTTPServer(clientID, clientSecret string) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/auth/start", handleAuthStart(clientID))
 	mux.HandleFunc("/auth/callback", handleAuthCallback(clientID, clientSecret))
+	mux.HandleFunc("/auth/exchange", withCORS(handleAuthExchange))
+	mux.HandleFunc("/auth/logout", withCORS(handleAuthLogout))
 	mux.HandleFunc("/join", withAuth(authChannel, handleJoin))
 	mux.HandleFunc("/part", withAuth(authChannel, handlePart))
 	mux.HandleFunc("/channels", withCORS(handleChannels))
@@ -163,7 +166,7 @@ func startHTTPServer(clientID, clientSecret string) {
 	mux.HandleFunc("/roles/delete", withAuth(authChannel, handleRolesDelete))
 	mux.HandleFunc("/roles/editor-channels", withAuth(authSelf, handleEditorChannels))
 	mux.HandleFunc("/birthdays/lists", withAuth(authChannel, handleBirthdayLists))
-	mux.HandleFunc("/user/avatar", withCORS(handleUserAvatar(clientID, clientSecret)))
+	mux.HandleFunc("/user/avatar", withAuth(authAnyUser, handleUserAvatar(clientID, clientSecret)))
 	mux.HandleFunc("/modules/settings", withAuth(authChannel, handleModuleSettings))
 	mux.HandleFunc("/birthdays/list", withAuth(authChannel, handleBirthdaysList))
 	mux.HandleFunc("/birthdays/add", withAuth(authChannel, handleBirthdaysAdd))
@@ -985,12 +988,29 @@ func handleModuleSettings(w http.ResponseWriter, r *http.Request) {
 // hosted on a different origin (e.g. Vercel) can call the Render backend.
 // If FRONTEND_ORIGIN is set, only that origin is allowed; otherwise any
 // origin is permitted.
+// isLocalDevOrigin allows a frontend dev server on localhost to call the API.
+func isLocalDevOrigin(origin string) bool {
+	u, err := url.Parse(origin)
+	if err != nil || u.Scheme != "http" {
+		return false
+	}
+	h := u.Hostname()
+	return h == "localhost" || h == "127.0.0.1"
+}
+
 func withCORS(h http.HandlerFunc) http.HandlerFunc {
-	allowedOrigin := os.Getenv("FRONTEND_ORIGIN")
+	allowedOrigin := strings.TrimRight(os.Getenv("FRONTEND_ORIGIN"), "/")
+	if allowedOrigin == "" {
+		// Default to the frontend's own origin rather than allowing every site.
+		allowedOrigin = getFrontendBaseURL()
+		if u, err := url.Parse(allowedOrigin); err == nil {
+			allowedOrigin = u.Scheme + "://" + u.Host
+		}
+	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
 		if origin != "" {
-			if allowedOrigin == "" || origin == allowedOrigin {
+			if origin == allowedOrigin || isLocalDevOrigin(origin) {
 				w.Header().Set("Access-Control-Allow-Origin", origin)
 				w.Header().Set("Vary", "Origin")
 			}
@@ -1145,7 +1165,7 @@ func handleAuthCallback(clientID, clientSecret string) http.HandlerFunc {
 		}
 
 		// Send the user back to the frontend with their login, avatar and a
-		// signed session token that dashboard requests must carry.
+		// one-time code it exchanges for the session token (via /auth/exchange).
 		dest, err := url.Parse(redirectTo)
 		if err != nil {
 			w.WriteHeader(http.StatusOK)
@@ -1157,7 +1177,13 @@ func handleAuthCallback(clientID, clientSecret string) http.HandlerFunc {
 		if avatarURL != "" {
 			q.Set("avatar", avatarURL)
 		}
-		q.Set("session", issueSession(login))
+		loginCode, err := newLoginCode(login)
+		if err != nil {
+			log.Println("create dashboard session:", err)
+			http.Error(w, "failed to start session", http.StatusInternalServerError)
+			return
+		}
+		q.Set("login_code", loginCode)
 		dest.RawQuery = q.Encode()
 		http.Redirect(w, r, dest.String(), http.StatusFound)
 	}
@@ -1928,6 +1954,9 @@ func handleBirthdayLists(w http.ResponseWriter, r *http.Request) {
 
 // handleUserAvatar returns the Twitch profile picture URL for a given login name.
 // It uses an app access token so no user-specific credentials are needed.
+// twitchLoginPattern matches valid Twitch usernames.
+var twitchLoginPattern = regexp.MustCompile(`^[a-z0-9_]{1,25}$`)
+
 func handleUserAvatar(clientID, clientSecret string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -1935,8 +1964,8 @@ func handleUserAvatar(clientID, clientSecret string) http.HandlerFunc {
 			return
 		}
 		login := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("login")))
-		if login == "" {
-			http.Error(w, "missing login", http.StatusBadRequest)
+		if !twitchLoginPattern.MatchString(login) {
+			http.Error(w, "invalid login", http.StatusBadRequest)
 			return
 		}
 		appToken, err := getAppAccessToken(clientID, clientSecret)
@@ -1945,7 +1974,7 @@ func handleUserAvatar(clientID, clientSecret string) http.HandlerFunc {
 			http.Error(w, "token error", http.StatusInternalServerError)
 			return
 		}
-		req, err := http.NewRequest("GET", "https://api.twitch.tv/helix/users?login="+login, nil)
+		req, err := http.NewRequest("GET", "https://api.twitch.tv/helix/users?login="+url.QueryEscape(login), nil)
 		if err != nil {
 			http.Error(w, "request error", http.StatusInternalServerError)
 			return
@@ -2026,6 +2055,18 @@ func handleRoles(w http.ResponseWriter, r *http.Request) {
 		default:
 			role = "Regular"
 		}
+		allowed, err := editorRoleChangeAllowed(sessionLogin(r), login, func(ur UserRole) bool {
+			return strings.EqualFold(ur.Username, username)
+		}, role)
+		if err != nil {
+			log.Println("list user roles:", err)
+			http.Error(w, "db error", http.StatusInternalServerError)
+			return
+		}
+		if !allowed {
+			http.Error(w, "only the broadcaster can manage Editors", http.StatusForbidden)
+			return
+		}
 		id, err := AddUserRole(login, username, role)
 		if err != nil {
 			log.Println("add user role:", err)
@@ -2037,6 +2078,29 @@ func handleRoles(w http.ResponseWriter, r *http.Request) {
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
+}
+
+// editorRoleChangeAllowed reports whether viewer may make this change to a
+// channel's roles. Editors can manage Mods and Regulars, but only the
+// broadcaster can add, change or remove an Editor; otherwise one Editor could
+// promote friends or lock out the others.
+func editorRoleChangeAllowed(viewer, channel string, match func(UserRole) bool, newRole string) (bool, error) {
+	if viewer == channel {
+		return true, nil
+	}
+	if newRole == "Editor" {
+		return false, nil
+	}
+	roles, err := ListUserRoles(channel)
+	if err != nil {
+		return false, err
+	}
+	for _, ur := range roles {
+		if match(ur) && ur.Role == "Editor" {
+			return false, nil
+		}
+	}
+	return true, nil
 }
 
 // handleRolesDelete deletes a role assignment by ID.
@@ -2056,6 +2120,18 @@ func handleRolesDelete(w http.ResponseWriter, r *http.Request) {
 	login := strings.ToLower(strings.TrimSpace(body.Login))
 	if login == "" || body.ID == 0 {
 		http.Error(w, "missing login or id", http.StatusBadRequest)
+		return
+	}
+	allowed, err := editorRoleChangeAllowed(sessionLogin(r), login, func(ur UserRole) bool {
+		return ur.ID == body.ID
+	}, "")
+	if err != nil {
+		log.Println("list user roles:", err)
+		http.Error(w, "db error", http.StatusInternalServerError)
+		return
+	}
+	if !allowed {
+		http.Error(w, "only the broadcaster can manage Editors", http.StatusForbidden)
 		return
 	}
 	if err := DeleteUserRole(login, body.ID); err != nil {
@@ -2338,6 +2414,74 @@ func handleDiscordAuthComplete(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"guild_id": pending.guildID})
 }
 
+// requireGuildChannels rejects channel IDs that aren't in the guild, so a
+// dashboard user can't point the bot at another server's channels. Empty IDs
+// mean "not set" and are allowed. Writes the error and returns false on failure.
+func requireGuildChannels(w http.ResponseWriter, guildID string, channelIDs ...string) bool {
+	for _, id := range channelIDs {
+		id = strings.TrimSpace(id)
+		if id != "" && !ChannelInGuild(guildID, id) {
+			http.Error(w, "channel "+id+" is not in this server", http.StatusBadRequest)
+			return false
+		}
+	}
+	return true
+}
+
+// requireGrantableRoles checks roles the bot will hand out automatically
+// (reaction roles, auto-roles, Twitch role sync): each must exist in the guild
+// and, unless allowDangerous, must not carry moderator/admin permissions.
+func requireGrantableRoles(w http.ResponseWriter, guildID string, allowDangerous bool, roleIDs ...string) bool {
+	for _, id := range roleIDs {
+		id = strings.TrimSpace(id)
+		if id == "" {
+			continue
+		}
+		role := GuildRoleByID(guildID, id)
+		if role == nil {
+			http.Error(w, "role "+id+" is not in this server", http.StatusBadRequest)
+			return false
+		}
+		if !allowDangerous && roleIsDangerous(role) {
+			http.Error(w, "role "+role.Name+" has moderator or admin permissions and can't be handed out automatically", http.StatusBadRequest)
+			return false
+		}
+	}
+	return true
+}
+
+// canUseBirthdaySource reports whether viewer may announce birthdays from the
+// given list: their own channel, a channel they're an Editor of, or a custom
+// list they own. Otherwise anyone could broadcast another community's list.
+func canUseBirthdaySource(viewer, source string) bool {
+	source = strings.ToLower(strings.TrimSpace(source))
+	if source == "" || source == viewer {
+		return true
+	}
+	if ok, _ := IsEditorOf(viewer, source); ok {
+		return true
+	}
+	lists, err := ListBirthdayLists(viewer)
+	if err != nil {
+		log.Println("list birthday lists:", err)
+		return false
+	}
+	for _, l := range lists {
+		if strings.EqualFold(l.ListKey, source) {
+			return true
+		}
+	}
+	return false
+}
+
+// isDiscordGuildAdmin reports whether the viewer's linked Discord account owns
+// the server or has Administrator / Manage Server there. Managers granted by
+// hand can use the dashboard but not hand out access to others.
+func isDiscordGuildAdmin(viewer, guildID string) bool {
+	manageable, _ := GetManageableDiscordGuilds(viewer)
+	return manageable[guildID]
+}
+
 // handleDiscordGuildManagers manages per-guild dashboard access for Twitch editors.
 // GET    ?guild_id=   → {"managers":["login1","login2"]}
 // POST   {guild_id, login}  → grants access
@@ -2375,6 +2519,10 @@ func handleDiscordGuildManagers(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "missing guild_id or login", http.StatusBadRequest)
 			return
 		}
+		if !isDiscordGuildAdmin(sessionLogin(r), body.GuildID) {
+			http.Error(w, "only a Discord admin of this server can change its managers", http.StatusForbidden)
+			return
+		}
 		if err := AddDiscordGuildManager(body.GuildID, body.Login); err != nil {
 			log.Println("add discord guild manager:", err)
 			http.Error(w, "db error", http.StatusInternalServerError)
@@ -2394,6 +2542,10 @@ func handleDiscordGuildManagers(w http.ResponseWriter, r *http.Request) {
 		}
 		if body.GuildID == "" || body.Login == "" {
 			http.Error(w, "missing guild_id or login", http.StatusBadRequest)
+			return
+		}
+		if !isDiscordGuildAdmin(sessionLogin(r), body.GuildID) {
+			http.Error(w, "only a Discord admin of this server can change its managers", http.StatusForbidden)
 			return
 		}
 		if err := RemoveDiscordGuildManager(body.GuildID, body.Login); err != nil {
@@ -2577,6 +2729,19 @@ func handleDiscordRoleMappings(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		validLevels := map[string]bool{"everyone": true, "vip": true, "moderator": true, "owner": true}
+		// Mapping Twitch mods to a Discord mod role is fine, but only someone
+		// who actually administers the server may hand out powerful roles, and
+		// never to every viewer or VIP.
+		manageable, _ := GetManageableDiscordGuilds(sessionLogin(r))
+		for level, roleID := range body.Mappings {
+			if !validLevels[level] {
+				continue
+			}
+			allowDangerous := (level == "moderator" || level == "owner") && manageable[guildID]
+			if !requireGrantableRoles(w, guildID, allowDangerous, roleID) {
+				return
+			}
+		}
 		for level, roleID := range body.Mappings {
 			if !validLevels[level] {
 				continue
@@ -2661,6 +2826,14 @@ func handleDiscordSettings(w http.ResponseWriter, r *http.Request) {
 		login := strings.ToLower(strings.TrimSpace(body.Login))
 		if login == "" {
 			http.Error(w, "missing login", http.StatusBadRequest)
+			return
+		}
+		guildID := strings.TrimSpace(body.GuildID)
+		if !requireGuildChannels(w, guildID, body.LiveChannelID, body.ModChannelID, body.ModLogChannelID, body.HoneypotChannelID, body.BdayChannelID) {
+			return
+		}
+		if !canUseBirthdaySource(sessionLogin(r), body.BdaySourceLogin) {
+			http.Error(w, "you can't use that birthday list", http.StatusForbidden)
 			return
 		}
 		// Persist settings at the guild scope so multiple managers share the
@@ -2896,6 +3069,31 @@ func handleBlockedTermsDelete(w http.ResponseWriter, r *http.Request) {
 //
 // Required env var: TWITCH_EVENTSUB_SECRET  (set this to the secret you pass
 // when creating the subscription; min 10 chars, max 100 chars).
+const eventSubMaxAge = 10 * time.Minute
+
+var (
+	eventSubSeenMu  sync.Mutex
+	eventSubSeenIDs = map[string]time.Time{}
+)
+
+// eventSubSeen records a message ID and reports whether it was already seen
+// in the last eventSubMaxAge.
+func eventSubSeen(msgID string) bool {
+	eventSubSeenMu.Lock()
+	defer eventSubSeenMu.Unlock()
+	now := time.Now()
+	for id, at := range eventSubSeenIDs {
+		if now.Sub(at) > eventSubMaxAge {
+			delete(eventSubSeenIDs, id)
+		}
+	}
+	if _, ok := eventSubSeenIDs[msgID]; ok {
+		return true
+	}
+	eventSubSeenIDs[msgID] = now
+	return false
+}
+
 func handleEventSubWebhook(w http.ResponseWriter, r *http.Request) {
 	// Read the full body so we can verify the HMAC signature.
 	body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20)) // 1 MB limit
@@ -2923,6 +3121,18 @@ func handleEventSubWebhook(w http.ResponseWriter, r *http.Request) {
 
 	if !hmac.Equal([]byte(expected), []byte(sigHeader)) {
 		http.Error(w, "invalid signature", http.StatusForbidden)
+		return
+	}
+
+	// Reject replays: Twitch says to drop messages older than 10 minutes and
+	// any message ID already handled.
+	if ts, err := time.Parse(time.RFC3339Nano, msgTS); err != nil || time.Since(ts) > eventSubMaxAge || time.Until(ts) > eventSubMaxAge {
+		http.Error(w, "stale or invalid timestamp", http.StatusForbidden)
+		return
+	}
+	if eventSubSeen(msgID) {
+		// Already processed; acknowledge so Twitch stops retrying.
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 
@@ -3499,6 +3709,12 @@ func handleDiscordTicketConfig(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "missing guild_id", http.StatusBadRequest)
 			return
 		}
+		if !requireGuildChannels(w, body.GuildID, body.PanelChannelID, body.LogChannelID, body.CategoryID) {
+			return
+		}
+		if !requireGrantableRoles(w, body.GuildID, true, body.SupportRoleIDs...) {
+			return
+		}
 		if body.SupportRoleIDs == nil {
 			body.SupportRoleIDs = []string{}
 		}
@@ -3568,6 +3784,11 @@ func handleDiscordSendTicketPanel(w http.ResponseWriter, r *http.Request) {
 	}
 	if cfg.PanelChannelID == "" {
 		http.Error(w, "panel_channel_id not configured", http.StatusBadRequest)
+		return
+	}
+	// Re-check here too: configs saved before channel validation existed may
+	// point at another server's channel.
+	if !requireGuildChannels(w, body.GuildID, cfg.PanelChannelID) {
 		return
 	}
 	msgID, err := sendTicketPanel(discordSession, cfg)
@@ -3682,6 +3903,15 @@ func handleDiscordReactionRolesSend(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "discord not connected", http.StatusServiceUnavailable)
 		return
 	}
+	if !requireGuildChannels(w, body.GuildID, body.ChannelID) {
+		return
+	}
+	// Anyone who can react gets these roles, so they can't carry mod/admin powers.
+	for _, e := range body.Entries {
+		if !requireGrantableRoles(w, body.GuildID, false, e.RoleID) {
+			return
+		}
+	}
 
 	title := body.Title
 	if title == "" {
@@ -3781,6 +4011,13 @@ func handleDiscordWelcomeSettings(w http.ResponseWriter, r *http.Request) {
 		}
 		if body.GuildID == "" {
 			http.Error(w, "missing guild_id", http.StatusBadRequest)
+			return
+		}
+		if !requireGuildChannels(w, body.GuildID, body.WelcomeChannelID, body.LeaveChannelID) {
+			return
+		}
+		// Every new member gets auto-roles, so they can't carry mod/admin powers.
+		if !requireGrantableRoles(w, body.GuildID, false, body.AutoRoleIDs...) {
 			return
 		}
 		autoRoleStr := strings.Join(body.AutoRoleIDs, ",")

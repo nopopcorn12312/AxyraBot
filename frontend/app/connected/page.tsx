@@ -1,11 +1,11 @@
 interface ConnectedPageProps {
-  searchParams?: {
+  searchParams: Promise<{
     login?: string;
-  };
+  }>;
 }
 
-export default function ConnectedPage({ searchParams }: ConnectedPageProps) {
-  const login = searchParams?.login;
+export default async function ConnectedPage({ searchParams }: ConnectedPageProps) {
+  const { login } = await searchParams;
 
   return (
     <main className="min-h-screen flex items-center justify-center px-4 bg-[radial-gradient(circle_at_top,_#1e293b,_#020617)]">

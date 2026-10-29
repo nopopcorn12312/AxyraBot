@@ -280,6 +280,10 @@ func handleTempRoleSlash(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		respondEphemeral(s, i, "❌ Invalid duration. Use e.g. `10m`, `2h`, `7d`.")
 		return
 	}
+	if msg := checkCanGrantRole(s, i, role); msg != "" {
+		respondEphemeral(s, i, msg)
+		return
+	}
 	if err := s.GuildMemberRoleAdd(i.GuildID, target.ID, role.ID); err != nil {
 		respondEphemeral(s, i, fmt.Sprintf("❌ Failed to assign role: %s", err))
 		return
@@ -300,6 +304,10 @@ func handleRolePersistSlash(s *discordgo.Session, i *discordgo.InteractionCreate
 	opts := optMap(i.ApplicationCommandData().Options)
 	target := opts["user"].UserValue(s)
 	role := opts["role"].RoleValue(s, i.GuildID)
+	if msg := checkCanGrantRole(s, i, role); msg != "" {
+		respondEphemeral(s, i, msg)
+		return
+	}
 	added, err := ToggleDiscordRolePersist(i.GuildID, target.ID, role.ID)
 	if err != nil {
 		respondEphemeral(s, i, "❌ Database error.")
@@ -614,6 +622,10 @@ func handleRoleSlash(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	opts := optMap(i.ApplicationCommandData().Options)
 	target := opts["user"].UserValue(s)
 	role := opts["role"].RoleValue(s, i.GuildID)
+	if msg := checkCanGrantRole(s, i, role); msg != "" {
+		respondEphemeral(s, i, msg)
+		return
+	}
 	member, err := s.GuildMember(i.GuildID, target.ID)
 	if err != nil {
 		respondEphemeral(s, i, "❌ Failed to fetch member.")
@@ -1063,6 +1075,10 @@ func handleRankSlash(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		}
 		respondEphemeral(s, i, fmt.Sprintf("➖ You left the **%s** rank.", rank.RoleName))
 	} else {
+		if roleIsDangerous(GuildRoleByID(i.GuildID, rank.RoleID)) {
+			respondEphemeral(s, i, "❌ That rank's role has moderator or admin permissions, so it can't be self-assigned. Ask a moderator to fix it.")
+			return
+		}
 		if err := s.GuildMemberRoleAdd(i.GuildID, i.Member.User.ID, rank.RoleID); err != nil {
 			respondEphemeral(s, i, fmt.Sprintf("❌ Failed to assign rank: %s", err))
 			return
@@ -1099,6 +1115,15 @@ func handleAddRankSlash(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	}
 	opts := optMap(i.ApplicationCommandData().Options)
 	role := opts["role"].RoleValue(s, i.GuildID)
+	if msg := checkCanGrantRole(s, i, role); msg != "" {
+		respondEphemeral(s, i, msg)
+		return
+	}
+	// Anyone can join a rank, so it must not carry moderator/admin powers.
+	if roleIsDangerous(role) {
+		respondEphemeral(s, i, "❌ That role has moderator or admin permissions, so it can't be a self-assignable rank.")
+		return
+	}
 	if err := AddDiscordJoinableRank(i.GuildID, role.ID, role.Name); err != nil {
 		respondEphemeral(s, i, "❌ Failed to add rank.")
 		return
@@ -1968,6 +1993,10 @@ func handleTagSlash(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	case "edit":
 		name := subOpts["name"].StringValue()
 		content := subOpts["content"].StringValue()
+		if msg := checkCanChangeTag(i, name); msg != "" {
+			respondEphemeral(s, i, msg)
+			return
+		}
 		if err := UpdateDiscordTag(i.GuildID, name, content); err != nil {
 			respondEphemeral(s, i, fmt.Sprintf("❌ Tag **%s** not found.", name))
 			return
@@ -1975,6 +2004,10 @@ func handleTagSlash(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		respondEphemeral(s, i, fmt.Sprintf("✅ Tag **%s** updated.", name))
 	case "delete":
 		name := subOpts["name"].StringValue()
+		if msg := checkCanChangeTag(i, name); msg != "" {
+			respondEphemeral(s, i, msg)
+			return
+		}
 		if err := DeleteDiscordTag(i.GuildID, name); err != nil {
 			respondEphemeral(s, i, "❌ Failed to delete tag.")
 			return
@@ -2052,7 +2085,7 @@ func StartDiscordReminderScheduler() {
 			ch, err := discordSession.UserChannelCreate(r.UserID)
 			if err != nil {
 				// Fall back to original channel if DM fails
-				_, _ = discordSession.ChannelMessageSend(r.ChannelID, fmt.Sprintf("<@%s> ⏰ Reminder: %s", r.UserID, r.Reminder))
+				_, _ = sendUserPingsOnly(discordSession, r.ChannelID, fmt.Sprintf("<@%s> ⏰ Reminder: %s", r.UserID, r.Reminder), nil)
 			} else {
 				_, _ = discordSession.ChannelMessageSend(ch.ID, fmt.Sprintf("⏰ **Reminder:** %s", r.Reminder))
 			}
@@ -2091,7 +2124,7 @@ func discordExtendedMessageHandler(s *discordgo.Session, m *discordgo.MessageCre
 	// Check if the author is AFK — if so, clear their status.
 	if afkStatus, isAFK, _ := GetDiscordAFK(m.GuildID, m.Author.ID); isAFK {
 		_ = ClearDiscordAFK(m.GuildID, m.Author.ID)
-		_, _ = s.ChannelMessageSendReply(m.ChannelID,
+		_, _ = sendUserPingsOnly(s, m.ChannelID,
 			fmt.Sprintf("👋 Welcome back, **%s**! Your AFK status has been cleared (was: %s).", m.Author.Username, afkStatus),
 			m.Reference())
 	}
@@ -2126,8 +2159,8 @@ func discordExtendedMessageHandler(s *discordgo.Session, m *discordgo.MessageCre
 			continue
 		}
 		if afkStatus, isAFK, _ := GetDiscordAFK(m.GuildID, mention.ID); isAFK {
-			_, _ = s.ChannelMessageSend(m.ChannelID,
-				fmt.Sprintf("💤 **%s** is currently AFK: %s", mention.Username, afkStatus))
+			_, _ = sendUserPingsOnly(s, m.ChannelID,
+				fmt.Sprintf("💤 **%s** is currently AFK: %s", mention.Username, afkStatus), nil)
 		}
 	}
 }
@@ -2161,13 +2194,17 @@ func discordGuildMemberAddHandler(s *discordgo.Session, e *discordgo.GuildMember
 		if rid == "" {
 			continue
 		}
+		if roleIsDangerous(GuildRoleByID(e.GuildID, rid)) {
+			log.Printf("[Discord] skipping auto-role %s in guild %s: it has mod/admin permissions", rid, e.GuildID)
+			continue
+		}
 		if err := s.GuildMemberRoleAdd(e.GuildID, e.User.ID, rid); err != nil {
 			log.Printf("[Discord] failed to assign auto-role %s to %s: %v", rid, e.User.ID, err)
 		}
 	}
 
 	// Send welcome banner or welcome message.
-	if ws.WelcomeChannelID != "" {
+	if ws.WelcomeChannelID != "" && ChannelInGuild(e.GuildID, ws.WelcomeChannelID) {
 		// Resolve guild name and member count.
 		serverName := e.GuildID
 		memberCount := 0
@@ -2222,7 +2259,7 @@ func discordGuildMemberRemoveHandler(s *discordgo.Session, e *discordgo.GuildMem
 		return
 	}
 	ws, err := GetDiscordWelcomeSettings(e.GuildID)
-	if err != nil || ws.LeaveChannelID == "" {
+	if err != nil || ws.LeaveChannelID == "" || !ChannelInGuild(e.GuildID, ws.LeaveChannelID) {
 		return
 	}
 	msg := fmt.Sprintf("**%s** has left the server", e.User.Username)
@@ -2246,6 +2283,10 @@ func discordReactionAddHandler(s *discordgo.Session, r *discordgo.MessageReactio
 	}
 	for _, entry := range panel.Entries {
 		if entry.Emoji == emojiKey || entry.Emoji == r.Emoji.Name {
+			if roleIsDangerous(GuildRoleByID(r.GuildID, entry.RoleID)) {
+				log.Printf("[Discord] skipping reaction role %s in guild %s: it has mod/admin permissions", entry.RoleID, r.GuildID)
+				continue
+			}
 			if err := s.GuildMemberRoleAdd(r.GuildID, r.UserID, entry.RoleID); err != nil {
 				log.Printf("[Discord] reaction role add error (panel %d): %v", panel.ID, err)
 			}
@@ -2580,4 +2621,149 @@ func handleTicketClose(s *discordgo.Session, i *discordgo.InteractionCreate) {
 			log.Println("[tickets] delete channel:", err)
 		}
 	}()
+}
+
+// userPingsOnly lets a message ping the users it names but never @everyone,
+// @here or roles. Replies that echo member-written text (tags, reminders, AFK
+// notes) use it so members can't make the bot mass-ping the server.
+func userPingsOnly() *discordgo.MessageAllowedMentions {
+	return &discordgo.MessageAllowedMentions{
+		Parse: []discordgo.AllowedMentionType{discordgo.AllowedMentionTypeUsers},
+	}
+}
+
+// sendUserPingsOnly sends a message (optionally as a reply) with userPingsOnly mentions.
+func sendUserPingsOnly(s *discordgo.Session, channelID, content string, reply *discordgo.MessageReference) (*discordgo.Message, error) {
+	return s.ChannelMessageSendComplex(channelID, &discordgo.MessageSend{
+		Content:         content,
+		Reference:       reply,
+		AllowedMentions: userPingsOnly(),
+	})
+}
+
+// dangerousRolePerms are permissions that let a holder take over or wreck a
+// server. Roles carrying them are never handed out automatically (ranks,
+// reaction roles, auto-roles, Twitch role sync).
+const dangerousRolePerms = discordgo.PermissionAdministrator |
+	discordgo.PermissionManageGuild |
+	discordgo.PermissionManageRoles |
+	discordgo.PermissionManageChannels |
+	discordgo.PermissionManageWebhooks |
+	discordgo.PermissionBanMembers |
+	discordgo.PermissionKickMembers |
+	discordgo.PermissionModerateMembers |
+	discordgo.PermissionManageMessages |
+	discordgo.PermissionMentionEveryone
+
+func roleIsDangerous(role *discordgo.Role) bool {
+	return role != nil && role.Permissions&dangerousRolePerms != 0
+}
+
+// guildRoles returns the guild's roles, from the state cache when possible.
+func guildRoles(s *discordgo.Session, guildID string) (*discordgo.Guild, []*discordgo.Role, error) {
+	guild, err := s.State.Guild(guildID)
+	if err != nil {
+		if guild, err = s.Guild(guildID); err != nil {
+			return nil, nil, err
+		}
+	}
+	roles := guild.Roles
+	if len(roles) == 0 {
+		if roles, err = s.GuildRoles(guildID); err != nil {
+			return nil, nil, err
+		}
+	}
+	return guild, roles, nil
+}
+
+// checkCanGrantRole applies Discord's own rule to role-granting commands: the
+// person running the command needs Manage Roles and a role ranked above the
+// one being given. Without it, anyone allowed to run /temprole could hand
+// themselves an admin role. Returns "" when allowed, otherwise a reply.
+func checkCanGrantRole(s *discordgo.Session, i *discordgo.InteractionCreate, role *discordgo.Role) string {
+	if role == nil || i.Member == nil || i.Member.User == nil {
+		return "❌ Role not found."
+	}
+	if role.Managed || role.ID == i.GuildID {
+		return "❌ That role can't be assigned."
+	}
+	guild, roles, err := guildRoles(s, i.GuildID)
+	if err != nil {
+		return "❌ Couldn't load this server's roles. Please try again."
+	}
+	if guild.OwnerID == i.Member.User.ID {
+		return ""
+	}
+	if i.Member.Permissions&(discordgo.PermissionManageRoles|discordgo.PermissionAdministrator) == 0 {
+		return "❌ You need the **Manage Roles** permission to assign roles."
+	}
+	positions := make(map[string]int, len(roles))
+	for _, r := range roles {
+		positions[r.ID] = r.Position
+	}
+	target, ok := positions[role.ID]
+	if !ok {
+		return "❌ Role not found."
+	}
+	highest := 0
+	for _, id := range i.Member.Roles {
+		if p := positions[id]; p > highest {
+			highest = p
+		}
+	}
+	if target >= highest {
+		return "❌ You can only assign roles ranked below your highest role."
+	}
+	return ""
+}
+
+// checkCanChangeTag lets a tag's author edit or delete it, and moderators
+// (Manage Messages) change any tag. Returns "" when allowed, otherwise a reply.
+func checkCanChangeTag(i *discordgo.InteractionCreate, name string) string {
+	tag, err := GetDiscordTag(i.GuildID, name)
+	if err != nil || tag == nil {
+		return fmt.Sprintf("❌ Tag **%s** not found.", name)
+	}
+	if i.Member == nil || i.Member.User == nil {
+		return "❌ Tags can only be changed in a server."
+	}
+	if tag.AuthorID == i.Member.User.ID {
+		return ""
+	}
+	if i.Member.Permissions&(discordgo.PermissionManageMessages|discordgo.PermissionAdministrator) != 0 {
+		return ""
+	}
+	return "❌ Only the tag's author or a moderator can change it."
+}
+
+// GuildRoleByID returns a role in the guild, or nil if the guild has no such role.
+func GuildRoleByID(guildID, roleID string) *discordgo.Role {
+	if discordSession == nil {
+		return nil
+	}
+	_, roles, err := guildRoles(discordSession, guildID)
+	if err != nil {
+		return nil
+	}
+	for _, r := range roles {
+		if r.ID == roleID {
+			return r
+		}
+	}
+	return nil
+}
+
+// ChannelInGuild reports whether a channel belongs to the guild, so dashboard
+// settings can't point the bot at another server's channels.
+func ChannelInGuild(guildID, channelID string) bool {
+	if discordSession == nil || guildID == "" || channelID == "" {
+		return false
+	}
+	ch, err := discordSession.State.Channel(channelID)
+	if err != nil {
+		if ch, err = discordSession.Channel(channelID); err != nil {
+			return false
+		}
+	}
+	return ch.GuildID == guildID
 }

@@ -86,18 +86,132 @@ func verifySigned(kind, token string) (string, bool) {
 	return string(body[:idx]), true
 }
 
-func issueSession(login string) string {
-	return signValue("session", strings.ToLower(login), sessionTTL)
+// issueSession creates a revocable dashboard session and returns its signed
+// token. The token names a session row, so logging out (or deleting the row)
+// kills it even though the signature is still valid.
+func issueSession(login string) (string, error) {
+	login = strings.ToLower(login)
+	id, err := randomToken()
+	if err != nil {
+		return "", err
+	}
+	if db != nil {
+		if err := CreateDashboardSession(id, login, time.Now().Add(sessionTTL)); err != nil {
+			return "", err
+		}
+	}
+	return signValue("session", login+"|"+id, sessionTTL), nil
+}
+
+// parseSessionToken checks a token's signature and that its session hasn't
+// been revoked, returning the login and session ID.
+func parseSessionToken(token string) (login, id string, ok bool) {
+	payload, ok := verifySigned("session", strings.TrimSpace(token))
+	if !ok {
+		return "", "", false
+	}
+	login, id, ok = strings.Cut(payload, "|")
+	if !ok || login == "" || id == "" {
+		return "", "", false
+	}
+	if db != nil {
+		valid, err := DashboardSessionValid(id, login)
+		if err != nil {
+			log.Println("check dashboard session:", err)
+			return "", "", false
+		}
+		if !valid {
+			return "", "", false
+		}
+	}
+	return login, id, true
+}
+
+func bearerToken(r *http.Request) string {
+	token, _ := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
+	return token
+}
+
+// Logins hand the browser a short-lived one-time code instead of the session
+// token itself, so the token never sits in a URL (browser history, host logs).
+const loginCodeTTL = 2 * time.Minute
+
+type pendingLogin struct {
+	token   string
+	expires time.Time
+}
+
+var (
+	loginCodesMu sync.Mutex
+	loginCodes   = map[string]pendingLogin{}
+)
+
+// newLoginCode issues a session for login and parks it under a one-time code.
+func newLoginCode(login string) (string, error) {
+	token, err := issueSession(login)
+	if err != nil {
+		return "", err
+	}
+	code, err := randomToken()
+	if err != nil {
+		return "", err
+	}
+	loginCodesMu.Lock()
+	defer loginCodesMu.Unlock()
+	now := time.Now()
+	for k, p := range loginCodes {
+		if now.After(p.expires) {
+			delete(loginCodes, k)
+		}
+	}
+	loginCodes[code] = pendingLogin{token: token, expires: now.Add(loginCodeTTL)}
+	return code, nil
+}
+
+// handleAuthExchange trades a one-time login code for the session token.
+// POST {"code": "..."} → {"session": "..."}
+func handleAuthExchange(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	var body struct {
+		Code string `json:"code"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 4096)).Decode(&body); err != nil || body.Code == "" {
+		http.Error(w, "missing code", http.StatusBadRequest)
+		return
+	}
+	loginCodesMu.Lock()
+	p, ok := loginCodes[body.Code]
+	delete(loginCodes, body.Code)
+	loginCodesMu.Unlock()
+	if !ok || time.Now().After(p.expires) {
+		http.Error(w, "invalid or expired login code", http.StatusUnauthorized)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"session": p.token})
+}
+
+// handleAuthLogout revokes the session the request was made with.
+func handleAuthLogout(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	if _, id, ok := parseSessionToken(bearerToken(r)); ok {
+		if err := DeleteDashboardSession(id); err != nil {
+			log.Println("delete dashboard session:", err)
+		}
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // sessionFromRequest returns the logged-in Twitch login, or "" if the request
 // has no valid session token.
 func sessionFromRequest(r *http.Request) string {
-	token, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
-	if !ok {
-		return ""
-	}
-	login, ok := verifySigned("session", strings.TrimSpace(token))
+	login, _, ok := parseSessionToken(bearerToken(r))
 	if !ok {
 		return ""
 	}
@@ -125,6 +239,8 @@ const (
 	// authPublicRead: GETs are open to anyone (e.g. a channel's command list
 	// shared via !commands); other methods are checked like authChannel.
 	authPublicRead
+	// authAnyUser: any logged-in user; "login" names someone to look up.
+	authAnyUser
 )
 
 // withAuth wraps a dashboard handler with CORS plus session checks. It looks
@@ -139,6 +255,10 @@ func withAuth(mode authMode, h http.HandlerFunc) http.HandlerFunc {
 		viewer := sessionFromRequest(r)
 		if viewer == "" {
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		if mode == authAnyUser {
+			h(w, r.WithContext(context.WithValue(r.Context(), sessionLoginKey{}, viewer)))
 			return
 		}
 		logins, viewerLogins, guildIDs, err := requestTargets(r)

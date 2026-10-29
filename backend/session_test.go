@@ -7,8 +7,17 @@ import (
 	"time"
 )
 
+func mustIssueSession(t *testing.T, login string) string {
+	t.Helper()
+	token, err := issueSession(login)
+	if err != nil {
+		t.Fatalf("issueSession: %v", err)
+	}
+	return token
+}
+
 func TestSessionTokenRoundTrip(t *testing.T) {
-	token := issueSession("Alice")
+	token := mustIssueSession(t, "Alice")
 	req := httptest.NewRequest("GET", "/", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
 	if got := sessionFromRequest(req); got != "alice" {
@@ -17,9 +26,9 @@ func TestSessionTokenRoundTrip(t *testing.T) {
 }
 
 func TestSessionTokenRejectsTampering(t *testing.T) {
-	token := issueSession("alice")
+	token := mustIssueSession(t, "alice")
 	body, sig, _ := strings.Cut(token, ".")
-	forged := issueSession("mallory")
+	forged := mustIssueSession(t, "mallory")
 	forgedBody, _, _ := strings.Cut(forged, ".")
 
 	for name, tok := range map[string]string{
@@ -49,6 +58,25 @@ func TestSignedValueExpires(t *testing.T) {
 	expired := signValue("session", "alice", -time.Second)
 	if _, ok := verifySigned("session", expired); ok {
 		t.Fatal("expected expired value to be rejected")
+	}
+}
+
+func TestLoginCodeIsSingleUse(t *testing.T) {
+	code, err := newLoginCode("alice")
+	if err != nil {
+		t.Fatalf("newLoginCode: %v", err)
+	}
+	exchange := func() int {
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest("POST", "/auth/exchange", strings.NewReader(`{"code":"`+code+`"}`))
+		handleAuthExchange(rec, req)
+		return rec.Code
+	}
+	if got := exchange(); got != 200 {
+		t.Fatalf("first exchange: status %d, want 200", got)
+	}
+	if got := exchange(); got != 401 {
+		t.Fatalf("second exchange: status %d, want 401", got)
 	}
 }
 

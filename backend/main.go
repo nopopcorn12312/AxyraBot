@@ -3568,13 +3568,31 @@ func getUserProfileImage(accessToken, clientID string) (string, error) {
 	return res.Data[0].ProfileImageURL, nil
 }
 
-// getAppAccessToken obtains an app access token using client credentials grant
+var (
+	appTokenMu      sync.Mutex
+	appTokenValue   string
+	appTokenExpires time.Time
+)
+
+// getAppAccessToken obtains an app access token using the client credentials
+// grant. The token lasts weeks, so it's cached and reused instead of minting
+// a new one on every call.
 func getAppAccessToken(clientID, clientSecret string) (string, error) {
 	if clientID == "" || clientSecret == "" {
 		return "", fmt.Errorf("missing client id or secret")
 	}
-	url := fmt.Sprintf("https://id.twitch.tv/oauth2/token?client_id=%s&client_secret=%s&grant_type=client_credentials", clientID, clientSecret)
-	resp, err := http.Post(url, "application/json", nil)
+	appTokenMu.Lock()
+	defer appTokenMu.Unlock()
+	if appTokenValue != "" && time.Now().Before(appTokenExpires) {
+		return appTokenValue, nil
+	}
+	// Send credentials in the form body, not the URL, so the secret can't end
+	// up in proxy or access logs.
+	form := url.Values{}
+	form.Set("client_id", clientID)
+	form.Set("client_secret", clientSecret)
+	form.Set("grant_type", "client_credentials")
+	resp, err := http.PostForm("https://id.twitch.tv/oauth2/token", form)
 	if err != nil {
 		return "", err
 	}
@@ -3587,7 +3605,13 @@ func getAppAccessToken(clientID, clientSecret string) (string, error) {
 	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
 		return "", err
 	}
-	return res.AccessToken, nil
+	if res.AccessToken == "" {
+		return "", fmt.Errorf("app token response missing access_token (status %d)", resp.StatusCode)
+	}
+	appTokenValue = res.AccessToken
+	// Refresh a little early so callers never get a token about to expire.
+	appTokenExpires = time.Now().Add(time.Duration(res.ExpiresIn)*time.Second - 5*time.Minute)
+	return appTokenValue, nil
 }
 
 // eventSubSubEntry represents one EventSub subscription from the Helix list response.

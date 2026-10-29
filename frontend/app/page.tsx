@@ -3,7 +3,7 @@
 import Image from "next/image";
 import AxyraBotPFP from "./images/AxyraBotPFP.png";
 import { useEffect, useRef, useState } from "react";
-import { setSessionToken } from "./lib/session";
+import { exchangeLoginCode, revokeSession } from "./lib/session";
 
 function FAQItem({ question, answer }: { question: string; answer: string }) {
   const [open, setOpen] = useState(false);
@@ -145,20 +145,26 @@ export default function HomePage() {
     const params = new URLSearchParams(window.location.search);
     const loginFromQuery = params.get("login");
     const avatarFromQuery = params.get("avatar");
-    const sessionFromQuery = params.get("session");
+    const loginCodeFromQuery = params.get("login_code");
     if (loginFromQuery) {
       window.localStorage.setItem("axyra.login", loginFromQuery);
     }
-    if (sessionFromQuery) {
-      setSessionToken(sessionFromQuery);
+    if (loginCodeFromQuery) {
+      exchangeLoginCode(loginCodeFromQuery).then((ok) => {
+        if (!ok) {
+          window.localStorage.removeItem("axyra.login");
+          window.localStorage.removeItem("axyra.avatar");
+          setIsLoggedIn(false);
+        }
+      });
     }
     if (avatarFromQuery) {
       window.localStorage.setItem("axyra.avatar", avatarFromQuery);
     }
 
-    // Strip login/avatar/session from the URL after first use so a refresh
+    // Strip login/avatar/login_code from the URL after first use so a refresh
     // doesn't immediately log the user back in after they log out.
-    if (loginFromQuery || avatarFromQuery || sessionFromQuery) {
+    if (loginFromQuery || avatarFromQuery || loginCodeFromQuery) {
       const newUrl = window.location.pathname + window.location.hash;
       window.history.replaceState(null, "", newUrl);
     }
@@ -214,7 +220,7 @@ export default function HomePage() {
       const _prevLogin = window.localStorage.getItem("axyra.login") ?? "";
       if (_prevLogin) window.localStorage.setItem("axyra.lastLogin", _prevLogin);
       window.localStorage.removeItem("axyra.login");
-      window.localStorage.removeItem("axyra.session");
+      revokeSession();
       window.localStorage.removeItem("axyra.avatar");
     }
     setIsLoggedIn(false);
