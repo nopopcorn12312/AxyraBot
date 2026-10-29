@@ -144,48 +144,49 @@ func startHTTPServer(clientID, clientSecret string) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/auth/start", handleAuthStart(clientID))
 	mux.HandleFunc("/auth/callback", handleAuthCallback(clientID, clientSecret))
-	mux.HandleFunc("/join", withCORS(handleJoin))
-	mux.HandleFunc("/part", withCORS(handlePart))
+	mux.HandleFunc("/join", withAuth(authChannel, handleJoin))
+	mux.HandleFunc("/part", withAuth(authChannel, handlePart))
 	mux.HandleFunc("/channels", withCORS(handleChannels))
-	mux.HandleFunc("/stream/info", withCORS(handleStreamInfo(clientID)))
-	mux.HandleFunc("/stream/update", withCORS(handleStreamUpdate(clientID)))
-	mux.HandleFunc("/commands/default-settings", withCORS(handleDefaultCommandSettings))
-	mux.HandleFunc("/commands/custom", withCORS(handleCustomCommands))
-	mux.HandleFunc("/commands/custom/add", withCORS(handleCustomCommandsAdd))
-	mux.HandleFunc("/commands/custom/update", withCORS(handleCustomCommandsUpdate))
-	mux.HandleFunc("/commands/custom/delete", withCORS(handleCustomCommandsDelete))
-	mux.HandleFunc("/commands/import", withCORS(handleCustomCommandsImport))
-	mux.HandleFunc("/moderation/blocked-terms", withCORS(handleBlockedTerms))
-	mux.HandleFunc("/moderation/blocked-terms/delete", withCORS(handleBlockedTermsDelete))
-	mux.HandleFunc("/moderation/spam-filters", withCORS(handleSpamFilters))
-	mux.HandleFunc("/moderation/spam-filters/delete", withCORS(handleSpamFiltersDelete))
-	mux.HandleFunc("/roles", withCORS(handleRoles))
-	mux.HandleFunc("/roles/delete", withCORS(handleRolesDelete))
-	mux.HandleFunc("/roles/editor-channels", withCORS(handleEditorChannels))
-	mux.HandleFunc("/birthdays/lists", withCORS(handleBirthdayLists))
+	mux.HandleFunc("/stream/info", withAuth(authChannel, handleStreamInfo(clientID)))
+	mux.HandleFunc("/stream/update", withAuth(authChannel, handleStreamUpdate(clientID)))
+	mux.HandleFunc("/commands/default-settings", withAuth(authPublicRead, handleDefaultCommandSettings))
+	mux.HandleFunc("/commands/custom", withAuth(authPublicRead, handleCustomCommands))
+	mux.HandleFunc("/commands/custom/add", withAuth(authChannel, handleCustomCommandsAdd))
+	mux.HandleFunc("/commands/custom/update", withAuth(authChannel, handleCustomCommandsUpdate))
+	mux.HandleFunc("/commands/custom/delete", withAuth(authChannel, handleCustomCommandsDelete))
+	mux.HandleFunc("/commands/import", withAuth(authChannel, handleCustomCommandsImport))
+	mux.HandleFunc("/moderation/blocked-terms", withAuth(authChannel, handleBlockedTerms))
+	mux.HandleFunc("/moderation/blocked-terms/delete", withAuth(authChannel, handleBlockedTermsDelete))
+	mux.HandleFunc("/moderation/spam-filters", withAuth(authChannel, handleSpamFilters))
+	mux.HandleFunc("/moderation/spam-filters/delete", withAuth(authChannel, handleSpamFiltersDelete))
+	mux.HandleFunc("/roles", withAuth(authChannel, handleRoles))
+	mux.HandleFunc("/roles/delete", withAuth(authChannel, handleRolesDelete))
+	mux.HandleFunc("/roles/editor-channels", withAuth(authSelf, handleEditorChannels))
+	mux.HandleFunc("/birthdays/lists", withAuth(authChannel, handleBirthdayLists))
 	mux.HandleFunc("/user/avatar", withCORS(handleUserAvatar(clientID, clientSecret)))
-	mux.HandleFunc("/modules/settings", withCORS(handleModuleSettings))
-	mux.HandleFunc("/birthdays/list", withCORS(handleBirthdaysList))
-	mux.HandleFunc("/birthdays/add", withCORS(handleBirthdaysAdd))
-	mux.HandleFunc("/birthdays/delete", withCORS(handleBirthdaysDelete))
-	mux.HandleFunc("/birthdays/settings", withCORS(handleBirthdaysSettings))
-	mux.HandleFunc("/birthdays/command-messages", withCORS(handleBirthdayCommandMessages))
-	mux.HandleFunc("/discord/settings", withCORS(handleDiscordSettings))
-	mux.HandleFunc("/discord/guilds", withCORS(handleDiscordGuilds))
-	mux.HandleFunc("/discord/auth/start", handleDiscordAuthStart)
+	mux.HandleFunc("/modules/settings", withAuth(authChannel, handleModuleSettings))
+	mux.HandleFunc("/birthdays/list", withAuth(authChannel, handleBirthdaysList))
+	mux.HandleFunc("/birthdays/add", withAuth(authChannel, handleBirthdaysAdd))
+	mux.HandleFunc("/birthdays/delete", withAuth(authChannel, handleBirthdaysDelete))
+	mux.HandleFunc("/birthdays/settings", withAuth(authChannel, handleBirthdaysSettings))
+	mux.HandleFunc("/birthdays/command-messages", withAuth(authChannel, handleBirthdayCommandMessages))
+	mux.HandleFunc("/discord/settings", withAuth(authChannel, handleDiscordSettings))
+	mux.HandleFunc("/discord/guilds", withAuth(authSelf, handleDiscordGuilds))
+	mux.HandleFunc("/discord/auth/start", withAuth(authSelf, handleDiscordAuthStart))
 	mux.HandleFunc("/discord/auth/callback", handleDiscordAuthCallback)
-	mux.HandleFunc("/discord/channels", withCORS(handleDiscordChannels))
-	mux.HandleFunc("/discord/roles", withCORS(handleDiscordRoles))
-	mux.HandleFunc("/discord/role-mappings", withCORS(handleDiscordRoleMappings))
-	mux.HandleFunc("/discord/notification-templates", withCORS(handleDiscordNotificationTemplates))
-	mux.HandleFunc("/discord/guild-modules", withCORS(handleDiscordGuildModules))
-	mux.HandleFunc("/discord/command-settings", withCORS(handleDiscordCommandSettings))
-	mux.HandleFunc("/discord/guild-managers", withCORS(handleDiscordGuildManagers))
-	mux.HandleFunc("/discord/tickets/config", withCORS(handleDiscordTicketConfig))
-	mux.HandleFunc("/discord/tickets/send-panel", withCORS(handleDiscordSendTicketPanel))
-	mux.HandleFunc("/discord/reaction-roles", withCORS(handleDiscordReactionRoles))
-	mux.HandleFunc("/discord/reaction-roles/send", withCORS(handleDiscordReactionRolesSend))
-	mux.HandleFunc("/discord/welcome-settings", withCORS(handleDiscordWelcomeSettings))
+	mux.HandleFunc("/discord/auth/complete", withAuth(authSelf, handleDiscordAuthComplete))
+	mux.HandleFunc("/discord/channels", withAuth(authChannel, handleDiscordChannels))
+	mux.HandleFunc("/discord/roles", withAuth(authChannel, handleDiscordRoles))
+	mux.HandleFunc("/discord/role-mappings", withAuth(authChannel, handleDiscordRoleMappings))
+	mux.HandleFunc("/discord/notification-templates", withAuth(authChannel, handleDiscordNotificationTemplates))
+	mux.HandleFunc("/discord/guild-modules", withAuth(authChannel, handleDiscordGuildModules))
+	mux.HandleFunc("/discord/command-settings", withAuth(authChannel, handleDiscordCommandSettings))
+	mux.HandleFunc("/discord/guild-managers", withAuth(authGuild, handleDiscordGuildManagers))
+	mux.HandleFunc("/discord/tickets/config", withAuth(authChannel, handleDiscordTicketConfig))
+	mux.HandleFunc("/discord/tickets/send-panel", withAuth(authChannel, handleDiscordSendTicketPanel))
+	mux.HandleFunc("/discord/reaction-roles", withAuth(authChannel, handleDiscordReactionRoles))
+	mux.HandleFunc("/discord/reaction-roles/send", withAuth(authChannel, handleDiscordReactionRolesSend))
+	mux.HandleFunc("/discord/welcome-settings", withAuth(authChannel, handleDiscordWelcomeSettings))
 	mux.HandleFunc("/github/webhook", handleGitHubWebhook)
 
 	// Optional Nightbot OAuth integration for importing commands without
@@ -195,21 +196,21 @@ func startHTTPServer(clientID, clientSecret string) {
 	nbClientSecret := strings.TrimSpace(os.Getenv("NIGHTBOT_CLIENT_SECRET"))
 	nbRedirectURL := strings.TrimSpace(os.Getenv("NIGHTBOT_REDIRECT_URL"))
 	if nbClientID != "" && nbClientSecret != "" && nbRedirectURL != "" {
-		mux.HandleFunc("/nightbot/auth/start", handleNightbotAuthStart(nbClientID, nbRedirectURL))
+		mux.HandleFunc("/nightbot/auth/start", withAuth(authChannel, handleNightbotAuthStart(nbClientID, nbRedirectURL)))
 		mux.HandleFunc("/nightbot/auth/callback", handleNightbotAuthCallback(nbClientID, nbClientSecret, nbRedirectURL))
 	} else {
 		log.Println("Nightbot OAuth not configured; set NIGHTBOT_CLIENT_ID, NIGHTBOT_CLIENT_SECRET, and NIGHTBOT_REDIRECT_URL to enable Nightbot import")
 	}
 
-	mux.HandleFunc("/audit/logs", withCORS(handleAuditLogs))
-	mux.HandleFunc("/chat/stats", withCORS(handleChatStats))
-	mux.HandleFunc("/categories/search", withCORS(handleCategorySearch(clientID)))
-	mux.HandleFunc("/giveaway/state", withCORS(handleGiveawayState))
-	mux.HandleFunc("/giveaway/start", withCORS(handleGiveawayStart))
-	mux.HandleFunc("/giveaway/stop", withCORS(handleGiveawayStop))
-	mux.HandleFunc("/giveaway/pick-winner", withCORS(handleGiveawayPickWinner))
-	mux.HandleFunc("/giveaway/clear", withCORS(handleGiveawayClear))
-	mux.HandleFunc("/giveaway/remove-entry", withCORS(handleGiveawayRemoveEntry))
+	mux.HandleFunc("/audit/logs", withAuth(authChannel, handleAuditLogs))
+	mux.HandleFunc("/chat/stats", withAuth(authChannel, handleChatStats))
+	mux.HandleFunc("/categories/search", withAuth(authChannel, handleCategorySearch(clientID)))
+	mux.HandleFunc("/giveaway/state", withAuth(authChannel, handleGiveawayState))
+	mux.HandleFunc("/giveaway/start", withAuth(authChannel, handleGiveawayStart))
+	mux.HandleFunc("/giveaway/stop", withAuth(authChannel, handleGiveawayStop))
+	mux.HandleFunc("/giveaway/pick-winner", withAuth(authChannel, handleGiveawayPickWinner))
+	mux.HandleFunc("/giveaway/clear", withAuth(authChannel, handleGiveawayClear))
+	mux.HandleFunc("/giveaway/remove-entry", withAuth(authChannel, handleGiveawayRemoveEntry))
 	mux.HandleFunc("/eventsub/callback", handleEventSubWebhook)
 	addr := ":8080"
 	if p := os.Getenv("PORT"); p != "" {
@@ -459,17 +460,15 @@ func handleCustomCommandsImport(w http.ResponseWriter, r *http.Request) {
 	}{Imported: imported, Provider: provider})
 }
 
-// handleNightbotAuthStart redirects the user to Nightbot's OAuth
-// authorization page so we can fetch their custom commands directly
-// via the Nightbot API. The login and desired frontend redirect are
-// encoded into the OAuth state parameter.
+// handleNightbotAuthStart returns Nightbot's OAuth authorization URL so we
+// can fetch the user's custom commands directly via the Nightbot API. The
+// login and desired frontend redirect are signed into the OAuth state
+// parameter so the callback can't be pointed at someone else's channel.
+// GET ?login=&redirect= → {"url": "..."}
 func handleNightbotAuthStart(clientID, redirectURI string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		login := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("login")))
-		frontendRedirect := strings.TrimSpace(r.URL.Query().Get("redirect"))
-		if frontendRedirect == "" {
-			frontendRedirect = getFrontendBaseURL() + "/import"
-		}
+		frontendRedirect := safeFrontendRedirect(strings.TrimSpace(r.URL.Query().Get("redirect")), "/import")
 
 		statePayload := struct {
 			Login    string `json:"login"`
@@ -484,7 +483,7 @@ func handleNightbotAuthStart(clientID, redirectURI string) http.HandlerFunc {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
-		state := base64.URLEncoding.EncodeToString(stateJSON)
+		state := signValue("oauth-nightbot", string(stateJSON), 10*time.Minute)
 
 		authURL, err := url.Parse("https://api.nightbot.tv/oauth2/authorize")
 		if err != nil {
@@ -500,7 +499,8 @@ func handleNightbotAuthStart(clientID, redirectURI string) http.HandlerFunc {
 		q.Set("state", state)
 		authURL.RawQuery = q.Encode()
 
-		http.Redirect(w, r, authURL.String(), http.StatusFound)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"url": authURL.String()})
 	}
 }
 
@@ -517,14 +517,12 @@ func handleNightbotAuthCallback(clientID, clientSecret, redirectURI string) http
 			Login    string `json:"login"`
 			Redirect string `json:"redirect"`
 		}
-		if stateParam != "" {
-			if decoded, err := base64.URLEncoding.DecodeString(stateParam); err == nil {
-				if err := json.Unmarshal(decoded, &statePayload); err != nil {
-					log.Println("failed to unmarshal nightbot state:", err)
-				}
-			} else {
-				log.Println("failed to decode nightbot state:", err)
+		if decoded, ok := verifySigned("oauth-nightbot", stateParam); ok {
+			if err := json.Unmarshal([]byte(decoded), &statePayload); err != nil {
+				log.Println("failed to unmarshal nightbot state:", err)
 			}
+		} else {
+			log.Println("invalid or expired nightbot state")
 		}
 
 		login := strings.ToLower(strings.TrimSpace(statePayload.Login))
@@ -1012,36 +1010,15 @@ func handleAuthStart(clientID string) http.HandlerFunc {
 		redirect := r.URL.Query().Get("redirect")
 		hint := r.URL.Query().Get("hint")
 
-		// Quick re-login: if the frontend supplies a previously-used login name
-		// and that user's stored token is still valid, skip the OAuth consent
-		// screen entirely and redirect straight back to the frontend.
-		if hint != "" && db != nil {
-			if access, _, err := GetUserTokens(strings.ToLower(hint)); err == nil && access != "" {
-				if login, err := getLoginFromToken(access); err == nil && strings.EqualFold(login, hint) {
-					avatarURL, _ := getUserProfileImage(access, clientID)
-					if redirect != "" {
-						if dest, err := url.Parse(redirect); err == nil {
-							q := dest.Query()
-							q.Set("login", login)
-							if avatarURL != "" {
-								q.Set("avatar", avatarURL)
-							}
-							dest.RawQuery = q.Encode()
-							http.Redirect(w, r, dest.String(), http.StatusFound)
-							return
-						}
-					}
-				}
-			}
-		}
+		// Quick re-login: for a returning user (hint set), let Twitch skip its
+		// consent screen when they've already authorized these scopes. Twitch
+		// still checks they're signed in as that account, unlike trusting the
+		// hint ourselves would.
+		forceVerify := hint == ""
 
-		state := "state123" // TODO: generate/validate and include CSRF protection
-		// If the frontend provided a redirect target, encode it into the state
-		// parameter so it survives the Twitch OAuth roundtrip and can be used in
-		// the callback handler.
-		if redirect != "" {
-			state = "redir:" + url.QueryEscape(redirect)
-		}
+		// The redirect target rides along in a signed, expiring state value so
+		// the callback can trust it and forged callbacks are rejected.
+		state := signValue("oauth-twitch", safeFrontendRedirect(redirect, ""), 10*time.Minute)
 		// Broadcaster authorization scopes. This is intentionally expansive so
 		// that when a broadcaster authorizes the app, the token can manage and
 		// read most aspects of their channel. Bot/chat identity scopes are
@@ -1105,11 +1082,10 @@ func handleAuthStart(clientID string) http.HandlerFunc {
 		q.Set("redirect_uri", getRedirectURI(r))
 		q.Set("response_type", "code")
 		q.Set("scope", scopes)
-		q.Set("force_verify", "true") // always show consent screen so new scopes are granted
-		q.Set("state", state)
-		if redirect != "" {
-			q.Set("redirect", redirect)
+		if forceVerify {
+			q.Set("force_verify", "true") // show consent screen on first login so all scopes are granted
 		}
+		q.Set("state", state)
 		u.RawQuery = q.Encode()
 		http.Redirect(w, r, u.String(), http.StatusFound)
 	}
@@ -1122,7 +1098,11 @@ func handleAuthCallback(clientID, clientSecret string) http.HandlerFunc {
 			http.Error(w, "missing code", http.StatusBadRequest)
 			return
 		}
-		state := r.URL.Query().Get("state")
+		redirectTo, ok := verifySigned("oauth-twitch", r.URL.Query().Get("state"))
+		if !ok {
+			http.Error(w, "invalid or expired login attempt, please try again", http.StatusBadRequest)
+			return
+		}
 		// exchange code for token
 		v := url.Values{}
 		v.Set("client_id", clientID)
@@ -1164,26 +1144,22 @@ func handleAuthCallback(clientID, clientSecret string) http.HandlerFunc {
 			}
 		}
 
-		// If a redirect URL was provided via the state parameter, send the user
-		// back to the frontend with the login (and avatar, when available)
-		// attached as query parameters.
-		if strings.HasPrefix(state, "redir:") {
-			if raw, err := url.QueryUnescape(strings.TrimPrefix(state, "redir:")); err == nil {
-				if dest, err := url.Parse(raw); err == nil {
-					q := dest.Query()
-					q.Set("login", login)
-					if avatarURL != "" {
-						q.Set("avatar", avatarURL)
-					}
-					dest.RawQuery = q.Encode()
-					http.Redirect(w, r, dest.String(), http.StatusFound)
-					return
-				}
-			}
+		// Send the user back to the frontend with their login, avatar and a
+		// signed session token that dashboard requests must carry.
+		dest, err := url.Parse(redirectTo)
+		if err != nil {
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprintf(w, "success: %s", login)
+			return
 		}
-
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, "success: %s", login)
+		q := dest.Query()
+		q.Set("login", login)
+		if avatarURL != "" {
+			q.Set("avatar", avatarURL)
+		}
+		q.Set("session", issueSession(login))
+		dest.RawQuery = q.Encode()
+		http.Redirect(w, r, dest.String(), http.StatusFound)
 	}
 }
 
@@ -2091,30 +2067,18 @@ func handleRolesDelete(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "ok")
 }
 
-// handleDiscordGuilds returns the list of Discord servers the bot is currently
-// in. Logged-in viewers only see guilds they can manage: ones where their
-// linked Discord account is the owner or has Administrator / Manage Server,
-// plus any guild they were explicitly granted access to as a manager.
+// handleDiscordGuilds returns the Discord servers the bot is in that the
+// logged-in viewer can manage: ones where their linked Discord account is the
+// owner or has Administrator / Manage Server, plus any guild they were
+// explicitly granted access to as a manager.
 func handleDiscordGuilds(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-	viewerLogin := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("viewer_login")))
+	viewer := sessionLogin(r)
 
-	allGuilds := GetBotGuilds()
-	if allGuilds == nil {
-		allGuilds = []BotGuild{}
-	}
-
-	// Anonymous viewers (no login) see all guilds — public invite page.
-	if viewerLogin == "" {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{"guilds": allGuilds})
-		return
-	}
-
-	authorisedIDs, err := GetGuildsForManager(viewerLogin)
+	authorisedIDs, err := GetGuildsForManager(viewer)
 	if err != nil {
 		log.Println("get guilds for manager:", err)
 	}
@@ -2122,22 +2086,18 @@ func handleDiscordGuilds(w http.ResponseWriter, r *http.Request) {
 	for _, id := range authorisedIDs {
 		allowed[id] = true
 	}
-
-	discordUserID, err := GetDiscordUserID(viewerLogin)
-	if err != nil {
-		log.Println("get discord user link:", err)
-	}
+	manageable, linked := GetManageableDiscordGuilds(viewer)
 
 	filtered := []BotGuild{}
-	for _, g := range allGuilds {
-		if allowed[g.ID] || UserCanManageGuild(g.ID, discordUserID) {
+	for _, g := range GetBotGuilds() {
+		if allowed[g.ID] || manageable[g.ID] {
 			filtered = append(filtered, g)
 		}
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{
 		"guilds":         filtered,
-		"discord_linked": discordUserID != "",
+		"discord_linked": linked,
 	})
 }
 
@@ -2151,10 +2111,28 @@ type discordOAuthState struct {
 	expires  time.Time
 }
 
+// discordPendingLink is a finished Discord sign-in waiting for the browser
+// to confirm it with the session of the user who started it.
+type discordPendingLink struct {
+	login   string
+	link    DiscordUserLink
+	guildID string
+	expires time.Time
+}
+
 var (
-	discordOAuthStatesMu sync.Mutex
-	discordOAuthStates   = map[string]discordOAuthState{}
+	discordOAuthMu      sync.Mutex
+	discordOAuthStates  = map[string]discordOAuthState{}
+	discordPendingLinks = map[string]discordPendingLink{}
 )
+
+func randomToken() (string, error) {
+	b := make([]byte, 24)
+	if _, err := crand.Read(b); err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(b), nil
+}
 
 func discordOAuthClientID() string {
 	if id := strings.TrimSpace(os.Getenv("DISCORD_CLIENT_ID")); id != "" {
@@ -2178,49 +2156,22 @@ func getDiscordRedirectURI(r *http.Request) string {
 	return scheme + "://" + r.Host + "/discord/auth/callback"
 }
 
-// safeFrontendRedirect only allows redirects back to our own frontend so the
-// OAuth flow can't be used as an open redirect.
-func safeFrontendRedirect(raw string) string {
-	fallback := getFrontendBaseURL() + "/discord/settings"
-	if raw == "" {
-		return fallback
-	}
-	dest, err := url.Parse(raw)
-	if err != nil {
-		return fallback
-	}
-	base, err := url.Parse(getFrontendBaseURL())
-	if err != nil || !strings.EqualFold(dest.Host, base.Host) {
-		if dest.Hostname() != "localhost" && dest.Hostname() != "127.0.0.1" {
-			return fallback
-		}
-	}
-	return dest.String()
-}
-
-// handleDiscordAuthStart sends the user to Discord to link their account.
-// With invite=1 the same consent screen also adds the bot to a server, so
-// one click both installs the bot and lets us see which servers they manage.
-// GET ?login=<twitch login>&redirect=<frontend url>&invite=1
+// handleDiscordAuthStart returns the Discord URL the dashboard should send the
+// user to so they can link their account. With invite=1 the same consent
+// screen also adds the bot to a server.
+// GET ?redirect=<frontend url>&invite=1 → {"url": "..."}
 func handleDiscordAuthStart(w http.ResponseWriter, r *http.Request) {
 	clientID := discordOAuthClientID()
 	if clientID == "" {
 		http.Error(w, "discord oauth not configured", http.StatusServiceUnavailable)
 		return
 	}
-	login := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("login")))
-	if login == "" {
-		http.Error(w, "missing login", http.StatusBadRequest)
-		return
-	}
-
-	nonce := make([]byte, 24)
-	if _, err := crand.Read(nonce); err != nil {
+	state, err := randomToken()
+	if err != nil {
 		http.Error(w, "failed to start discord login", http.StatusInternalServerError)
 		return
 	}
-	state := base64.RawURLEncoding.EncodeToString(nonce)
-	discordOAuthStatesMu.Lock()
+	discordOAuthMu.Lock()
 	now := time.Now()
 	for k, v := range discordOAuthStates {
 		if now.After(v.expires) {
@@ -2228,11 +2179,11 @@ func handleDiscordAuthStart(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	discordOAuthStates[state] = discordOAuthState{
-		login:    login,
-		redirect: safeFrontendRedirect(r.URL.Query().Get("redirect")),
+		login:    sessionLogin(r),
+		redirect: safeFrontendRedirect(r.URL.Query().Get("redirect"), "/discord/settings"),
 		expires:  now.Add(10 * time.Minute),
 	}
-	discordOAuthStatesMu.Unlock()
+	discordOAuthMu.Unlock()
 
 	q := url.Values{}
 	q.Set("client_id", clientID)
@@ -2240,23 +2191,26 @@ func handleDiscordAuthStart(w http.ResponseWriter, r *http.Request) {
 	q.Set("response_type", "code")
 	q.Set("state", state)
 	if r.URL.Query().Get("invite") == "1" {
-		q.Set("scope", "identify bot applications.commands")
+		q.Set("scope", "identify guilds bot applications.commands")
 		q.Set("permissions", discordBotInvitePermissions)
 	} else {
-		q.Set("scope", "identify")
+		q.Set("scope", "identify guilds")
 	}
-	http.Redirect(w, r, "https://discord.com/oauth2/authorize?"+q.Encode(), http.StatusFound)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"url": "https://discord.com/oauth2/authorize?" + q.Encode()})
 }
 
-// handleDiscordAuthCallback finishes the Discord OAuth flow: it links the
-// Discord account to the Twitch login and, when the bot was just added,
-// records the inviter as a manager of that server.
+// handleDiscordAuthCallback finishes the Discord side of the flow. It doesn't
+// link anything yet: it parks the result under a one-time code and sends the
+// browser back to the dashboard, which confirms it via /discord/auth/complete.
+// That way a Discord account only ever links to the Twitch user whose own
+// browser finished the flow, not whoever generated the link.
 func handleDiscordAuthCallback(w http.ResponseWriter, r *http.Request) {
 	state := r.URL.Query().Get("state")
-	discordOAuthStatesMu.Lock()
+	discordOAuthMu.Lock()
 	st, ok := discordOAuthStates[state]
 	delete(discordOAuthStates, state)
-	discordOAuthStatesMu.Unlock()
+	discordOAuthMu.Unlock()
 	if !ok || time.Now().After(st.expires) {
 		http.Error(w, "invalid or expired state", http.StatusBadRequest)
 		return
@@ -2282,26 +2236,12 @@ func handleDiscordAuthCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	v := url.Values{}
-	v.Set("client_id", discordOAuthClientID())
-	v.Set("client_secret", os.Getenv("DISCORD_CLIENT_SECRET"))
 	v.Set("grant_type", "authorization_code")
 	v.Set("code", code)
 	v.Set("redirect_uri", getDiscordRedirectURI(r))
-	resp, err := http.PostForm("https://discord.com/api/oauth2/token", v)
+	tok, err := exchangeDiscordToken(v)
 	if err != nil {
 		log.Println("discord token exchange failed:", err)
-		redirectWith("discord_error", "token_exchange")
-		return
-	}
-	defer resp.Body.Close()
-	var tok struct {
-		AccessToken string `json:"access_token"`
-		Guild       *struct {
-			ID string `json:"id"`
-		} `json:"guild"`
-	}
-	if resp.StatusCode != http.StatusOK || json.NewDecoder(resp.Body).Decode(&tok) != nil || tok.AccessToken == "" {
-		log.Printf("discord token exchange: status %d", resp.StatusCode)
 		redirectWith("discord_error", "token_exchange")
 		return
 	}
@@ -2324,23 +2264,78 @@ func handleDiscordAuthCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := SetDiscordUserLink(st.login, me.ID); err != nil {
-		log.Println("save discord user link:", err)
-		redirectWith("discord_error", "db")
+	pending := discordPendingLink{
+		login: st.login,
+		link: DiscordUserLink{
+			DiscordUserID: me.ID,
+			AccessToken:   tok.AccessToken,
+			RefreshToken:  tok.RefreshToken,
+			ExpiresAt:     time.Now().Add(time.Duration(tok.ExpiresIn) * time.Second),
+		},
+		expires: time.Now().Add(5 * time.Minute),
+	}
+	// The token response names the guild the bot was just added to.
+	if tok.Guild != nil {
+		pending.guildID = tok.Guild.ID
+	}
+	completeCode, err := randomToken()
+	if err != nil {
+		redirectWith("discord_error", "internal")
+		return
+	}
+	discordOAuthMu.Lock()
+	for k, p := range discordPendingLinks {
+		if time.Now().After(p.expires) {
+			delete(discordPendingLinks, k)
+		}
+	}
+	discordPendingLinks[completeCode] = pending
+	discordOAuthMu.Unlock()
+	redirectWith("discord_complete", completeCode)
+}
+
+// handleDiscordAuthComplete links the Discord account from a finished sign-in
+// to the logged-in user, as long as they're the one who started it.
+// POST {"code": "..."} → {"guild_id": "<server the bot was added to, if any>"}
+func handleDiscordAuthComplete(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	var body struct {
+		Code string `json:"code"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Code == "" {
+		http.Error(w, "missing code", http.StatusBadRequest)
+		return
+	}
+	discordOAuthMu.Lock()
+	pending, ok := discordPendingLinks[body.Code]
+	delete(discordPendingLinks, body.Code)
+	discordOAuthMu.Unlock()
+	viewer := sessionLogin(r)
+	if !ok || time.Now().After(pending.expires) || pending.login != viewer {
+		http.Error(w, "invalid or expired code", http.StatusForbidden)
 		return
 	}
 
-	// The token response names the guild the bot was just added to. Discord
-	// only lets users with Manage Server do that, so they get dashboard access.
-	if tok.Guild != nil && tok.Guild.ID != "" {
-		if err := AddDiscordGuildManager(tok.Guild.ID, st.login); err != nil {
-			log.Println("add discord guild manager after invite:", err)
-		}
-		WaitForBotGuild(tok.Guild.ID, 5*time.Second)
-		redirectWith("discord_guild", tok.Guild.ID)
+	if err := SetDiscordUserLink(viewer, pending.link); err != nil {
+		log.Println("save discord user link:", err)
+		http.Error(w, "db error", http.StatusInternalServerError)
 		return
 	}
-	redirectWith("discord_linked", "1")
+	// Discord only lets users with Manage Server add a bot, so whoever just
+	// invited it gets dashboard access to that server.
+	if pending.guildID != "" {
+		if err := AddDiscordGuildManager(pending.guildID, viewer); err != nil {
+			log.Println("add discord guild manager after invite:", err)
+		}
+		// The GuildCreate event can land a moment after Discord redirects back.
+		WaitForBotGuild(pending.guildID, 5*time.Second)
+	}
+	InvalidateManageableDiscordGuilds(viewer)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"guild_id": pending.guildID})
 }
 
 // handleDiscordGuildManagers manages per-guild dashboard access for Twitch editors.

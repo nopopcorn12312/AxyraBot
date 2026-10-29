@@ -285,6 +285,7 @@ export default function DashboardPage() {
       const _prevLogin = window.localStorage.getItem("axyra.login") ?? "";
       if (_prevLogin) window.localStorage.setItem("axyra.lastLogin", _prevLogin);
       window.localStorage.removeItem("axyra.login");
+      window.localStorage.removeItem("axyra.session");
       window.localStorage.removeItem("axyra.avatar");
       window.localStorage.removeItem("axyra.activeChannel");
     }

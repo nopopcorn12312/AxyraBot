@@ -34,6 +34,18 @@ services:
       # Never commit the actual token to this file.
       - key: DISCORD_BOT_TOKEN
         sync: false
+      # Discord OAuth app credentials, used to link users' Discord accounts so
+      # the dashboard can show the servers they manage. Register
+      # https://<backend>/discord/auth/callback as a redirect in the Discord
+      # developer portal.
+      - key: DISCORD_CLIENT_ID
+        sync: false
+      - key: DISCORD_CLIENT_SECRET
+        sync: false
+      # Long random string used to sign dashboard login sessions. If unset, a
+      # random one is generated on boot and everyone is logged out on restart.
+      - key: SESSION_SECRET
+        sync: false
       # Optional: set to your Discord server/guild ID for instant slash-command
       # registration during development (omit for global registration, which can
       # take up to 1 hour to propagate).

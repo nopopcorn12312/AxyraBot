@@ -67,6 +67,7 @@ export default function ApiDocsPage() {
       const _prevLogin = window.localStorage.getItem("axyra.login") ?? "";
       if (_prevLogin) window.localStorage.setItem("axyra.lastLogin", _prevLogin);
       window.localStorage.removeItem("axyra.login");
+      window.localStorage.removeItem("axyra.session");
       window.localStorage.removeItem("axyra.avatar");
     }
     setIsLoggedIn(false);
@@ -376,7 +377,9 @@ export default function ApiDocsPage() {
               <p className="text-sm text-slate-400">
                 All endpoints accept and return JSON. POST requests require{" "}
                 <span className="font-mono bg-slate-800 px-1.5 py-0.5 rounded">Content-Type: application/json</span>.
-                Query parameters must be URL-encoded. All endpoints support CORS.
+                Query parameters must be URL-encoded. All endpoints support CORS. Dashboard endpoints require the{" "}
+                <span className="font-mono bg-slate-800 px-1.5 py-0.5 rounded">Authorization: Bearer &lt;session&gt;</span>{" "}
+                header issued at Twitch login, and only act on channels you own or are an Editor of.
               </p>
             </div>
 

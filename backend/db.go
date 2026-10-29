@@ -947,8 +947,14 @@ func EnsureSchema() error {
 	CREATE TABLE IF NOT EXISTS discord_user_links (
 	 twitch_login    TEXT NOT NULL PRIMARY KEY,
 	 discord_user_id TEXT NOT NULL,
+	 access_token    TEXT NOT NULL DEFAULT '',
+	 refresh_token   TEXT NOT NULL DEFAULT '',
+	 expires_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
 	 linked_at       TIMESTAMPTZ NOT NULL DEFAULT now()
 	);
+	ALTER TABLE discord_user_links ADD COLUMN IF NOT EXISTS access_token  TEXT NOT NULL DEFAULT '';
+	ALTER TABLE discord_user_links ADD COLUMN IF NOT EXISTS refresh_token TEXT NOT NULL DEFAULT '';
+	ALTER TABLE discord_user_links ADD COLUMN IF NOT EXISTS expires_at    TIMESTAMPTZ NOT NULL DEFAULT now();
 	CREATE TABLE IF NOT EXISTS discord_welcome_settings (
 	 guild_id           TEXT NOT NULL PRIMARY KEY,
 	 welcome_channel_id TEXT NOT NULL DEFAULT '',
@@ -1354,6 +1360,21 @@ func ListEditorChannels(username string) ([]string, error) {
 		out = append(out, s)
 	}
 	return out, nil
+}
+
+// IsEditorOf reports whether username has the Editor role on a broadcaster's channel.
+func IsEditorOf(username, broadcasterLogin string) (bool, error) {
+	if db == nil {
+		return false, fmt.Errorf("db not initialized")
+	}
+	var exists bool
+	err := db.QueryRow(`
+	SELECT EXISTS (
+		SELECT 1 FROM user_roles
+		WHERE username = $1 AND broadcaster_login = $2 AND role = 'Editor'
+	);
+	`, strings.ToLower(strings.TrimSpace(username)), strings.ToLower(strings.TrimSpace(broadcasterLogin))).Scan(&exists)
+	return exists, err
 }
 
 // DiscordSettings holds per-broadcaster Discord configuration.
@@ -1886,31 +1907,61 @@ func GetDiscordGuildManagers(guildID string) ([]string, error) {
 	return logins, nil
 }
 
+// DiscordUserLink is a Twitch user's linked Discord account and the OAuth
+// tokens used to list the servers they're in.
+type DiscordUserLink struct {
+	DiscordUserID string
+	AccessToken   string
+	RefreshToken  string
+	ExpiresAt     time.Time
+}
+
 // SetDiscordUserLink records which Discord account belongs to a Twitch user.
-func SetDiscordUserLink(twitchLogin, discordUserID string) error {
+func SetDiscordUserLink(twitchLogin string, link DiscordUserLink) error {
 	if db == nil {
 		return fmt.Errorf("db not initialized")
 	}
 	_, err := db.Exec(`
-		INSERT INTO discord_user_links (twitch_login, discord_user_id)
-		VALUES ($1, $2)
-		ON CONFLICT (twitch_login) DO UPDATE SET discord_user_id = EXCLUDED.discord_user_id, linked_at = now()
-	`, strings.ToLower(twitchLogin), discordUserID)
+		INSERT INTO discord_user_links (twitch_login, discord_user_id, access_token, refresh_token, expires_at)
+		VALUES ($1, $2, $3, $4, $5)
+		ON CONFLICT (twitch_login) DO UPDATE SET
+		 discord_user_id = EXCLUDED.discord_user_id,
+		 access_token    = EXCLUDED.access_token,
+		 refresh_token   = EXCLUDED.refresh_token,
+		 expires_at      = EXCLUDED.expires_at,
+		 linked_at       = now()
+	`, strings.ToLower(twitchLogin), link.DiscordUserID, link.AccessToken, link.RefreshToken, link.ExpiresAt)
 	return err
 }
 
-// GetDiscordUserID returns the linked Discord user ID for a Twitch user, or ""
-// if they have not linked a Discord account.
-func GetDiscordUserID(twitchLogin string) (string, error) {
+// GetDiscordUserLink returns a Twitch user's linked Discord account, or nil if
+// they haven't linked one.
+func GetDiscordUserLink(twitchLogin string) (*DiscordUserLink, error) {
 	if db == nil {
-		return "", fmt.Errorf("db not initialized")
+		return nil, fmt.Errorf("db not initialized")
 	}
-	var id string
-	err := db.QueryRow(`SELECT discord_user_id FROM discord_user_links WHERE twitch_login=$1`, strings.ToLower(twitchLogin)).Scan(&id)
+	var link DiscordUserLink
+	err := db.QueryRow(`
+		SELECT discord_user_id, access_token, refresh_token, expires_at
+		FROM discord_user_links WHERE twitch_login=$1
+	`, strings.ToLower(twitchLogin)).Scan(&link.DiscordUserID, &link.AccessToken, &link.RefreshToken, &link.ExpiresAt)
 	if err == sql.ErrNoRows {
-		return "", nil
+		return nil, nil
 	}
-	return id, err
+	if err != nil {
+		return nil, err
+	}
+	return &link, nil
+}
+
+// DeleteDiscordUserLink unlinks a Twitch user's Discord account, e.g. after
+// they revoke the app's access in Discord.
+func DeleteDiscordUserLink(twitchLogin string) error {
+	if db == nil {
+		return fmt.Errorf("db not initialized")
+	}
+	_, err := db.Exec(`DELETE FROM discord_user_links WHERE twitch_login=$1`, strings.ToLower(twitchLogin))
+	return err
 }
 
 // GetGuildsForManager returns the guild IDs that a Twitch user is a manager of.
@@ -3228,7 +3279,10 @@ func DeleteReactionRolePanel(guildID string, panelID int64) error {
 	if db == nil {
 		return nil
 	}
-	if _, err := db.Exec(`DELETE FROM discord_reaction_role_entries WHERE panel_id=$1`, panelID); err != nil {
+	if _, err := db.Exec(`
+		DELETE FROM discord_reaction_role_entries
+		WHERE panel_id = (SELECT id FROM discord_reaction_role_panels WHERE id=$1 AND guild_id=$2)
+	`, panelID, guildID); err != nil {
 		return err
 	}
 	_, err := db.Exec(`DELETE FROM discord_reaction_role_panels WHERE id=$1 AND guild_id=$2`, panelID, guildID)

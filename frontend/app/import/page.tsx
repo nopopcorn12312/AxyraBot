@@ -125,6 +125,7 @@ export default function ImportPage() {
       const _prevLogin = window.localStorage.getItem("axyra.login") ?? "";
       if (_prevLogin) window.localStorage.setItem("axyra.lastLogin", _prevLogin);
       window.localStorage.removeItem("axyra.login");
+      window.localStorage.removeItem("axyra.session");
       window.localStorage.removeItem("axyra.avatar");
     }
     setIsLoggedIn(false);
@@ -140,7 +141,7 @@ export default function ImportPage() {
   const primaryHref = isLoggedIn ? "/dashboard" : connectUrl;
   const primaryLabel = isLoggedIn ? "Dashboard" : "Login with Twitch";
 
-  const handleNightbotOAuth = () => {
+  const handleNightbotOAuth = async () => {
     if (!login) {
       setParseError("Log in with Twitch first to import commands.");
       return;
@@ -151,7 +152,14 @@ export default function ImportPage() {
     const url = new URL(`${backendUrl}/nightbot/auth/start`);
     url.searchParams.set("login", login);
     url.searchParams.set("redirect", importUrl);
-    window.location.href = url.toString();
+    try {
+      const res = await fetch(url.toString());
+      if (!res.ok) throw new Error(await res.text());
+      const data: { url: string } = await res.json();
+      window.location.href = data.url;
+    } catch {
+      setParseError("Couldn't start the Nightbot import. Please try again.");
+    }
   };
 
   const handleChooseProvider = (next: Provider) => {
