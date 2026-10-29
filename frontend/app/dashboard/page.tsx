@@ -714,8 +714,8 @@ export default function DashboardPage() {
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col gap-3 text-ax-heading md:min-h-0">
-          <div className="flex flex-col gap-3 lg:flex-row lg:gap-6 lg:min-h-0">
-          <div className="w-full flex-none rounded-2xl border border-ax-subtle bg-ax-section p-4 sm:p-5 md:flex-1 md:p-6 lg:basis-2/3 lg:min-h-0">
+          <div className="flex flex-col gap-3 md:min-h-0 md:flex-1 lg:flex-row lg:gap-6">
+          <div className="flex w-full flex-none flex-col rounded-2xl border border-ax-subtle bg-ax-section p-4 sm:p-5 md:min-h-0 md:flex-1 md:overflow-hidden md:p-6 lg:basis-2/3">
             <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
               <h1 className="text-xl font-semibold sm:text-2xl">Recent Activity</h1>
               <span className="text-xs text-ax-secondary">Latest changes from Twitch &amp; AxyraBot</span>
@@ -726,7 +726,7 @@ export default function DashboardPage() {
               </p>
             )}
             {activeChannel && (
-              <div className="flex flex-col pr-1 md:flex-1 md:overflow-y-auto">
+              <div className="flex flex-col pr-1 md:min-h-0 md:flex-1 md:overflow-y-auto md:overscroll-contain">
                 {loadingActivity && (
                   <p className="text-sm text-ax-secondary">Loading activity…</p>
                 )}
