@@ -10,6 +10,7 @@ import { usePersistentSectionState } from "../hooks/usePersistentSectionState";
 import { responsiveSidebarClassName, useResponsiveSidebar } from "../hooks/useResponsiveSidebar";
 import { useRequireAuth } from "../hooks/useRequireAuth";
 import { revokeSession } from "../lib/session";
+import NavIcon from "../components/NavIcon";
 
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://your-backend.onrender.com";
 const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL;
@@ -121,11 +122,11 @@ function CommandToggle({ enabled, onChange }: CommandToggleProps) {
     type="button"
     onClick={() => onChange(!enabled)}
     className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-      enabled ? "bg-emerald-500" : "bg-slate-600"
+      enabled ? "bg-emerald-500" : "bg-ax-border"
     }`}
   >
     <span
-      className={`inline-block h-4 w-4 transform rounded-full bg-slate-950 shadow transition-transform ${
+      className={`inline-block h-4 w-4 transform rounded-full bg-ax-section shadow transition-transform ${
         enabled ? "translate-x-4" : "translate-x-1"
       }`}
     />
@@ -321,15 +322,16 @@ function CommandsPage() {
   const primaryLabel = isLoggedIn ? "Dashboard" : "Login with Twitch";
 
   return (
-    <main className="min-h-screen flex flex-col bg-[radial-gradient(circle_at_top,_#1e293b,_#020617)] md:h-screen md:overflow-hidden">
+    <main className="min-h-screen flex flex-col bg-ax-bg md:h-screen md:overflow-hidden">
       <header className="w-full flex items-center justify-between px-6 py-4">
         <div className="flex items-center gap-4 flex-1">
           <button
+            aria-label="Toggle navigation"
             type="button"
             onClick={toggleSidebar}
-            className="mr-2 rounded-lg bg-slate-900/70 px-3 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800 border border-slate-700"
+            className="mr-2 rounded-lg bg-ax-section px-3 py-2 text-sm font-medium text-ax-body hover:bg-ax-raised border border-ax-border"
           >
-            ☰
+            <NavIcon name="menu" size={20} tone="inherit" />
           </button>
           <Link href="/" className="flex items-center gap-4">
             <Image
@@ -340,8 +342,8 @@ function CommandsPage() {
               className="rounded-full"
             />
             <div className="text-2xl font-semibold tracking-tight">
-              <span className="text-accent">Axyra</span>
-              <span className="text-white">Bot</span>
+              <span className="text-ax-accent-text">Axyra</span>
+              <span className="text-ax-heading">Bot</span>
             </div>
           </Link>
         </div>
@@ -357,16 +359,16 @@ function CommandsPage() {
               <ManagingChannelBadge />
               <Link
                 href="/import"
-                className="inline-flex items-center gap-1 rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1.5 text-xs font-medium text-slate-100 hover:bg-slate-800 hover:border-slate-500 transition"
+                className="inline-flex items-center gap-1 rounded-full border border-ax-border bg-ax-section px-3 py-1.5 text-xs font-medium text-ax-body hover:bg-ax-raised hover:border-ax-muted transition"
               >
-                <span className="text-xs">⬆</span>
+                <NavIcon name="import" size={16} tone="inherit" />
                 <span>Import</span>
               </Link>
               <div className="relative" ref={menuRef}>
                 <button
                   type="button"
-                  onClick={() => setMenuOpen((open) => !open)}
-                  className="flex items-center gap-2 rounded-full bg-slate-900/80 px-1.5 py-1 hover:bg-slate-800 transition"
+                  aria-expanded={menuOpen} onClick={() => setMenuOpen((open) => !open)}
+                  className="flex items-center gap-2 rounded-full bg-ax-section px-1.5 py-1 hover:bg-ax-raised transition"
                 >
                   {avatarUrl && (
                     <Image
@@ -379,11 +381,11 @@ function CommandsPage() {
                   )}
                 </button>
                 {menuOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-36 rounded-lg border border-slate-700 bg-slate-900/95 py-2 shadow-lg">
+                  <div className="absolute right-0 top-full mt-2 w-36 rounded-lg border border-ax-border bg-ax-section py-2 shadow-lg">
                     <button
                       type="button"
                       onClick={handleLogout}
-                      className="w-full px-4 py-2 text-sm text-left text-slate-200 hover:bg-slate-800"
+                      className="w-full px-4 py-2 text-sm text-left text-ax-body hover:bg-ax-raised"
                     >
                       Log out
                     </button>
@@ -398,45 +400,47 @@ function CommandsPage() {
       <div className="flex flex-1 w-full flex-col items-stretch gap-3 px-3 pb-4 md:flex-row md:gap-6 md:px-4 md:pb-6 md:min-h-0">
         {mobileSidebarOpen && <button type="button" aria-label="Close dashboard menu" onClick={closeMobileSidebar} className="fixed inset-0 z-40 bg-black/60 md:hidden" />}
         <div className={responsiveSidebarClassName(sidebarOpen, mobileSidebarOpen)}>
-          <div className="mb-3 flex items-center justify-between border-b border-slate-800 px-2 pb-3 md:hidden">
-            <span className="text-sm font-semibold text-slate-100">Dashboard menu</span>
-            <button type="button" onClick={closeMobileSidebar} className="rounded-md px-2 py-1 text-sm text-slate-400 hover:bg-slate-800 hover:text-white">Close</button>
+          <div className="mb-3 flex items-center justify-between border-b border-ax-subtle px-2 pb-3 md:hidden">
+            <span className="text-sm font-semibold text-ax-body">Dashboard menu</span>
+            <button type="button" onClick={closeMobileSidebar} className="rounded-md px-2 py-1 text-sm text-ax-secondary hover:bg-ax-raised hover:text-ax-heading">Close</button>
           </div>
-          <nav className="mt-1 flex flex-col gap-4 text-sm text-slate-200">
+          <nav className="mt-1 flex flex-col gap-4 text-sm text-ax-body">
             {/* Main section */}
             <div className="flex flex-col gap-2">
               <button
                 type="button"
-                onClick={() => setMainSectionOpen((open) => !open)}
-                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-200"
+                aria-expanded={mainSectionOpen} onClick={() => setMainSectionOpen((open) => !open)}
+                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary hover:text-ax-body"
               >
                 <span>Main</span>
-                {sidebarOpen && <span className="text-base font-bold">{mainSectionOpen ? "▾" : "▸"}</span>}
+                {sidebarOpen && <NavIcon name={mainSectionOpen ? "chevronDown" : "chevronRight"} size={16} tone="inherit" />}
               </button>
               {mainSectionOpen && (
                 <>
                   <Link
                     href="/dashboard"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/dashboard" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/dashboard"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">📊</span>
-                    {sidebarOpen && <span>Dashboard</span>}
+                    <NavIcon name="dashboard" />
+                    {sidebarOpen ? <span>Dashboard</span> : <span className="sr-only">Dashboard</span>}
                   </Link>
 
                   <Link
                     href="/commands"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/commands" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/commands"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">❓</span>
-                    {sidebarOpen && <span>Commands</span>}
+                    <NavIcon name="commands" />
+                    {sidebarOpen ? <span>Commands</span> : <span className="sr-only">Commands</span>}
                   </Link>
 
                 </>
@@ -447,37 +451,39 @@ function CommandsPage() {
             <div className="flex flex-col gap-2">
               <button
                 type="button"
-                onClick={() => setModerationOpen((open) => !open)}
-                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-200"
+                aria-expanded={moderationOpen} onClick={() => setModerationOpen((open) => !open)}
+                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary hover:text-ax-body"
               >
                 <span>Moderation</span>
                 {sidebarOpen && (
-                  <span className="text-base font-bold">{moderationOpen ? "▾" : "▸"}</span>
+                  <NavIcon name={moderationOpen ? "chevronDown" : "chevronRight"} size={16} tone="inherit" />
                 )}
               </button>
               {moderationOpen && (
                 <>
                   <Link
                     href="/moderation/blocked-terms"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/moderation/blocked-terms" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/moderation/blocked-terms"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">🚫</span>
-                    {sidebarOpen && <span>Blocked Terms</span>}
+                    <NavIcon name="blockedTerms" />
+                    {sidebarOpen ? <span>Blocked Terms</span> : <span className="sr-only">Blocked Terms</span>}
                   </Link>
                   <Link
                     href="/moderation/spam-filters"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/moderation/spam-filters" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/moderation/spam-filters"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">🧹</span>
-                    {sidebarOpen && <span>Spam Filters</span>}
+                    <NavIcon name="spamFilters" />
+                    {sidebarOpen ? <span>Spam Filters</span> : <span className="sr-only">Spam Filters</span>}
                   </Link>
                 </>
               )}
@@ -487,58 +493,62 @@ function CommandsPage() {
             <div className="flex flex-col gap-2">
               <button
                 type="button"
-                onClick={() => setVanitySectionOpen((open) => !open)}
-                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-200"
+                aria-expanded={vanitySectionOpen} onClick={() => setVanitySectionOpen((open) => !open)}
+                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary hover:text-ax-body"
               >
                 <span>Vanity</span>
-                {sidebarOpen && <span className="text-base font-bold">{vanitySectionOpen ? "▾" : "▸"}</span>}
+                {sidebarOpen && <NavIcon name={vanitySectionOpen ? "chevronDown" : "chevronRight"} size={16} tone="inherit" />}
               </button>
               {vanitySectionOpen && (
                 <>
                   <Link
                     href="/modules"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/modules" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/modules"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">🧩</span>
-                    {sidebarOpen && <span>Modules</span>}
+                    <NavIcon name="modules" />
+                    {sidebarOpen ? <span>Modules</span> : <span className="sr-only">Modules</span>}
                   </Link>
                   <Link
                     href="/birthdays"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/birthdays" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/birthdays"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">🎂</span>
-                    {sidebarOpen && <span>Birthdays</span>}
+                    <NavIcon name="birthdays" />
+                    {sidebarOpen ? <span>Birthdays</span> : <span className="sr-only">Birthdays</span>}
                   </Link>
                   <Link
                     href="/giveaways"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/giveaways" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/giveaways"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">🎁</span>
-                    {sidebarOpen && <span>Giveaways</span>}
+                    <NavIcon name="giveaways" />
+                    {sidebarOpen ? <span>Giveaways</span> : <span className="sr-only">Giveaways</span>}
                   </Link>
                   {!isEditor && (
                   <Link
                     href="/roles"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/roles" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/roles"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">🎭</span>
-                    {sidebarOpen && <span>Roles</span>}
+                    <NavIcon name="roles" />
+                    {sidebarOpen ? <span>Roles</span> : <span className="sr-only">Roles</span>}
                   </Link>
                   )}
                 </>
@@ -547,13 +557,16 @@ function CommandsPage() {
 
             {/* Integrations section */}
             <div className="flex flex-col gap-2">
-              <button type="button" onClick={() => {}} className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+              <button type="button" onClick={() => {}} className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary">
                 <span>Integrations</span>
               </button>
-              <Link href="/discord/settings" className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
-                pathname === "/discord/settings" ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]" : "text-slate-200 hover:bg-slate-800/80"
-              }`}>
-                <span className="text-lg">🎮</span>{sidebarOpen && <span>Discord</span>}
+              <Link href="/discord/settings" aria-current={pathname === "/discord/settings" ? "page" : undefined}
+ className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+   pathname === "/discord/settings"
+     ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+     : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}>
+                <NavIcon name="discord" />{sidebarOpen ? <span>Discord</span> : <span className="sr-only">Discord</span>}
               </Link>
             </div>
 
@@ -561,46 +574,49 @@ function CommandsPage() {
             <div className="flex flex-col gap-2">
               <button
                 type="button"
-                onClick={() => setOtherSectionOpen((open) => !open)}
-                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-200"
+                aria-expanded={otherSectionOpen} onClick={() => setOtherSectionOpen((open) => !open)}
+                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary hover:text-ax-body"
               >
                 <span>Other</span>
-                {sidebarOpen && <span className="text-base font-bold">{otherSectionOpen ? "▾" : "▸"}</span>}
+                {sidebarOpen && <NavIcon name={otherSectionOpen ? "chevronDown" : "chevronRight"} size={16} tone="inherit" />}
               </button>
               {otherSectionOpen && (
                 <>
                   <Link
                     href="/privacy"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/privacy" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/privacy"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">🔒</span>
-                    {sidebarOpen && <span>Privacy</span>}
+                    <NavIcon name="privacy" />
+                    {sidebarOpen ? <span>Privacy</span> : <span className="sr-only">Privacy</span>}
                   </Link>
                   <Link
                     href="/terms"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/terms" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/terms"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">📜</span>
-                    {sidebarOpen && <span>Terms</span>}
+                    <NavIcon name="terms" />
+                    {sidebarOpen ? <span>Terms</span> : <span className="sr-only">Terms</span>}
                   </Link>
                   <Link
                     href="/api-docs"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/api-docs" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/api-docs"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">📘</span>
-                    {sidebarOpen && <span>API Docs</span>}
+                    <NavIcon name="apiDocs" />
+                    {sidebarOpen ? <span>API Docs</span> : <span className="sr-only">API Docs</span>}
                   </Link>
                 </>
               )}
@@ -608,19 +624,20 @@ function CommandsPage() {
           </nav>
         </div>
 
-        <div className="flex-1 flex flex-col gap-6 text-slate-50 min-h-0">
-          <div className="w-full flex-1 flex flex-col rounded-2xl border border-slate-800 bg-slate-900/80 p-6 min-h-0">
+        <div className="flex-1 flex flex-col gap-6 text-ax-heading min-h-0">
+          <div className="w-full flex-1 flex flex-col rounded-2xl border border-ax-subtle bg-ax-section p-6 min-h-0">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <h1 className="text-3xl font-semibold">Commands</h1>
-                <div className="inline-flex rounded-full bg-slate-900/80 border border-slate-700 p-1.5 text-sm">
+                <div className="inline-flex rounded-full bg-ax-section border border-ax-border p-1.5 text-sm">
                   <button
                     type="button"
                     onClick={() => setView("default")}
-                    className={`px-4 py-1.5 rounded-full font-medium transition ${
+                    aria-current={view === "default" ? "page" : undefined}
+                    className={`group px-4 py-1.5 rounded-full font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       view === "default"
-                        ? "bg-accent text-white shadow-[0_0_14px_rgba(129,140,248,0.6)]"
-                        : "text-slate-300 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
                     Default commands
@@ -628,10 +645,11 @@ function CommandsPage() {
                   <button
                     type="button"
                     onClick={() => setView("custom")}
-                    className={`ml-1 px-4 py-1.5 rounded-full font-medium transition ${
+                    aria-current={view === "custom" ? "page" : undefined}
+                    className={`group ml-1 px-4 py-1.5 rounded-full font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       view === "custom"
-                        ? "bg-accent text-white shadow-[0_0_14px_rgba(129,140,248,0.6)]"
-                        : "text-slate-300 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
                     Custom commands
@@ -641,7 +659,7 @@ function CommandsPage() {
               {view === "custom" && (
                 <div className="flex items-center gap-2">
                   <div className="relative">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 pointer-events-none">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-ax-secondary pointer-events-none">
                       <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9Z" clipRule="evenodd" />
                     </svg>
                     <input
@@ -649,13 +667,13 @@ function CommandsPage() {
                       placeholder="Search commands..."
                       value={commandSearch}
                       onChange={(e) => setCommandSearch(e.target.value)}
-                      className="pl-10 pr-4 py-2 rounded-lg border border-slate-700 bg-slate-950/60 text-base text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-accent/60 w-64"
+                      className="pl-10 pr-4 py-2 rounded-lg border border-ax-border bg-ax-section text-base text-ax-body placeholder-ax-muted focus:outline-none focus:ring-2 focus:ring-accent/60 w-64"
                     />
                   </div>
                   <button
                     type="button"
                     onClick={() => { setNewCmdName(""); setNewCmdResponse(""); setNewCmdRole("all"); setAddCmdError(null); setShowAddModal(true); }}
-                    className="px-4 py-2 rounded-lg bg-accent text-white text-sm font-medium hover:bg-accent/90 transition shadow-[0_0_14px_rgba(129,140,248,0.4)] whitespace-nowrap"
+                    className="px-4 py-2 rounded-lg bg-accent text-ax-btn-text text-sm font-medium hover:bg-accent/90 transition shadow-[0_0_14px_rgba(56,189,248,0.35)] whitespace-nowrap"
                   >
                     Add +
                   </button>
@@ -663,9 +681,9 @@ function CommandsPage() {
               )}
             </div>
 
-            <div className="flex-1 overflow-auto rounded-xl border border-slate-800 bg-slate-950/60 min-h-0">
+            <div className="flex-1 overflow-auto rounded-xl border border-ax-subtle bg-ax-section min-h-0">
               <table className="min-w-full w-full table-fixed h-full text-sm text-left">
-                <thead className="bg-slate-900/80 text-slate-300">
+                <thead className="bg-ax-section text-ax-secondary">
                   <tr>
                     <th className="px-4 py-3 font-semibold w-36">Command</th>
                     <th className="px-4 py-3 font-semibold">Description</th>
@@ -679,9 +697,9 @@ function CommandsPage() {
                   {view === "default" && (
                     <>
                       {defaultCommands.map((row) => (
-                        <tr key={row.name} className="border-t border-slate-800 hover:bg-slate-900/60">
-                          <td className="px-4 py-2 font-mono text-slate-100 truncate">{row.label ?? row.name}</td>
-                          <td className="px-4 py-2 text-slate-300 max-w-0 truncate" title={row.description}>{row.description}</td>
+                        <tr key={row.name} className="border-t border-ax-subtle hover:bg-ax-section">
+                          <td className="px-4 py-2 font-mono text-ax-body truncate">{row.label ?? row.name}</td>
+                          <td className="px-4 py-2 text-ax-secondary max-w-0 truncate" title={row.description}>{row.description}</td>
                           <td className="px-4 py-2 text-center">
                             {channelLogin && loggedInLogin === channelLogin ? (
                               <CommandToggle
@@ -705,20 +723,20 @@ function CommandsPage() {
                                 }}
                               />
                             ) : (
-                              <span className="text-slate-500 text-xs">—</span>
+                              <span className="text-ax-muted text-xs">—</span>
                             )}
                           </td>
                         </tr>
                       ))}
                       {defaultCommands.length === 0 && (
                         <tr>
-                          <td colSpan={3} className="px-4 py-4 text-center text-slate-400">
+                          <td colSpan={3} className="px-4 py-4 text-center text-ax-secondary">
                             No commands to display yet.
                           </td>
                         </tr>
                       )}
                       {/* filler row — absorbs remaining height */}
-                      <tr className="h-full border-t border-slate-800"><td colSpan={3} /></tr>
+                      <tr className="h-full border-t border-ax-subtle"><td colSpan={3} /></tr>
                     </>
                   )}
                   {view === "custom" && (() => {
@@ -732,9 +750,9 @@ function CommandsPage() {
                     return (
                       <>{pageRows.map((row) => (
                         <Fragment key={row.name}>
-                          <tr className="border-t border-slate-800 hover:bg-slate-900/60">
-                            <td className="px-4 py-2 font-mono text-slate-100 truncate">{row.name}</td>
-                            <td className="px-4 py-2 text-slate-300 max-w-0 truncate" title={row.description}>{row.description}</td>
+                          <tr className="border-t border-ax-subtle hover:bg-ax-section">
+                            <td className="px-4 py-2 font-mono text-ax-body truncate">{row.name}</td>
+                            <td className="px-4 py-2 text-ax-secondary max-w-0 truncate" title={row.description}>{row.description}</td>
                             <td className="px-4 py-2 text-center">
                               {isLoggedIn && channelLogin && loggedInLogin === channelLogin ? (
                                 <CommandToggle
@@ -762,7 +780,7 @@ function CommandsPage() {
                                   }}
                                 />
                               ) : (
-                                <span className="text-slate-500 text-xs">—</span>
+                                <span className="text-ax-muted text-xs">—</span>
                               )}
                             </td>
                             <td className="px-4 py-2 text-center">
@@ -782,7 +800,7 @@ function CommandsPage() {
                                       setEditRole(row.role);
                                       setEditError(null);
                                     }}
-                                    className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-700 bg-slate-900/80 text-slate-300 hover:bg-slate-800/80"
+                                    className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-ax-border bg-ax-section text-ax-secondary hover:bg-ax-raised"
                                   >
                                     <span className="sr-only">Edit command</span>
                                     <svg
@@ -800,7 +818,7 @@ function CommandsPage() {
                                       setDeleteTarget(row.name);
                                       setDeleteError(null);
                                     }}
-                                    className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-red-700 bg-red-700/80 text-white hover:bg-red-600/90"
+                                    className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-red-700 bg-red-700/80 text-ax-heading hover:bg-red-600/90"
                                   >
                                     <span className="sr-only">Delete command</span>
                                     <svg
@@ -814,38 +832,38 @@ function CommandsPage() {
                                   </button>
                                 </div>
                               ) : (
-                                <span className="text-slate-500 text-xs">—</span>
+                                <span className="text-ax-muted text-xs">—</span>
                               )}
                             </td>
                           </tr>
                           {editingCommand === row.name && (
-                            <tr className="border-t border-slate-800 bg-slate-950/80">
+                            <tr className="border-t border-ax-subtle bg-ax-section">
                               <td colSpan={4} className="px-4 py-3">
                                 <div className="flex flex-col gap-3">
                                   <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-                                    <label className="text-xs font-medium text-slate-300 sm:w-32">Command name</label>
+                                    <label className="text-xs font-medium text-ax-secondary sm:w-32">Command name</label>
                                     <input
                                       type="text"
                                       value={editName}
                                       onChange={(e) => setEditName(e.target.value)}
-                                      className="flex-1 rounded-md border border-slate-700 bg-slate-900/80 px-2 py-1 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-accent/60"
+                                      className="flex-1 rounded-md border border-ax-border bg-ax-section px-2 py-1 text-sm text-ax-body focus:outline-none focus:ring-2 focus:ring-accent/60"
                                     />
                                   </div>
                                   <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-                                    <label className="text-xs font-medium text-slate-300 sm:w-32">Response</label>
+                                    <label className="text-xs font-medium text-ax-secondary sm:w-32">Response</label>
                                     <input
                                       type="text"
                                       value={editResponse}
                                       onChange={(e) => setEditResponse(e.target.value)}
-                                      className="flex-1 rounded-md border border-slate-700 bg-slate-900/80 px-2 py-1 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-accent/60"
+                                      className="flex-1 rounded-md border border-ax-border bg-ax-section px-2 py-1 text-sm text-ax-body focus:outline-none focus:ring-2 focus:ring-accent/60"
                                     />
                                   </div>
                                   <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-                                    <label className="text-xs font-medium text-slate-300 sm:w-32">Who can use</label>
+                                    <label className="text-xs font-medium text-ax-secondary sm:w-32">Who can use</label>
                                     <select
                                       value={editRole}
                                       onChange={(e) => setEditRole(e.target.value as CustomCommandRole)}
-                                      className="flex-1 rounded-md border border-slate-700 bg-slate-900/80 px-2 py-1 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-accent/60"
+                                      className="flex-1 rounded-md border border-ax-border bg-ax-section px-2 py-1 text-sm text-ax-body focus:outline-none focus:ring-2 focus:ring-accent/60"
                                     >
                                       <option value="all">Everyone</option>
                                       <option value="vip">VIP+</option>
@@ -854,7 +872,7 @@ function CommandsPage() {
                                     </select>
                                   </div>
                                   {editError && (
-                                    <div className="text-xs text-red-400">{editError}</div>
+                                    <div className="text-xs text-red-300">{editError}</div>
                                   )}
                                   <div className="mt-1 flex gap-2 justify-end">
                                     <button
@@ -863,7 +881,7 @@ function CommandsPage() {
                                         setEditingCommand(null);
                                         setEditError(null);
                                       }}
-                                      className="rounded-md border border-slate-700 px-3 py-1 text-xs font-medium text-slate-200 hover:bg-slate-800/80"
+                                      className="rounded-md border border-ax-border px-3 py-1 text-xs font-medium text-ax-body hover:bg-ax-raised"
                                       disabled={savingEdit}
                                     >
                                       Cancel
@@ -914,7 +932,7 @@ function CommandsPage() {
                                           setSavingEdit(false);
                                         }
                                       }}
-                                      className="rounded-md bg-accent px-3 py-1 text-xs font-medium text-white hover:bg-accent/90 disabled:opacity-60"
+                                      className="rounded-md bg-accent px-3 py-1 text-xs font-medium text-ax-btn-text hover:bg-accent/90 disabled:opacity-60"
                                       disabled={savingEdit}
                                     >
                                       {savingEdit ? "Saving..." : "Save changes"}
@@ -928,20 +946,20 @@ function CommandsPage() {
                       ))}
                       {customCommands.length === 0 && (
                         <tr>
-                          <td colSpan={4} className="px-4 py-4 text-center text-slate-400">
+                          <td colSpan={4} className="px-4 py-4 text-center text-ax-secondary">
                             No commands to display yet.
                           </td>
                         </tr>
                       )}
                       {customCommands.length > 0 && pageRows.length === 0 && (
                         <tr>
-                          <td colSpan={4} className="px-4 py-4 text-center text-slate-400">
+                          <td colSpan={4} className="px-4 py-4 text-center text-ax-secondary">
                             No commands match your search.
                           </td>
                         </tr>
                       )}
                       {/* filler row — absorbs remaining height */}
-                      <tr className="h-full border-t border-slate-800"><td colSpan={4} /></tr>
+                      <tr className="h-full border-t border-ax-subtle"><td colSpan={4} /></tr>
                     </>);
                   })()}
                 </tbody>
@@ -963,19 +981,19 @@ function CommandsPage() {
                     type="button"
                     onClick={() => setCustomPage((p) => Math.max(1, p - 1))}
                     disabled={safePage === 1}
-                    className="flex items-center justify-center text-slate-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition"
+                    className="flex items-center justify-center text-ax-secondary hover:text-ax-heading disabled:opacity-30 disabled:cursor-not-allowed transition"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="h-7 w-7"><polyline points="15 18 9 12 15 6" /></svg>
                   </button>
-                  <span className="text-sm text-slate-300">
-                    Page <span className="font-semibold text-slate-100">{safePage}</span> of{" "}
-                    <span className="font-semibold text-slate-100">{totalPages}</span>
+                  <span className="text-sm text-ax-secondary">
+                    Page <span className="font-semibold text-ax-body">{safePage}</span> of{" "}
+                    <span className="font-semibold text-ax-body">{totalPages}</span>
                   </span>
                   <button
                     type="button"
                     onClick={() => setCustomPage((p) => Math.min(totalPages, p + 1))}
                     disabled={safePage === totalPages}
-                    className="flex items-center justify-center text-slate-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition"
+                    className="flex items-center justify-center text-ax-secondary hover:text-ax-heading disabled:opacity-30 disabled:cursor-not-allowed transition"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="h-7 w-7"><polyline points="9 18 15 12 9 6" /></svg>
                   </button>
@@ -990,45 +1008,45 @@ function CommandsPage() {
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
           onMouseDown={(e) => { if (e.target === e.currentTarget) setShowAddModal(false); }}
         >
-          <div ref={addModalRef} className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl">
+          <div ref={addModalRef} className="w-full max-w-md rounded-2xl border border-ax-border bg-ax-section p-6 shadow-2xl">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-semibold text-slate-50">Add Custom Command</h2>
+              <h2 className="text-lg font-semibold text-ax-heading">Add Custom Command</h2>
               <button
                 type="button"
                 onClick={() => setShowAddModal(false)}
-                className="text-slate-400 hover:text-slate-200 transition"
+                className="text-ax-secondary hover:text-ax-body transition"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5"><path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" /></svg>
               </button>
             </div>
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-slate-300">Command name</label>
+                <label className="text-xs font-medium text-ax-secondary">Command name</label>
                 <input
                   type="text"
                   placeholder="e.g. !socials"
                   value={newCmdName}
                   onChange={(e) => setNewCmdName(e.target.value)}
-                  className="rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-accent/60"
+                  className="rounded-lg border border-ax-border bg-ax-section px-3 py-2 text-sm text-ax-body placeholder-ax-muted focus:outline-none focus:ring-2 focus:ring-accent/60"
                   autoFocus
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-slate-300">Bot response</label>
+                <label className="text-xs font-medium text-ax-secondary">Bot response</label>
                 <textarea
                   placeholder="What the bot says when the command is triggered..."
                   value={newCmdResponse}
                   onChange={(e) => setNewCmdResponse(e.target.value)}
                   rows={3}
-                  className="rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-accent/60 resize-none"
+                  className="rounded-lg border border-ax-border bg-ax-section px-3 py-2 text-sm text-ax-body placeholder-ax-muted focus:outline-none focus:ring-2 focus:ring-accent/60 resize-none"
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-slate-300">User level</label>
+                <label className="text-xs font-medium text-ax-secondary">User level</label>
                 <select
                   value={newCmdRole}
                   onChange={(e) => setNewCmdRole(e.target.value as CustomCommandRole)}
-                  className="rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-accent/60"
+                  className="rounded-lg border border-ax-border bg-ax-section px-3 py-2 text-sm text-ax-body focus:outline-none focus:ring-2 focus:ring-accent/60"
                 >
                   <option value="all">Everyone</option>
                   <option value="vip">VIP+</option>
@@ -1036,12 +1054,12 @@ function CommandsPage() {
                   <option value="broadcaster">Owner only</option>
                 </select>
               </div>
-              {addCmdError && <div className="text-xs text-red-400">{addCmdError}</div>}
+              {addCmdError && <div className="text-xs text-red-300">{addCmdError}</div>}
               <div className="flex justify-end gap-2 mt-1">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800 transition"
+                  className="rounded-lg border border-ax-border px-4 py-2 text-sm font-medium text-ax-body hover:bg-ax-raised transition"
                   disabled={addingCmd}
                 >
                   Cancel
@@ -1049,7 +1067,7 @@ function CommandsPage() {
                 <button
                   type="button"
                   disabled={!newCmdName.trim() || !newCmdResponse.trim() || addingCmd}
-                  className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent/90 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-ax-btn-text hover:bg-accent/90 transition disabled:opacity-40 disabled:cursor-not-allowed"
                   onClick={async () => {
                     if (!channelLogin || !newCmdName.trim() || !newCmdResponse.trim()) return;
                     setAddingCmd(true);
@@ -1140,20 +1158,20 @@ function DeleteCommandModal({
 }) {
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60">
-      <div className="w-full max-w-sm rounded-xl border border-slate-800 bg-slate-900/95 p-5 shadow-xl">
-        <h2 className="text-lg font-semibold text-slate-100 mb-2">Delete command</h2>
-        <p className="text-sm text-slate-300 mb-3">
+      <div className="w-full max-w-sm rounded-xl border border-ax-subtle bg-ax-section p-5 shadow-xl">
+        <h2 className="text-lg font-semibold text-ax-body mb-2">Delete command</h2>
+        <p className="text-sm text-ax-secondary mb-3">
           Are you sure you want to delete
           <span className="font-mono text-red-300"> {commandName} </span>
           for this channel? This action cannot be undone.
         </p>
-        {error && <div className="mb-2 text-xs text-red-400">{error}</div>}
+        {error && <div className="mb-2 text-xs text-red-300">{error}</div>}
         <div className="mt-2 flex justify-end gap-2">
           <button
             type="button"
             onClick={onCancel}
             disabled={deleting}
-            className="rounded-md border border-slate-700 px-3 py-1 text-xs font-medium text-slate-200 hover:bg-slate-800/80 disabled:opacity-60"
+            className="rounded-md border border-ax-border px-3 py-1 text-xs font-medium text-ax-body hover:bg-ax-raised disabled:opacity-60"
           >
             Cancel
           </button>
@@ -1161,7 +1179,7 @@ function DeleteCommandModal({
             type="button"
             onClick={onConfirm}
             disabled={deleting}
-            className="rounded-md bg-red-600 px-3 py-1 text-xs font-medium text-white hover:bg-red-500 disabled:opacity-60"
+            className="rounded-md bg-red-600 px-3 py-1 text-xs font-medium text-ax-heading hover:bg-red-500 disabled:opacity-60"
           >
             {deleting ? "Deleting..." : "Yes, delete"}
           </button>

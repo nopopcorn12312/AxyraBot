@@ -88,7 +88,7 @@ export default function ManagingChannelBadge() {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-2.5 rounded-xl border border-slate-700 bg-slate-900/80 px-3 py-1.5 hover:bg-slate-800 hover:border-slate-500 transition"
+        className="flex items-center gap-2.5 rounded-xl border border-ax-border bg-ax-section px-3 py-1.5 hover:bg-ax-raised hover:border-ax-muted transition"
       >
         {active.avatarUrl ? (
           <Image
@@ -100,16 +100,16 @@ export default function ManagingChannelBadge() {
             unoptimized
           />
         ) : (
-          <div className="w-8 h-8 rounded-full bg-slate-700 flex-shrink-0" />
+          <div className="w-8 h-8 rounded-full bg-ax-raised flex-shrink-0" />
         )}
         <div className="flex flex-col items-start leading-tight">
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-ax-secondary">
             Managing Channel
           </span>
-          <span className="text-sm font-bold text-white">{active.login}</span>
+          <span className="text-sm font-bold text-ax-heading">{active.login}</span>
         </div>
         <svg
-          className={`w-3.5 h-3.5 text-slate-400 flex-shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
+          className={`w-3.5 h-3.5 text-ax-secondary flex-shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -120,8 +120,8 @@ export default function ManagingChannelBadge() {
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full mt-2 w-52 rounded-xl border border-slate-700 bg-slate-900/95 shadow-xl py-1.5 z-50">
-          <p className="px-3 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+        <div className="absolute left-0 top-full mt-2 w-52 rounded-xl border border-ax-border bg-ax-section shadow-xl py-1.5 z-50">
+          <p className="px-3 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-wide text-ax-muted">
             Switch channel
           </p>
           {options.map((opt) => (
@@ -129,8 +129,8 @@ export default function ManagingChannelBadge() {
               key={opt.login}
               type="button"
               onClick={() => handleSwitch(opt)}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 text-left transition hover:bg-slate-800 ${
-                opt.login === active.login ? "bg-slate-800/60" : ""
+              className={`w-full flex items-center gap-2.5 px-3 py-2 text-left transition hover:bg-ax-raised ${
+                opt.login === active.login ? "bg-ax-raised" : ""
               }`}
             >
               {opt.avatarUrl ? (
@@ -143,12 +143,12 @@ export default function ManagingChannelBadge() {
                   unoptimized
                 />
               ) : (
-                <div className="w-7 h-7 rounded-full bg-slate-700 flex-shrink-0" />
+                <div className="w-7 h-7 rounded-full bg-ax-raised flex-shrink-0" />
               )}
               <div className="flex flex-col leading-tight">
-                <span className="text-sm font-medium text-slate-100">{opt.login}</span>
+                <span className="text-sm font-medium text-ax-body">{opt.login}</span>
                 {opt.login === active.login && (
-                  <span className="text-[10px] text-accent font-semibold">Active</span>
+                  <span className="text-[10px] text-ax-accent-text font-semibold">Active</span>
                 )}
               </div>
             </button>

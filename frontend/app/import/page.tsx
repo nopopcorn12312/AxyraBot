@@ -13,6 +13,8 @@ import NightbotBanner from "../images/NightbotBanner.png";
 import SteamelementsBanner from "../images/SteamelementsBanner.png";
 import FossabotBanner from "../images/FossabotBanner.png";
 import { revokeSession } from "../lib/session";
+import NavIcon from "../components/NavIcon";
+import { Check } from "lucide-react";
 
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://your-backend.onrender.com";
 const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL;
@@ -170,19 +172,19 @@ export default function ImportPage() {
   };
 
   return (
-    <main className="min-h-screen flex flex-col bg-[radial-gradient(circle_at_top,_#1e293b,_#020617)]">
+    <main className="min-h-screen flex flex-col bg-ax-bg">
       {successModalOpen && successProvider && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div className="w-full max-w-sm rounded-2xl border border-slate-700 bg-slate-900 p-5 shadow-xl">
-            <h2 className="mb-1 text-lg font-semibold text-slate-50">Import complete</h2>
-            <p className="mb-4 text-sm text-slate-300">
+          <div className="w-full max-w-sm rounded-2xl border border-ax-border bg-ax-section p-5 shadow-xl">
+            <h2 className="mb-1 text-lg font-semibold text-ax-heading">Import complete</h2>
+            <p className="mb-4 text-sm text-ax-secondary">
               Successfully imported from {providerDisplay[successProvider]}.
             </p>
             <div className="flex justify-end">
               <button
                 type="button"
                 onClick={() => setSuccessModalOpen(false)}
-                className="inline-flex items-center rounded-md bg-slate-800 px-4 py-1.5 text-sm font-semibold text-slate-100 hover:bg-slate-700"
+                className="inline-flex items-center rounded-md bg-ax-raised px-4 py-1.5 text-sm font-semibold text-ax-body hover:bg-ax-raised"
               >
                 Close
               </button>
@@ -193,11 +195,12 @@ export default function ImportPage() {
       <header className="w-full flex items-center justify-between px-6 py-4">
         <div className="flex items-center gap-4 flex-1">
           <button
+            aria-label="Toggle navigation"
             type="button"
-            onClick={() => setSidebarOpen((open) => !open)}
-            className="mr-2 rounded-lg bg-slate-900/70 px-3 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800 border border-slate-700"
+            aria-expanded={sidebarOpen} onClick={() => setSidebarOpen((open) => !open)}
+            className="mr-2 rounded-lg bg-ax-section px-3 py-2 text-sm font-medium text-ax-body hover:bg-ax-raised border border-ax-border"
           >
-            ☰
+            <NavIcon name="menu" size={20} tone="inherit" />
           </button>
           <Link href="/" className="flex items-center gap-4">
             <Image
@@ -208,8 +211,8 @@ export default function ImportPage() {
               className="rounded-full"
             />
             <div className="text-2xl font-semibold tracking-tight">
-              <span className="text-accent">Axyra</span>
-              <span className="text-white">Bot</span>
+              <span className="text-ax-accent-text">Axyra</span>
+              <span className="text-ax-heading">Bot</span>
             </div>
           </Link>
         </div>
@@ -222,16 +225,16 @@ export default function ImportPage() {
               <ManagingChannelBadge />
               <Link
                 href="/import"
-                className="inline-flex items-center gap-1 rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1.5 text-xs font-medium text-slate-100 hover:bg-slate-800 hover:border-slate-500 transition"
+                className="inline-flex items-center gap-1 rounded-full border border-ax-border bg-ax-section px-3 py-1.5 text-xs font-medium text-ax-body hover:bg-ax-raised hover:border-ax-muted transition"
               >
-                <span className="text-xs">⬆</span>
+                <NavIcon name="import" size={16} tone="inherit" />
                 <span>Import</span>
               </Link>
               <div className="relative" ref={menuRef}>
                 <button
                   type="button"
-                  onClick={() => setMenuOpen((open) => !open)}
-                  className="flex items-center gap-2 rounded-full bg-slate-900/80 px-1.5 py-1 hover:bg-slate-800 transition"
+                  aria-expanded={menuOpen} onClick={() => setMenuOpen((open) => !open)}
+                  className="flex items-center gap-2 rounded-full bg-ax-section px-1.5 py-1 hover:bg-ax-raised transition"
                 >
                   {avatarUrl && (
                     <Image
@@ -244,11 +247,11 @@ export default function ImportPage() {
                   )}
                 </button>
                 {menuOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-36 rounded-lg border border-slate-700 bg-slate-900/95 py-2 shadow-lg">
+                  <div className="absolute right-0 top-full mt-2 w-36 rounded-lg border border-ax-border bg-ax-section py-2 shadow-lg">
                     <button
                       type="button"
                       onClick={handleLogout}
-                      className="w-full px-4 py-2 text-sm text-left text-slate-200 hover:bg-slate-800"
+                      className="w-full px-4 py-2 text-sm text-left text-ax-body hover:bg-ax-raised"
                     >
                       Log out
                     </button>
@@ -262,43 +265,45 @@ export default function ImportPage() {
 
       <div className="flex flex-1 w-full gap-6 px-4 pb-6 items-stretch">
         <div
-          className={`${sidebarOpen ? "w-60" : "w-16"} flex flex-col rounded-2xl border border-slate-800 bg-slate-900/80 p-3 transition-all duration-200`}
+          className={`${sidebarOpen ? "w-60" : "w-16"} flex flex-col rounded-2xl border border-ax-subtle bg-ax-section p-3 transition-all duration-200`}
         >
-          <nav className="mt-1 flex flex-col gap-4 text-sm text-slate-200">
+          <nav className="mt-1 flex flex-col gap-4 text-sm text-ax-body">
             {/* Main section */}
             <div className="flex flex-col gap-2">
               <button
                 type="button"
-                onClick={() => setMainSectionOpen((open) => !open)}
-                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-200"
+                aria-expanded={mainSectionOpen} onClick={() => setMainSectionOpen((open) => !open)}
+                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary hover:text-ax-body"
               >
                 <span>Main</span>
-                {sidebarOpen && <span className="text-base font-bold">{mainSectionOpen ? "▾" : "▸"}</span>}
+                {sidebarOpen && <NavIcon name={mainSectionOpen ? "chevronDown" : "chevronRight"} size={16} tone="inherit" />}
               </button>
               {mainSectionOpen && (
                 <>
                   <Link
                     href="/dashboard"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/dashboard" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/dashboard"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">📊</span>
-                    {sidebarOpen && <span>Dashboard</span>}
+                    <NavIcon name="dashboard" />
+                    {sidebarOpen ? <span>Dashboard</span> : <span className="sr-only">Dashboard</span>}
                   </Link>
 
                   <Link
                     href="/commands"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/commands" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/commands"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">❓</span>
-                    {sidebarOpen && <span>Commands</span>}
+                    <NavIcon name="commands" />
+                    {sidebarOpen ? <span>Commands</span> : <span className="sr-only">Commands</span>}
                   </Link>
 
                 </>
@@ -309,37 +314,39 @@ export default function ImportPage() {
             <div className="flex flex-col gap-2">
               <button
                 type="button"
-                onClick={() => setModerationOpen((open) => !open)}
-                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-200"
+                aria-expanded={moderationOpen} onClick={() => setModerationOpen((open) => !open)}
+                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary hover:text-ax-body"
               >
                 <span>Moderation</span>
                 {sidebarOpen && (
-                  <span className="text-base font-bold">{moderationOpen ? "▾" : "▸"}</span>
+                  <NavIcon name={moderationOpen ? "chevronDown" : "chevronRight"} size={16} tone="inherit" />
                 )}
               </button>
               {moderationOpen && (
                 <>
                   <Link
                     href="/moderation/blocked-terms"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/moderation/blocked-terms" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/moderation/blocked-terms"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">🚫</span>
-                    {sidebarOpen && <span>Blocked Terms</span>}
+                    <NavIcon name="blockedTerms" />
+                    {sidebarOpen ? <span>Blocked Terms</span> : <span className="sr-only">Blocked Terms</span>}
                   </Link>
                   <Link
                     href="/moderation/spam-filters"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/moderation/spam-filters" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/moderation/spam-filters"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">🧹</span>
-                    {sidebarOpen && <span>Spam Filters</span>}
+                    <NavIcon name="spamFilters" />
+                    {sidebarOpen ? <span>Spam Filters</span> : <span className="sr-only">Spam Filters</span>}
                   </Link>
                 </>
               )}
@@ -349,58 +356,62 @@ export default function ImportPage() {
             <div className="flex flex-col gap-2">
               <button
                 type="button"
-                onClick={() => setVanitySectionOpen((open) => !open)}
-                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-200"
+                aria-expanded={vanitySectionOpen} onClick={() => setVanitySectionOpen((open) => !open)}
+                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary hover:text-ax-body"
               >
                 <span>Vanity</span>
-                {sidebarOpen && <span className="text-base font-bold">{vanitySectionOpen ? "▾" : "▸"}</span>}
+                {sidebarOpen && <NavIcon name={vanitySectionOpen ? "chevronDown" : "chevronRight"} size={16} tone="inherit" />}
               </button>
               {vanitySectionOpen && (
                 <>
                   <Link
                     href="/modules"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/modules" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/modules"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">🧩</span>
-                    {sidebarOpen && <span>Modules</span>}
+                    <NavIcon name="modules" />
+                    {sidebarOpen ? <span>Modules</span> : <span className="sr-only">Modules</span>}
                   </Link>
                   <Link
                     href="/birthdays"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/birthdays" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/birthdays"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">🎂</span>
-                    {sidebarOpen && <span>Birthdays</span>}
+                    <NavIcon name="birthdays" />
+                    {sidebarOpen ? <span>Birthdays</span> : <span className="sr-only">Birthdays</span>}
                   </Link>
                   <Link
                     href="/giveaways"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/giveaways" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/giveaways"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">🎁</span>
-                    {sidebarOpen && <span>Giveaways</span>}
+                    <NavIcon name="giveaways" />
+                    {sidebarOpen ? <span>Giveaways</span> : <span className="sr-only">Giveaways</span>}
                   </Link>
                   {!isEditor && (
                   <Link
                     href="/roles"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/roles" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/roles"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">🎭</span>
-                    {sidebarOpen && <span>Roles</span>}
+                    <NavIcon name="roles" />
+                    {sidebarOpen ? <span>Roles</span> : <span className="sr-only">Roles</span>}
                   </Link>
                   )}
                 </>
@@ -409,13 +420,16 @@ export default function ImportPage() {
 
             {/* Integrations section */}
             <div className="flex flex-col gap-2">
-              <button type="button" onClick={() => {}} className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+              <button type="button" onClick={() => {}} className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary">
                 <span>Integrations</span>
               </button>
-              <Link href="/discord/settings" className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
-                pathname === "/discord/settings" ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]" : "text-slate-200 hover:bg-slate-800/80"
-              }`}>
-                <span className="text-lg">🎮</span>{sidebarOpen && <span>Discord</span>}
+              <Link href="/discord/settings" aria-current={pathname === "/discord/settings" ? "page" : undefined}
+ className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+   pathname === "/discord/settings"
+     ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+     : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}>
+                <NavIcon name="discord" />{sidebarOpen ? <span>Discord</span> : <span className="sr-only">Discord</span>}
               </Link>
             </div>
 
@@ -423,46 +437,49 @@ export default function ImportPage() {
             <div className="flex flex-col gap-2">
               <button
                 type="button"
-                onClick={() => setOtherSectionOpen((open) => !open)}
-                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-200"
+                aria-expanded={otherSectionOpen} onClick={() => setOtherSectionOpen((open) => !open)}
+                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary hover:text-ax-body"
               >
                 <span>Other</span>
-                {sidebarOpen && <span className="text-base font-bold">{otherSectionOpen ? "▾" : "▸"}</span>}
+                {sidebarOpen && <NavIcon name={otherSectionOpen ? "chevronDown" : "chevronRight"} size={16} tone="inherit" />}
               </button>
               {otherSectionOpen && (
                 <>
                   <Link
                     href="/privacy"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/privacy" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/privacy"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">🔒</span>
-                    {sidebarOpen && <span>Privacy</span>}
+                    <NavIcon name="privacy" />
+                    {sidebarOpen ? <span>Privacy</span> : <span className="sr-only">Privacy</span>}
                   </Link>
                   <Link
                     href="/terms"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/terms" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/terms"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">📜</span>
-                    {sidebarOpen && <span>Terms</span>}
+                    <NavIcon name="terms" />
+                    {sidebarOpen ? <span>Terms</span> : <span className="sr-only">Terms</span>}
                   </Link>
                   <Link
                     href="/api-docs"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/api-docs" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/api-docs"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">📘</span>
-                    {sidebarOpen && <span>API Docs</span>}
+                    <NavIcon name="apiDocs" />
+                    {sidebarOpen ? <span>API Docs</span> : <span className="sr-only">API Docs</span>}
                   </Link>
                 </>
               )}
@@ -470,33 +487,33 @@ export default function ImportPage() {
           </nav>
         </div>
 
-        <div className="flex-1 flex flex-col gap-6 text-slate-50">
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-6">
+        <div className="flex-1 flex flex-col gap-6 text-ax-heading">
+          <div className="rounded-2xl border border-ax-subtle bg-ax-section p-6">
             <div className="flex items-center justify-between mb-2">
               <h1 className="text-2xl font-semibold">Import custom commands</h1>
               {login && (
-                <span className="text-xs text-slate-400">
+                <span className="text-xs text-ax-secondary">
                   Importing for <span className="font-semibold">{login}</span>
                 </span>
               )}
             </div>
             {!isLoggedIn && (
-              <p className="text-sm text-slate-400">
+              <p className="text-sm text-ax-secondary">
                 Log in with Twitch on the homepage to import commands into your channel.
               </p>
             )}
             {isLoggedIn && (
               <>
-                <p className="text-sm text-slate-400 mb-3">
+                <p className="text-sm text-ax-secondary mb-3">
                   Import your commands from other chat bots into AxyraBot. Choose a platform card below to start an
                   import for your channel.
                 </p>
 
                 {importResult && (
-                  <p className="mb-3 text-xs text-emerald-400">{importResult}</p>
+                  <p className="mb-3 text-xs text-emerald-300">{importResult}</p>
                 )}
                 {parseError && (
-                  <p className="mb-3 text-xs text-rose-400">{parseError}</p>
+                  <p className="mb-3 text-xs text-rose-300">{parseError}</p>
                 )}
 
                 <div className="mt-1 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
@@ -504,9 +521,9 @@ export default function ImportPage() {
                   <div
                     className={`flex flex-col overflow-hidden rounded-3xl border ${
                       provider === "nightbot"
-                        ? "border-accent shadow-[0_0_22px_rgba(129,140,248,0.7)]"
-                        : "border-slate-800"
-                    } bg-slate-950/80`}
+                        ? "border-accent shadow-[0_0_14px_rgba(56,189,248,0.35)]"
+                        : "border-ax-subtle"
+                    } bg-ax-section`}
                   >
                     <div className="relative h-28">
                       <Image
@@ -516,27 +533,27 @@ export default function ImportPage() {
                         className="object-cover"
                         priority
                       />
-                      <div className="absolute inset-0 bg-gradient-to-r from-slate-950/40 via-slate-950/10 to-slate-950/70" />
+                      <div className="absolute inset-0 bg-gradient-to-r from-black/30 via-black/5 to-black/50" />
                     </div>
                     <div className="flex flex-1 flex-col justify-between px-5 py-4 text-sm">
                       <div className="space-y-3">
                         <div>
-                          <div className="text-sm font-semibold uppercase tracking-wide text-slate-100">
+                          <div className="text-sm font-semibold uppercase tracking-wide text-ax-body">
                             Nightbot
                           </div>
-                          <div className="text-xs text-slate-300">Import existing Nightbot commands</div>
+                          <div className="text-xs text-ax-secondary">Import existing Nightbot commands</div>
                         </div>
-                        <p className="text-xs text-slate-400">Imports</p>
-                        <ul className="space-y-1 text-xs text-slate-200">
-                          <li>✔ Commands</li>
-                          <li>✔ Usage counters (where available)</li>
+                        <p className="text-xs text-ax-secondary">Imports</p>
+                        <ul className="space-y-1 text-xs text-ax-body">
+                          <li className="flex items-center gap-1.5"><Check aria-hidden="true" strokeWidth={1.75} size={14} className="shrink-0 text-emerald-300" />Commands</li>
+                          <li className="flex items-center gap-1.5"><Check aria-hidden="true" strokeWidth={1.75} size={14} className="shrink-0 text-emerald-300" />Usage counters (where available)</li>
                         </ul>
                       </div>
                       <div className="mt-4 flex justify-end">
                         <button
                           type="button"
                           onClick={handleNightbotOAuth}
-                          className="inline-flex items-center rounded-md bg-accent px-4 py-2 text-xs font-semibold text-slate-900 shadow-sm hover:bg-sky-400"
+                          className="inline-flex items-center rounded-md bg-accent px-4 py-2 text-xs font-semibold text-ax-btn-text shadow-sm hover:bg-ax-accent"
                         >
                           Import from Nightbot
                         </button>
@@ -548,9 +565,9 @@ export default function ImportPage() {
                   <div
                     className={`flex flex-col overflow-hidden rounded-3xl border ${
                       provider === "streamelements"
-                        ? "border-accent shadow-[0_0_22px_rgba(129,140,248,0.7)]"
-                        : "border-slate-800"
-                    } bg-slate-950/80`}
+                        ? "border-accent shadow-[0_0_14px_rgba(56,189,248,0.35)]"
+                        : "border-ax-subtle"
+                    } bg-ax-section`}
                   >
                     <div className="relative h-28">
                       <Image
@@ -559,27 +576,27 @@ export default function ImportPage() {
                         fill
                         className="object-cover"
                       />
-                      <div className="absolute inset-0 bg-gradient-to-r from-slate-950/40 via-slate-950/10 to-slate-950/70" />
+                      <div className="absolute inset-0 bg-gradient-to-r from-black/30 via-black/5 to-black/50" />
                     </div>
                     <div className="flex flex-1 flex-col justify-between px-5 py-4 text-sm">
                       <div className="space-y-3">
                         <div>
-                          <div className="text-sm font-semibold uppercase tracking-wide text-slate-100">
+                          <div className="text-sm font-semibold uppercase tracking-wide text-ax-body">
                             StreamElements
                           </div>
-                          <div className="text-xs text-slate-300">Import from StreamElements (coming soon)</div>
+                          <div className="text-xs text-ax-secondary">Import from StreamElements (coming soon)</div>
                         </div>
-                        <p className="text-xs text-slate-400">Planned support</p>
-                        <ul className="space-y-1 text-xs text-slate-200">
-                          <li>✔ Commands</li>
-                          <li>✔ Timers</li>
+                        <p className="text-xs text-ax-secondary">Planned support</p>
+                        <ul className="space-y-1 text-xs text-ax-body">
+                          <li className="flex items-center gap-1.5"><Check aria-hidden="true" strokeWidth={1.75} size={14} className="shrink-0 text-emerald-300" />Commands</li>
+                          <li className="flex items-center gap-1.5"><Check aria-hidden="true" strokeWidth={1.75} size={14} className="shrink-0 text-emerald-300" />Timers</li>
                         </ul>
                       </div>
                       <div className="mt-4 flex justify-end">
                         <button
                           type="button"
                           onClick={() => handleChooseProvider("streamelements")}
-                          className="inline-flex items-center rounded-md bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-100 opacity-70 cursor-default"
+                          className="inline-flex items-center rounded-md bg-ax-raised px-4 py-2 text-xs font-semibold text-ax-body opacity-70 cursor-default"
                         >
                           Coming soon
                         </button>
@@ -591,9 +608,9 @@ export default function ImportPage() {
                   <div
                     className={`flex flex-col overflow-hidden rounded-3xl border ${
                       provider === "fossabot"
-                        ? "border-accent shadow-[0_0_22px_rgba(129,140,248,0.7)]"
-                        : "border-slate-800"
-                    } bg-slate-950/80`}
+                        ? "border-accent shadow-[0_0_14px_rgba(56,189,248,0.35)]"
+                        : "border-ax-subtle"
+                    } bg-ax-section`}
                   >
                     <div className="relative h-28">
                       <Image
@@ -602,27 +619,27 @@ export default function ImportPage() {
                         fill
                         className="object-cover"
                       />
-                      <div className="absolute inset-0 bg-gradient-to-r from-slate-950/40 via-slate-950/10 to-slate-950/70" />
+                      <div className="absolute inset-0 bg-gradient-to-r from-black/30 via-black/5 to-black/50" />
                     </div>
                     <div className="flex flex-1 flex-col justify-between px-5 py-4 text-sm">
                       <div className="space-y-3">
                         <div>
-                          <div className="text-sm font-semibold uppercase tracking-wide text-slate-100">
+                          <div className="text-sm font-semibold uppercase tracking-wide text-ax-body">
                             Fossabot
                           </div>
-                          <div className="text-xs text-slate-300">Import from Fossabot (coming soon)</div>
+                          <div className="text-xs text-ax-secondary">Import from Fossabot (coming soon)</div>
                         </div>
-                        <p className="text-xs text-slate-400">Planned support</p>
-                        <ul className="space-y-1 text-xs text-slate-200">
-                          <li>✔ Commands</li>
-                          <li>✔ Timers</li>
+                        <p className="text-xs text-ax-secondary">Planned support</p>
+                        <ul className="space-y-1 text-xs text-ax-body">
+                          <li className="flex items-center gap-1.5"><Check aria-hidden="true" strokeWidth={1.75} size={14} className="shrink-0 text-emerald-300" />Commands</li>
+                          <li className="flex items-center gap-1.5"><Check aria-hidden="true" strokeWidth={1.75} size={14} className="shrink-0 text-emerald-300" />Timers</li>
                         </ul>
                       </div>
                       <div className="mt-4 flex justify-end">
                         <button
                           type="button"
                           onClick={() => handleChooseProvider("fossabot")}
-                          className="inline-flex items-center rounded-md bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-100 opacity-70 cursor-default"
+                          className="inline-flex items-center rounded-md bg-ax-raised px-4 py-2 text-xs font-semibold text-ax-body opacity-70 cursor-default"
                         >
                           Coming soon
                         </button>

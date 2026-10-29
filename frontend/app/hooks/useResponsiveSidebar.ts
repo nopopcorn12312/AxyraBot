@@ -28,5 +28,5 @@ export function useResponsiveSidebar() {
 export function responsiveSidebarClassName(sidebarOpen: boolean, mobileSidebarOpen: boolean): string {
   return `${mobileSidebarOpen ? "fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] overflow-y-auto rounded-none shadow-2xl" : "hidden"} ${
     sidebarOpen ? "md:w-60" : "md:w-16"
-  } flex-col border border-slate-800 bg-slate-900/95 p-3 transition-all duration-200 md:relative md:inset-auto md:z-auto md:flex md:max-w-none md:rounded-2xl md:bg-slate-900/80 md:shadow-none`;
+  } flex-col border border-ax-subtle bg-ax-section p-3 transition-all duration-200 md:relative md:inset-auto md:z-auto md:flex md:max-w-none md:rounded-2xl md:bg-ax-section md:shadow-none`;
 }

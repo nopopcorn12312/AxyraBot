@@ -7,5 +7,5 @@
 }
 
 body {
-  @apply bg-background text-slate-100 antialiased;
+  @apply bg-ax-bg text-ax-body antialiased;
 }

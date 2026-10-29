@@ -10,6 +10,7 @@ import ManagingChannelBadge from "../components/ManagingChannelBadge";
 import { usePersistentSectionState } from "../hooks/usePersistentSectionState";
 import { useRequireAuth } from "../hooks/useRequireAuth";
 import { revokeSession } from "../lib/session";
+import NavIcon from "../components/NavIcon";
 
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://your-backend.onrender.com";
 const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL;
@@ -358,7 +359,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <main className="min-h-screen flex flex-col bg-[radial-gradient(circle_at_top,_#1e293b,_#020617)] md:h-screen md:overflow-hidden">
+    <main className="min-h-screen flex flex-col bg-ax-bg md:h-screen md:overflow-hidden">
       <header className="w-full flex items-center justify-between gap-2 px-3 py-3 sm:px-4 md:px-6 md:py-4">
         <div className="flex min-w-0 items-center gap-2 flex-1 sm:gap-4">
           <button
@@ -371,9 +372,9 @@ export default function DashboardPage() {
                 setMobileSidebarOpen(true);
               }
             }}
-            className="shrink-0 rounded-lg border border-slate-700 bg-slate-900/70 p-2 text-sm font-medium text-slate-200 hover:bg-slate-800 sm:mr-2 sm:px-3 sm:py-2"
+            className="shrink-0 rounded-lg border border-ax-border bg-ax-section p-2 text-sm font-medium text-ax-body hover:bg-ax-raised sm:mr-2 sm:px-3 sm:py-2"
           >
-            ☰
+            <NavIcon name="menu" size={20} tone="inherit" />
           </button>
           <Link href="/" className="flex min-w-0 items-center gap-2 sm:gap-4">
             <Image
@@ -384,8 +385,8 @@ export default function DashboardPage() {
               className="shrink-0 rounded-full"
             />
             <div className="truncate text-lg font-semibold tracking-tight sm:text-xl md:text-2xl">
-              <span className="text-accent">Axyra</span>
-              <span className="text-white">Bot</span>
+              <span className="text-ax-accent-text">Axyra</span>
+              <span className="text-ax-heading">Bot</span>
             </div>
           </Link>
         </div>
@@ -398,16 +399,16 @@ export default function DashboardPage() {
               <ManagingChannelBadge />
               <Link
                 href="/import"
-                className="hidden items-center gap-1 rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1.5 text-xs font-medium text-slate-100 transition hover:border-slate-500 hover:bg-slate-800 md:inline-flex"
+                className="hidden items-center gap-1 rounded-full border border-ax-border bg-ax-section px-3 py-1.5 text-xs font-medium text-ax-body transition hover:border-ax-muted hover:bg-ax-raised md:inline-flex"
               >
-                <span className="text-xs">⬆</span>
+                <NavIcon name="import" size={16} tone="inherit" />
                 <span>Import</span>
               </Link>
               <div className="relative" ref={menuRef}>
                 <button
                   type="button"
-                  onClick={() => setMenuOpen((open: boolean) => !open)}
-                  className="flex items-center gap-2 rounded-full bg-slate-900/80 px-1.5 py-1 hover:bg-slate-800 transition"
+                  aria-expanded={menuOpen} onClick={() => setMenuOpen((open: boolean) => !open)}
+                  className="flex items-center gap-2 rounded-full bg-ax-section px-1.5 py-1 hover:bg-ax-raised transition"
                 >
                   {avatarUrl && (
                     <Image
@@ -420,11 +421,11 @@ export default function DashboardPage() {
                   )}
                 </button>
                 {menuOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-36 rounded-lg border border-slate-700 bg-slate-900/95 py-2 shadow-lg">
+                  <div className="absolute right-0 top-full mt-2 w-36 rounded-lg border border-ax-border bg-ax-section py-2 shadow-lg">
                     <button
                       type="button"
                       onClick={handleLogout}
-                      className="w-full px-4 py-2 text-sm text-left text-slate-200 hover:bg-slate-800"
+                      className="w-full px-4 py-2 text-sm text-left text-ax-body hover:bg-ax-raised"
                     >
                       Log out
                     </button>
@@ -446,53 +447,55 @@ export default function DashboardPage() {
       )}
       <div className="flex flex-1 w-full items-stretch gap-3 px-3 pb-4 md:min-h-0 md:gap-6 md:px-4 md:pb-6">
         <div
-          className={`${mobileSidebarOpen ? "fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] rounded-none shadow-2xl" : "hidden"} ${sidebarOpen ? "md:w-60" : "md:w-16"} flex-col border border-slate-800 bg-slate-900/95 p-3 transition-all duration-200 md:relative md:inset-auto md:z-auto md:flex md:max-w-none md:rounded-2xl md:bg-slate-900/80 md:shadow-none`}
+          className={`${mobileSidebarOpen ? "fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] rounded-none shadow-2xl" : "hidden"} ${sidebarOpen ? "md:w-60" : "md:w-16"} flex-col border border-ax-subtle bg-ax-section p-3 transition-all duration-200 md:relative md:inset-auto md:z-auto md:flex md:max-w-none md:rounded-2xl md:bg-ax-section md:shadow-none`}
         >
-          <div className="mb-3 flex items-center justify-between border-b border-slate-800 px-2 pb-3 md:hidden">
-            <span className="text-sm font-semibold text-slate-100">Dashboard menu</span>
+          <div className="mb-3 flex items-center justify-between border-b border-ax-subtle px-2 pb-3 md:hidden">
+            <span className="text-sm font-semibold text-ax-body">Dashboard menu</span>
             <button
               type="button"
               onClick={() => setMobileSidebarOpen(false)}
-              className="rounded-md px-2 py-1 text-sm text-slate-400 hover:bg-slate-800 hover:text-white"
+              className="rounded-md px-2 py-1 text-sm text-ax-secondary hover:bg-ax-raised hover:text-ax-heading"
             >
               Close
             </button>
           </div>
-          <nav className="mt-1 flex flex-1 flex-col gap-4 overflow-y-auto text-sm text-slate-200">
+          <nav className="mt-1 flex flex-1 flex-col gap-4 overflow-y-auto text-sm text-ax-body">
             {/* Main section */}
             <div className="flex flex-col gap-2">
               <button
                 type="button"
-                onClick={() => setMainSectionOpen((open: boolean) => !open)}
-                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-200"
+                aria-expanded={mainSectionOpen} onClick={() => setMainSectionOpen((open: boolean) => !open)}
+                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary hover:text-ax-body"
               >
                 <span>Main</span>
-                {sidebarOpen && <span className="text-base font-bold">{mainSectionOpen ? "▾" : "▸"}</span>}
+                {sidebarOpen && <NavIcon name={mainSectionOpen ? "chevronDown" : "chevronRight"} size={16} tone="inherit" />}
               </button>
               {mainSectionOpen && (
                 <>
                   <Link
                     href="/dashboard"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/dashboard" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/dashboard"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">📊</span>
-                    {sidebarOpen && <span>Dashboard</span>}
+                    <NavIcon name="dashboard" />
+                    {sidebarOpen ? <span>Dashboard</span> : <span className="sr-only">Dashboard</span>}
                   </Link>
 
                   <Link
                     href="/commands"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/commands" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/commands"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">❓</span>
-                    {sidebarOpen && <span>Commands</span>}
+                    <NavIcon name="commands" />
+                    {sidebarOpen ? <span>Commands</span> : <span className="sr-only">Commands</span>}
                   </Link>
                 </>
               )}
@@ -502,37 +505,39 @@ export default function DashboardPage() {
             <div className="flex flex-col gap-2">
               <button
                 type="button"
-                onClick={() => setModerationOpen((open: boolean) => !open)}
-                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-200"
+                aria-expanded={moderationOpen} onClick={() => setModerationOpen((open: boolean) => !open)}
+                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary hover:text-ax-body"
               >
                 <span>Moderation</span>
                 {sidebarOpen && (
-                  <span className="text-base font-bold">{moderationOpen ? "▾" : "▸"}</span>
+                  <NavIcon name={moderationOpen ? "chevronDown" : "chevronRight"} size={16} tone="inherit" />
                 )}
               </button>
               {moderationOpen && (
                 <>
                   <Link
                     href="/moderation/blocked-terms"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/moderation/blocked-terms" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/moderation/blocked-terms"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">🚫</span>
-                    {sidebarOpen && <span>Blocked Terms</span>}
+                    <NavIcon name="blockedTerms" />
+                    {sidebarOpen ? <span>Blocked Terms</span> : <span className="sr-only">Blocked Terms</span>}
                   </Link>
                   <Link
                     href="/moderation/spam-filters"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/moderation/spam-filters" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/moderation/spam-filters"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">🧹</span>
-                    {sidebarOpen && <span>Spam Filters</span>}
+                    <NavIcon name="spamFilters" />
+                    {sidebarOpen ? <span>Spam Filters</span> : <span className="sr-only">Spam Filters</span>}
                   </Link>
                 </>
               )}
@@ -542,58 +547,62 @@ export default function DashboardPage() {
             <div className="flex flex-col gap-2">
               <button
                 type="button"
-                onClick={() => setVanitySectionOpen((open: boolean) => !open)}
-                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-200"
+                aria-expanded={vanitySectionOpen} onClick={() => setVanitySectionOpen((open: boolean) => !open)}
+                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary hover:text-ax-body"
               >
                 <span>Vanity</span>
-                {sidebarOpen && <span className="text-base font-bold">{vanitySectionOpen ? "▾" : "▸"}</span>}
+                {sidebarOpen && <NavIcon name={vanitySectionOpen ? "chevronDown" : "chevronRight"} size={16} tone="inherit" />}
               </button>
               {vanitySectionOpen && (
                 <>
                   <Link
                     href="/modules"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/modules" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/modules"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">🧩</span>
-                    {sidebarOpen && <span>Modules</span>}
+                    <NavIcon name="modules" />
+                    {sidebarOpen ? <span>Modules</span> : <span className="sr-only">Modules</span>}
                   </Link>
                   <Link
                     href="/birthdays"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/birthdays" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/birthdays"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">🎂</span>
-                    {sidebarOpen && <span>Birthdays</span>}
+                    <NavIcon name="birthdays" />
+                    {sidebarOpen ? <span>Birthdays</span> : <span className="sr-only">Birthdays</span>}
                   </Link>
                   <Link
                     href="/giveaways"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/giveaways" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/giveaways"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">🎁</span>
-                    {sidebarOpen && <span>Giveaways</span>}
+                    <NavIcon name="giveaways" />
+                    {sidebarOpen ? <span>Giveaways</span> : <span className="sr-only">Giveaways</span>}
                   </Link>
                   {!(activeChannel && activeChannel !== login) && (
                   <Link
                     href="/roles"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/roles" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/roles"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">🎭</span>
-                    {sidebarOpen && <span>Roles</span>}
+                    <NavIcon name="roles" />
+                    {sidebarOpen ? <span>Roles</span> : <span className="sr-only">Roles</span>}
                   </Link>
                   )}
                 </>
@@ -602,13 +611,16 @@ export default function DashboardPage() {
 
             {/* Integrations section */}
             <div className="flex flex-col gap-2">
-              <button type="button" onClick={() => {}} className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+              <button type="button" onClick={() => {}} className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary">
                 <span>Integrations</span>
               </button>
-              <Link href="/discord/settings" className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
-                pathname === "/discord/settings" ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]" : "text-slate-200 hover:bg-slate-800/80"
-              }`}>
-                <span className="text-lg">🎮</span>{sidebarOpen && <span>Discord</span>}
+              <Link href="/discord/settings" aria-current={pathname === "/discord/settings" ? "page" : undefined}
+ className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+   pathname === "/discord/settings"
+     ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+     : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}>
+                <NavIcon name="discord" />{sidebarOpen ? <span>Discord</span> : <span className="sr-only">Discord</span>}
               </Link>
             </div>
 
@@ -616,46 +628,49 @@ export default function DashboardPage() {
             <div className="flex flex-col gap-2">
               <button
                 type="button"
-                onClick={() => setOtherSectionOpen((open: boolean) => !open)}
-                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-200"
+                aria-expanded={otherSectionOpen} onClick={() => setOtherSectionOpen((open: boolean) => !open)}
+                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary hover:text-ax-body"
               >
                 <span>Other</span>
-                {sidebarOpen && <span className="text-base font-bold">{otherSectionOpen ? "▾" : "▸"}</span>}
+                {sidebarOpen && <NavIcon name={otherSectionOpen ? "chevronDown" : "chevronRight"} size={16} tone="inherit" />}
               </button>
               {otherSectionOpen && (
                 <>
                   <Link
                     href="/privacy"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/privacy" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/privacy"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">🔒</span>
-                    {sidebarOpen && <span>Privacy</span>}
+                    <NavIcon name="privacy" />
+                    {sidebarOpen ? <span>Privacy</span> : <span className="sr-only">Privacy</span>}
                   </Link>
                   <Link
                     href="/terms"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/terms" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/terms"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">📜</span>
-                    {sidebarOpen && <span>Terms</span>}
+                    <NavIcon name="terms" />
+                    {sidebarOpen ? <span>Terms</span> : <span className="sr-only">Terms</span>}
                   </Link>
                   <Link
                     href="/api-docs"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/api-docs" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/api-docs"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">📘</span>
-                    {sidebarOpen && <span>API Docs</span>}
+                    <NavIcon name="apiDocs" />
+                    {sidebarOpen ? <span>API Docs</span> : <span className="sr-only">API Docs</span>}
                   </Link>
                 </>
               )}
@@ -663,35 +678,35 @@ export default function DashboardPage() {
           </nav>
         </div>
 
-        <div className="flex min-w-0 flex-1 flex-col gap-3 text-slate-50 md:min-h-0">
+        <div className="flex min-w-0 flex-1 flex-col gap-3 text-ax-heading md:min-h-0">
           <div className="flex flex-col gap-3 lg:flex-row lg:gap-6 lg:min-h-0">
-          <div className="w-full flex-none rounded-2xl border border-slate-800 bg-slate-900/80 p-4 sm:p-5 md:flex-1 md:p-6 lg:basis-2/3 lg:min-h-0">
+          <div className="w-full flex-none rounded-2xl border border-ax-subtle bg-ax-section p-4 sm:p-5 md:flex-1 md:p-6 lg:basis-2/3 lg:min-h-0">
             <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
               <h1 className="text-xl font-semibold sm:text-2xl">Recent Activity</h1>
-              <span className="text-xs text-slate-400">Latest changes from Twitch &amp; AxyraBot</span>
+              <span className="text-xs text-ax-secondary">Latest changes from Twitch &amp; AxyraBot</span>
             </div>
             {!activeChannel && (
-              <p className="text-sm text-slate-400">
+              <p className="text-sm text-ax-secondary">
                 Connect with Twitch to see recent activity for your channel.
               </p>
             )}
             {activeChannel && (
               <div className="flex flex-col pr-1 md:flex-1 md:overflow-y-auto">
                 {loadingActivity && (
-                  <p className="text-sm text-slate-400">Loading activity…</p>
+                  <p className="text-sm text-ax-secondary">Loading activity…</p>
                 )}
                 {activityError && !loadingActivity && (
-                  <p className="text-sm text-rose-400">{activityError}</p>
+                  <p className="text-sm text-rose-300">{activityError}</p>
                 )}
                 {!loadingActivity && !activityError && activity.length === 0 && (
-                  <p className="text-sm text-slate-400">
+                  <p className="text-sm text-ax-secondary">
                     No recent activity yet. Changes you make with AxyraBot and
                     certain Twitch events (like follows and going live) will
                     appear here.
                   </p>
                 )}
                 {!loadingActivity && !activityError && activity.length > 0 && (
-                  <ul className="mt-1 text-sm divide-y divide-slate-800/60">
+                  <ul className="mt-1 text-sm divide-y divide-ax-subtle">
                     {activity.map((item, idx) => {
                       const source = item.source?.toLowerCase();
                       const isTwitch = source === "twitch";
@@ -705,13 +720,13 @@ export default function DashboardPage() {
                           key={`${item.timestamp}-${idx}`}
                           className={`flex items-start gap-3 px-2 py-2.5 rounded-lg ${
                             isEven
-                              ? "bg-slate-900/40"
-                              : "bg-slate-950/60"
+                              ? "bg-ax-section"
+                              : "bg-ax-section"
                           }`}
                         >
                           <span
                             className={`mt-1 h-2 w-2 shrink-0 rounded-full ${
-                              isTwitch ? "bg-violet-400" : "bg-sky-400"
+                              isTwitch ? "bg-violet-400" : "bg-ax-accent"
                             }`}
                           />
                           <div className="flex-1">
@@ -721,11 +736,11 @@ export default function DashboardPage() {
                               >
                                 {badgeLabel}
                               </span>
-                              <span className="text-[11px] text-slate-500">
+                              <span className="text-[11px] text-ax-muted">
                                 {formatTimeAgo(item.timestamp)}
                               </span>
                             </div>
-                            <p className="text-slate-200 leading-snug">
+                            <p className="text-ax-body leading-snug">
                               {item.description}
                             </p>
                           </div>
@@ -739,11 +754,11 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex w-full flex-col gap-3 md:min-h-0 lg:basis-1/3">
-          <div className="flex flex-col justify-between rounded-2xl border border-slate-800 bg-slate-900/80 p-4 sm:p-5 md:p-6">
+          <div className="flex flex-col justify-between rounded-2xl border border-ax-subtle bg-ax-section p-4 sm:p-5 md:p-6">
             <div>
               <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <h2 className="text-lg font-semibold sm:text-xl">Stream Details</h2>
-                <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-slate-200 sm:text-sm md:text-base">
+                <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-ax-body sm:text-sm md:text-base">
                   <span
                     className={`h-3 w-3 rounded-full ${
                       joined ? "bg-emerald-400" : "bg-red-500"
@@ -752,12 +767,12 @@ export default function DashboardPage() {
                   <span>{joined ? "Bot is connected" : "Bot is not connected"}</span>
                 </div>
               </div>
-              <label className="block text-sm font-semibold text-slate-300 mb-2">
+              <label className="block text-sm font-semibold text-ax-secondary mb-2">
                 Stream Title
               </label>
               <input
                 type="text"
-                className="mb-5 w-full rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent/70"
+                className="mb-5 w-full rounded-lg border border-ax-border bg-ax-section px-3 py-2 text-sm text-ax-body placeholder-ax-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent/70"
                 placeholder="Current stream title"
                 value={streamTitle}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
@@ -765,13 +780,13 @@ export default function DashboardPage() {
                 }
                 disabled={!login || loadingStream}
               />
-              <label className="block text-sm font-semibold text-slate-300 mb-2 mt-1">
+              <label className="block text-sm font-semibold text-ax-secondary mb-2 mt-1">
                 Stream Category
               </label>
               <div className="relative" ref={categoryWrapperRef}>
                 <input
                   type="text"
-                  className="w-full rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent/70"
+                  className="w-full rounded-lg border border-ax-border bg-ax-section px-3 py-2 text-sm text-ax-body placeholder-ax-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent/70"
                   placeholder="Search Twitch categories…"
                   value={streamCategory}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
@@ -793,12 +808,12 @@ export default function DashboardPage() {
                   autoComplete="off"
                 />
                 {showSuggestions && categorySuggestions.length > 0 && (
-                  <ul className="absolute z-50 mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 shadow-xl overflow-hidden">
+                  <ul className="absolute z-50 mt-1 w-full rounded-lg border border-ax-border bg-ax-section shadow-xl overflow-hidden">
                     {categorySuggestions.map((cat) => (
                       <li key={cat.id}>
                         <button
                           type="button"
-                          className="flex w-full items-center gap-3 px-3 py-2 text-sm text-slate-200 hover:bg-slate-800 transition"
+                          className="flex w-full items-center gap-3 px-3 py-2 text-sm text-ax-body hover:bg-ax-raised transition"
                           onMouseDown={(e) => {
                             e.preventDefault();
                             setStreamCategory(cat.name);
@@ -826,7 +841,7 @@ export default function DashboardPage() {
                 <button
                   onClick={handleJoinChannel}
                   disabled={!activeChannel || joining}
-                  className={`flex-1 inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-semibold text-white shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition ${
+                  className={`flex-1 inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-semibold text-ax-heading shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition ${
                     joined
                       ? "bg-red-500 hover:bg-red-400 shadow-red-500/40"
                       : "bg-emerald-500 hover:bg-emerald-400 shadow-emerald-500/40"
@@ -845,8 +860,8 @@ export default function DashboardPage() {
                   disabled={!activeChannel || savingStream}
                   className={`flex-1 inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-semibold shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition ${
                     changesConfirmed
-                      ? "bg-emerald-500 text-white shadow-emerald-500/40 hover:bg-emerald-400"
-                      : "bg-accent text-slate-900 shadow-sky-500/40 hover:bg-sky-400"
+                      ? "bg-emerald-500 text-ax-heading shadow-emerald-500/40 hover:bg-emerald-400"
+                      : "bg-accent text-ax-btn-text shadow-sky-500/40 hover:bg-ax-accent"
                   }`}
                 >
                   {savingStream
@@ -861,10 +876,10 @@ export default function DashboardPage() {
           {/* Chat Stats Charts */}
           {activeChannel && (
             <div className="flex flex-col gap-3">
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5">
+              <div className="rounded-2xl border border-ax-subtle bg-ax-section p-5">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-400">Messages / min</h3>
-                  <span className="text-2xl font-bold text-accent tabular-nums">
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-ax-secondary">Messages / min</h3>
+                  <span className="text-2xl font-bold text-ax-accent-text tabular-nums">
                     {chatStats ? chatStats.msgs_per_min : "—"}
                   </span>
                 </div>
@@ -874,10 +889,10 @@ export default function DashboardPage() {
                   gradId="grad-msgs"
                 />
               </div>
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5">
+              <div className="rounded-2xl border border-ax-subtle bg-ax-section p-5">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-400">Unique Chatters</h3>
-                  <span className="text-2xl font-bold text-violet-400 tabular-nums">
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-ax-secondary">Unique Chatters</h3>
+                  <span className="text-2xl font-bold text-violet-300 tabular-nums">
                     {chatStats ? chatStats.unique_chatters : "—"}
                   </span>
                 </div>

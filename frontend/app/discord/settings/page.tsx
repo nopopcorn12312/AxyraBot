@@ -10,6 +10,8 @@ import { usePersistentSectionState } from "../../hooks/usePersistentSectionState
 import { responsiveSidebarClassName, useResponsiveSidebar } from "../../hooks/useResponsiveSidebar";
 import { useRequireAuth } from "../../hooks/useRequireAuth";
 import { revokeSession } from "../../lib/session";
+import NavIcon from "../../components/NavIcon";
+import { BotOff, Cake, Check, Dices, Gavel, Gift, Image as ImageIcon, Info, Pencil, Settings, Shield, ShieldCheck, SmilePlus, Tag, Ticket, UserCog, X, type LucideIcon } from "lucide-react";
 
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://your-backend.onrender.com";
 const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL;
@@ -32,7 +34,7 @@ type ModuleCommand = {
     options?: { label: string; value: string }[];
   }[];
 };
-type ModuleConfig = { key: string; icon: string; label: string; description: string; commands: ModuleCommand[] };
+type ModuleConfig = { key: string; icon: LucideIcon; label: string; description: string; commands: ModuleCommand[] };
 
 const discordModLogOptions = [
   { key: "message_delete", label: "Message deleted" },
@@ -59,7 +61,7 @@ const discordModLogOptions = [
 const discordModuleConfig: ModuleConfig[] = [
   {
     key: "moderation",
-    icon: "🛡️",
+    icon: Shield,
     label: "Moderation",
     description: "Comprehensive moderation toolkit: bans, kicks, timeouts, warnings, purge, lockdown, and full case logging.",
     commands: [
@@ -118,7 +120,7 @@ const discordModuleConfig: ModuleConfig[] = [
   },
   {
     key: "manager",
-    icon: "⚙️",
+    icon: Settings,
     label: "Manager",
     description: "Server management utilities: announcements, role management, nickname changes, emote upload, and bot configuration.",
     commands: [
@@ -141,7 +143,7 @@ const discordModuleConfig: ModuleConfig[] = [
   },
   {
     key: "roles",
-    icon: "🎭",
+    icon: UserCog,
     label: "Roles",
     description: "Self-assignable role system. Let members join and leave roles themselves with configurable joinable ranks.",
     commands: [
@@ -154,7 +156,7 @@ const discordModuleConfig: ModuleConfig[] = [
   },
   {
     key: "info",
-    icon: "ℹ️",
+    icon: Info,
     label: "Info",
     description: "Utility and information commands: server info, member lookup, AFK system, highlights, and reminders.",
     commands: [
@@ -172,7 +174,7 @@ const discordModuleConfig: ModuleConfig[] = [
   },
   {
     key: "fun",
-    icon: "🎉",
+    icon: Dices,
     label: "Fun",
     description: "Entertainment commands: polls, dice rolls, animal pictures, trivia, color preview, and external lookups.",
     commands: [
@@ -195,7 +197,7 @@ const discordModuleConfig: ModuleConfig[] = [
   },
   {
     key: "tags",
-    icon: "🏷️",
+    icon: Tag,
     label: "Tags",
     description: "Store and retrieve reusable text snippets. Great for FAQs, rules, or any custom response shortcut.",
     commands: [
@@ -205,7 +207,7 @@ const discordModuleConfig: ModuleConfig[] = [
   },
   {
     key: "giveaway",
-    icon: "🎁",
+    icon: Gift,
     label: "Giveaway",
     description: "Full giveaway system with scheduled resolution, re-roll support, and winner announcements.",
     commands: [
@@ -1126,25 +1128,26 @@ export default function DiscordSettingsPage() {
   };
 
   const botInSelectedGuild = guilds.some((g) => g.id === selectedGuildId);
-  const channelSelectClass = "rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-accent/60 max-w-sm disabled:opacity-50 disabled:cursor-not-allowed";
+  const channelSelectClass = "rounded-lg border border-ax-border bg-ax-section px-3 py-2 text-sm text-ax-body focus:outline-none focus:ring-2 focus:ring-accent/60 max-w-sm disabled:opacity-50 disabled:cursor-not-allowed";
 
   return (
     <>
-    <main className="min-h-screen flex flex-col bg-[radial-gradient(circle_at_top,_#1e293b,_#020617)] md:h-screen md:overflow-hidden">
+    <main className="min-h-screen flex flex-col bg-ax-bg md:h-screen md:overflow-hidden">
       <header className="w-full flex items-center justify-between px-6 py-4">
         <div className="flex items-center gap-4 flex-1">
           <button
+            aria-label="Toggle navigation"
             type="button"
             onClick={toggleSidebar}
-            className="mr-2 rounded-lg bg-slate-900/70 px-3 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800 border border-slate-700"
+            className="mr-2 rounded-lg bg-ax-section px-3 py-2 text-sm font-medium text-ax-body hover:bg-ax-raised border border-ax-border"
           >
-            ☰
+            <NavIcon name="menu" size={20} tone="inherit" />
           </button>
           <Link href="/" className="flex items-center gap-4">
             <Image src={AxyraBotPFP} alt="AxyraBot logo" width={32} height={32} className="rounded-full" />
             <div className="text-2xl font-semibold tracking-tight">
-              <span className="text-accent">Axyra</span>
-              <span className="text-white">Bot</span>
+              <span className="text-ax-accent-text">Axyra</span>
+              <span className="text-ax-heading">Bot</span>
             </div>
           </Link>
         </div>
@@ -1155,27 +1158,27 @@ export default function DiscordSettingsPage() {
               <ManagingChannelBadge />
               <Link
                 href="/import"
-                className="inline-flex items-center gap-1 rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1.5 text-xs font-medium text-slate-100 hover:bg-slate-800 hover:border-slate-500 transition"
+                className="inline-flex items-center gap-1 rounded-full border border-ax-border bg-ax-section px-3 py-1.5 text-xs font-medium text-ax-body hover:bg-ax-raised hover:border-ax-muted transition"
               >
-                <span className="text-xs">⬆</span>
+                <NavIcon name="import" size={16} tone="inherit" />
                 <span>Import</span>
               </Link>
               <div className="relative" ref={menuRef}>
                 <button
                   type="button"
-                  onClick={() => setMenuOpen((open) => !open)}
-                  className="flex items-center gap-2 rounded-full bg-slate-900/80 px-1.5 py-1 hover:bg-slate-800 transition"
+                  aria-expanded={menuOpen} onClick={() => setMenuOpen((open) => !open)}
+                  className="flex items-center gap-2 rounded-full bg-ax-section px-1.5 py-1 hover:bg-ax-raised transition"
                 >
                   {avatarUrl && (
                     <Image src={avatarUrl} alt="Twitch profile picture" width={32} height={32} className="rounded-full" />
                   )}
                 </button>
                 {menuOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-36 rounded-lg border border-slate-700 bg-slate-900/95 py-2 shadow-lg">
+                  <div className="absolute right-0 top-full mt-2 w-36 rounded-lg border border-ax-border bg-ax-section py-2 shadow-lg">
                     <button
                       type="button"
                       onClick={handleLogout}
-                      className="w-full px-4 py-2 text-sm text-left text-slate-200 hover:bg-slate-800"
+                      className="w-full px-4 py-2 text-sm text-left text-ax-body hover:bg-ax-raised"
                     >
                       Log out
                     </button>
@@ -1190,65 +1193,105 @@ export default function DiscordSettingsPage() {
       <div className="flex flex-1 w-full flex-col items-stretch gap-3 px-3 pb-4 md:flex-row md:gap-6 md:px-4 md:pb-6 md:min-h-0">
         {mobileSidebarOpen && <button type="button" aria-label="Close dashboard menu" onClick={closeMobileSidebar} className="fixed inset-0 z-40 bg-black/60 md:hidden" />}
         <div className={responsiveSidebarClassName(sidebarOpen, mobileSidebarOpen)}>
-          <div className="mb-3 flex items-center justify-between border-b border-slate-800 px-2 pb-3 md:hidden">
-            <span className="text-sm font-semibold text-slate-100">Dashboard menu</span>
-            <button type="button" onClick={closeMobileSidebar} className="rounded-md px-2 py-1 text-sm text-slate-400 hover:bg-slate-800 hover:text-white">Close</button>
+          <div className="mb-3 flex items-center justify-between border-b border-ax-subtle px-2 pb-3 md:hidden">
+            <span className="text-sm font-semibold text-ax-body">Dashboard menu</span>
+            <button type="button" onClick={closeMobileSidebar} className="rounded-md px-2 py-1 text-sm text-ax-secondary hover:bg-ax-raised hover:text-ax-heading">Close</button>
           </div>
-          <nav className="mt-1 flex flex-col gap-4 text-sm text-slate-200">
+          <nav className="mt-1 flex flex-col gap-4 text-sm text-ax-body">
             {/* Main section */}
             <div className="flex flex-col gap-2">
-              <button type="button" onClick={() => setMainSectionOpen((o) => !o)} className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-200">
+              <button type="button" aria-expanded={mainSectionOpen} onClick={() => setMainSectionOpen((o) => !o)} className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary hover:text-ax-body">
                 <span>Main</span>
-                {sidebarOpen && <span className="text-base font-bold">{mainSectionOpen ? "▾" : "▸"}</span>}
+                {sidebarOpen && <NavIcon name={mainSectionOpen ? "chevronDown" : "chevronRight"} size={16} tone="inherit" />}
               </button>
               {mainSectionOpen && (
                 <>
-                  <Link href="/dashboard" className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${pathname === "/dashboard" ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]" : "text-slate-200 hover:bg-slate-800/80"}`}>
-                    <span className="text-lg">📊</span>{sidebarOpen && <span>Dashboard</span>}
+                  <Link href="/dashboard" aria-current={pathname === "/dashboard" ? "page" : undefined}
+ className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+   pathname === "/dashboard"
+     ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+     : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}>
+                    <NavIcon name="dashboard" />{sidebarOpen ? <span>Dashboard</span> : <span className="sr-only">Dashboard</span>}
                   </Link>
-                  <Link href="/commands" className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${pathname === "/commands" ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]" : "text-slate-200 hover:bg-slate-800/80"}`}>
-                    <span className="text-lg">❓</span>{sidebarOpen && <span>Commands</span>}
+                  <Link href="/commands" aria-current={pathname === "/commands" ? "page" : undefined}
+ className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+   pathname === "/commands"
+     ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+     : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}>
+                    <NavIcon name="commands" />{sidebarOpen ? <span>Commands</span> : <span className="sr-only">Commands</span>}
                   </Link>
                 </>
               )}
             </div>
             {/* Moderation section */}
             <div className="flex flex-col gap-2">
-              <button type="button" onClick={() => setModerationOpen((o) => !o)} className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-200">
+              <button type="button" aria-expanded={moderationOpen} onClick={() => setModerationOpen((o) => !o)} className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary hover:text-ax-body">
                 <span>Moderation</span>
-                {sidebarOpen && <span className="text-base font-bold">{moderationOpen ? "▾" : "▸"}</span>}
+                {sidebarOpen && <NavIcon name={moderationOpen ? "chevronDown" : "chevronRight"} size={16} tone="inherit" />}
               </button>
               {moderationOpen && (
                 <>
-                  <Link href="/moderation/blocked-terms" className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${pathname === "/moderation/blocked-terms" ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]" : "text-slate-200 hover:bg-slate-800/80"}`}>
-                    <span className="text-lg">🚫</span>{sidebarOpen && <span>Blocked Terms</span>}
+                  <Link href="/moderation/blocked-terms" aria-current={pathname === "/moderation/blocked-terms" ? "page" : undefined}
+ className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+   pathname === "/moderation/blocked-terms"
+     ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+     : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}>
+                    <NavIcon name="blockedTerms" />{sidebarOpen ? <span>Blocked Terms</span> : <span className="sr-only">Blocked Terms</span>}
                   </Link>
-                  <Link href="/moderation/spam-filters" className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${pathname === "/moderation/spam-filters" ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]" : "text-slate-200 hover:bg-slate-800/80"}`}>
-                    <span className="text-lg">🧹</span>{sidebarOpen && <span>Spam Filters</span>}
+                  <Link href="/moderation/spam-filters" aria-current={pathname === "/moderation/spam-filters" ? "page" : undefined}
+ className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+   pathname === "/moderation/spam-filters"
+     ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+     : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}>
+                    <NavIcon name="spamFilters" />{sidebarOpen ? <span>Spam Filters</span> : <span className="sr-only">Spam Filters</span>}
                   </Link>
                 </>
               )}
             </div>
             {/* Vanity section */}
             <div className="flex flex-col gap-2">
-              <button type="button" onClick={() => setVanitySectionOpen((o) => !o)} className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-200">
+              <button type="button" aria-expanded={vanitySectionOpen} onClick={() => setVanitySectionOpen((o) => !o)} className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary hover:text-ax-body">
                 <span>Vanity</span>
-                {sidebarOpen && <span className="text-base font-bold">{vanitySectionOpen ? "▾" : "▸"}</span>}
+                {sidebarOpen && <NavIcon name={vanitySectionOpen ? "chevronDown" : "chevronRight"} size={16} tone="inherit" />}
               </button>
               {vanitySectionOpen && (
                 <>
-                  <Link href="/modules" className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${pathname === "/modules" ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]" : "text-slate-200 hover:bg-slate-800/80"}`}>
-                    <span className="text-lg">🧩</span>{sidebarOpen && <span>Modules</span>}
+                  <Link href="/modules" aria-current={pathname === "/modules" ? "page" : undefined}
+ className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+   pathname === "/modules"
+     ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+     : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}>
+                    <NavIcon name="modules" />{sidebarOpen ? <span>Modules</span> : <span className="sr-only">Modules</span>}
                   </Link>
-                  <Link href="/birthdays" className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${pathname === "/birthdays" ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]" : "text-slate-200 hover:bg-slate-800/80"}`}>
-                    <span className="text-lg">🎂</span>{sidebarOpen && <span>Birthdays</span>}
+                  <Link href="/birthdays" aria-current={pathname === "/birthdays" ? "page" : undefined}
+ className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+   pathname === "/birthdays"
+     ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+     : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}>
+                    <NavIcon name="birthdays" />{sidebarOpen ? <span>Birthdays</span> : <span className="sr-only">Birthdays</span>}
                   </Link>
-                  <Link href="/giveaways" className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${pathname === "/giveaways" ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]" : "text-slate-200 hover:bg-slate-800/80"}`}>
-                    <span className="text-lg">🎁</span>{sidebarOpen && <span>Giveaways</span>}
+                  <Link href="/giveaways" aria-current={pathname === "/giveaways" ? "page" : undefined}
+ className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+   pathname === "/giveaways"
+     ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+     : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}>
+                    <NavIcon name="giveaways" />{sidebarOpen ? <span>Giveaways</span> : <span className="sr-only">Giveaways</span>}
                   </Link>
                   {!isEditor && (
-                    <Link href="/roles" className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${pathname === "/roles" ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]" : "text-slate-200 hover:bg-slate-800/80"}`}>
-                      <span className="text-lg">🎭</span>{sidebarOpen && <span>Roles</span>}
+                    <Link href="/roles" aria-current={pathname === "/roles" ? "page" : undefined}
+ className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+   pathname === "/roles"
+     ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+     : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}>
+                      <NavIcon name="roles" />{sidebarOpen ? <span>Roles</span> : <span className="sr-only">Roles</span>}
                     </Link>
                   )}
                 </>
@@ -1256,29 +1299,49 @@ export default function DiscordSettingsPage() {
             </div>
             {/* Integrations section */}
             <div className="flex flex-col gap-2">
-              <button type="button" onClick={() => {}} className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+              <button type="button" onClick={() => {}} className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary">
                 <span>Integrations</span>
               </button>
-              <Link href="/discord/settings" className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${pathname === "/discord/settings" ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]" : "text-slate-200 hover:bg-slate-800/80"}`}>
-                <span className="text-lg">🎮</span>{sidebarOpen && <span>Discord</span>}
+              <Link href="/discord/settings" aria-current={pathname === "/discord/settings" ? "page" : undefined}
+ className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+   pathname === "/discord/settings"
+     ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+     : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}>
+                <NavIcon name="discord" />{sidebarOpen ? <span>Discord</span> : <span className="sr-only">Discord</span>}
               </Link>
             </div>
             {/* Other section */}
             <div className="flex flex-col gap-2">
-              <button type="button" onClick={() => setOtherSectionOpen((o) => !o)} className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-200">
+              <button type="button" aria-expanded={otherSectionOpen} onClick={() => setOtherSectionOpen((o) => !o)} className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary hover:text-ax-body">
                 <span>Other</span>
-                {sidebarOpen && <span className="text-base font-bold">{otherSectionOpen ? "▾" : "▸"}</span>}
+                {sidebarOpen && <NavIcon name={otherSectionOpen ? "chevronDown" : "chevronRight"} size={16} tone="inherit" />}
               </button>
               {otherSectionOpen && (
                 <>
-                  <Link href="/privacy" className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${pathname === "/privacy" ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]" : "text-slate-200 hover:bg-slate-800/80"}`}>
-                    <span className="text-lg">🔒</span>{sidebarOpen && <span>Privacy</span>}
+                  <Link href="/privacy" aria-current={pathname === "/privacy" ? "page" : undefined}
+ className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+   pathname === "/privacy"
+     ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+     : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}>
+                    <NavIcon name="privacy" />{sidebarOpen ? <span>Privacy</span> : <span className="sr-only">Privacy</span>}
                   </Link>
-                  <Link href="/terms" className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${pathname === "/terms" ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]" : "text-slate-200 hover:bg-slate-800/80"}`}>
-                    <span className="text-lg">📜</span>{sidebarOpen && <span>Terms</span>}
+                  <Link href="/terms" aria-current={pathname === "/terms" ? "page" : undefined}
+ className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+   pathname === "/terms"
+     ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+     : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}>
+                    <NavIcon name="terms" />{sidebarOpen ? <span>Terms</span> : <span className="sr-only">Terms</span>}
                   </Link>
-                  <Link href="/api-docs" className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${pathname === "/api-docs" ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]" : "text-slate-200 hover:bg-slate-800/80"}`}>
-                    <span className="text-lg">📘</span>{sidebarOpen && <span>API Docs</span>}
+                  <Link href="/api-docs" aria-current={pathname === "/api-docs" ? "page" : undefined}
+ className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+   pathname === "/api-docs"
+     ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+     : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}>
+                    <NavIcon name="apiDocs" />{sidebarOpen ? <span>API Docs</span> : <span className="sr-only">API Docs</span>}
                   </Link>
                 </>
               )}
@@ -1287,30 +1350,30 @@ export default function DiscordSettingsPage() {
         </div>
 
         {/* Main content */}
-        <div className="flex-1 flex flex-col gap-4 text-slate-50 min-h-0">
+        <div className="flex-1 flex flex-col gap-4 text-ax-heading min-h-0">
 
           {/* ── No servers yet ── */}
           {!loadingGuilds && guilds.length === 0 && (
-            <div className="w-full flex flex-col rounded-2xl border border-slate-800 bg-slate-900/80 p-8 items-center gap-6 text-center">
+            <div className="w-full flex flex-col rounded-2xl border border-ax-subtle bg-ax-section p-8 items-center gap-6 text-center">
               <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[#5865F2]/20 border border-[#5865F2]/40">
                 <img src="/DiscordLogo.png" alt="Discord" className="h-12 w-12 brightness-0 invert" />
               </div>
               <div className="flex flex-col gap-2">
-                <h2 className="text-xl font-semibold text-slate-100">Connect your Discord server</h2>
-                <p className="text-sm text-slate-400 max-w-sm">
+                <h2 className="text-xl font-semibold text-ax-body">Connect your Discord server</h2>
+                <p className="text-sm text-ax-secondary max-w-sm">
                   Add AxyraBot to your Discord server to enable live notifications, mod alerts, birthday announcements, and slash commands.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => startDiscordAuth(true)}
-                className="inline-flex items-center gap-2 rounded-lg bg-[#5865F2] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#4752c4] transition shadow-lg"
+                className="inline-flex items-center gap-2 rounded-lg bg-[#5865F2] px-5 py-2.5 text-sm font-semibold text-ax-heading hover:bg-[#4752c4] transition shadow-lg"
               >
                 <img src="/DiscordLogo.png" alt="Discord" className="h-5 w-5 brightness-0 invert" />
                 Add to Discord
               </button>
               {viewerLogin && (
-                <p className="text-sm text-slate-400">
+                <p className="text-sm text-ax-secondary">
                   {discordLinked
                     ? "Your Discord account is connected, but you aren't an admin in any server AxyraBot is in. "
                     : "AxyraBot already in your server? "}
@@ -1319,32 +1382,32 @@ export default function DiscordSettingsPage() {
                   </button>
                 </p>
               )}
-              {discordAuthError && <p className="text-sm text-red-400">{discordAuthError}</p>}
+              {discordAuthError && <p className="text-sm text-red-300">{discordAuthError}</p>}
             </div>
           )}
 
           {/* ── Loading state ── */}
           {loadingGuilds && (
-            <div className="w-full flex flex-col rounded-2xl border border-slate-800 bg-slate-900/80 p-8 items-center justify-center gap-3">
-              <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-600 border-t-accent" />
-              <p className="text-sm text-slate-500">Checking Discord servers…</p>
+            <div className="w-full flex flex-col rounded-2xl border border-ax-subtle bg-ax-section p-8 items-center justify-center gap-3">
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-ax-border border-t-accent" />
+              <p className="text-sm text-ax-muted">Checking Discord servers…</p>
             </div>
           )}
 
           {/* ── Bot is in at least one server ── */}
           {!loadingGuilds && guilds.length > 0 && (
-            <div className="w-full flex flex-col rounded-2xl border border-slate-800 bg-slate-900/80 overflow-hidden flex-1 min-h-0">
+            <div className="w-full flex flex-col rounded-2xl border border-ax-subtle bg-ax-section overflow-hidden flex-1 min-h-0">
 
               {/* Content header — Add to Discord button + server switcher */}
-              <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-slate-800">
-                <h1 className="text-2xl font-semibold text-slate-100">Discord Integration</h1>
+              <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-ax-subtle">
+                <h1 className="text-2xl font-semibold text-ax-body">Discord Integration</h1>
 
                 <div className="flex items-center gap-3">
                   {/* Add to Discord — always shown here, single instance */}
                   <button
                     type="button"
                     onClick={() => startDiscordAuth(true)}
-                    className="inline-flex items-center gap-2 rounded-lg bg-[#5865F2] px-3 py-2 text-sm font-medium text-white hover:bg-[#4752c4] transition shadow-lg"
+                    className="inline-flex items-center gap-2 rounded-lg bg-[#5865F2] px-3 py-2 text-sm font-medium text-ax-heading hover:bg-[#4752c4] transition shadow-lg"
                   >
                     <img src="/DiscordLogo.png" alt="Discord" className="h-5 w-5 shrink-0 brightness-0 invert" />
                     Add to Discord
@@ -1354,8 +1417,8 @@ export default function DiscordSettingsPage() {
                   <div className="relative" ref={serverDropdownRef}>
                   <button
                     type="button"
-                    onClick={() => setServerDropdownOpen((o) => !o)}
-                    className="flex items-center gap-2.5 rounded-xl border border-slate-700 bg-slate-950/60 px-3 py-2 hover:bg-slate-800/70 transition"
+                    aria-expanded={serverDropdownOpen} onClick={() => setServerDropdownOpen((o) => !o)}
+                    className="flex items-center gap-2.5 rounded-xl border border-ax-border bg-ax-section px-3 py-2 hover:bg-ax-raised transition"
                   >
                     {(() => {
                       const guild = guilds.find((g) => g.id === selectedGuildId);
@@ -1364,27 +1427,27 @@ export default function DiscordSettingsPage() {
                           {guild.icon ? (
                             <Image src={guild.icon} alt={guild.name} width={28} height={28} className="rounded-full" />
                           ) : (
-                            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#5865F2] text-xs font-bold text-white shrink-0">
+                            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#5865F2] text-xs font-bold text-ax-heading shrink-0">
                               {guild.name.slice(0, 1).toUpperCase()}
                             </div>
                           )}
-                          <span className="text-sm font-medium text-slate-200 max-w-[160px] truncate">{guild.name}</span>
+                          <span className="text-sm font-medium text-ax-body max-w-[160px] truncate">{guild.name}</span>
                         </>
                       ) : (
-                        <span className="text-sm text-slate-400">Select a server</span>
+                        <span className="text-sm text-ax-secondary">Select a server</span>
                       );
                     })()}
                     <svg
                       viewBox="0 0 20 20"
                       fill="currentColor"
-                      className={`h-4 w-4 text-slate-400 transition-transform shrink-0 ${serverDropdownOpen ? "rotate-180" : ""}`}
+                      className={`h-4 w-4 text-ax-secondary transition-transform shrink-0 ${serverDropdownOpen ? "rotate-180" : ""}`}
                     >
                       <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
                     </svg>
                   </button>
 
                   {serverDropdownOpen && (
-                    <div className="absolute right-0 top-full mt-1 z-50 min-w-[200px] rounded-xl border border-slate-700 bg-slate-900 shadow-xl py-1">
+                    <div className="absolute right-0 top-full mt-1 z-50 min-w-[200px] rounded-xl border border-ax-border bg-ax-section shadow-xl py-1">
                       {guilds.map((g) => (
                         <button
                           key={g.id}
@@ -1393,20 +1456,20 @@ export default function DiscordSettingsPage() {
                             setSelectedGuildId(g.id);
                             setServerDropdownOpen(false);
                           }}
-                          className={`flex w-full items-center gap-2.5 px-3 py-2 text-sm hover:bg-slate-800 transition ${
-                            g.id === selectedGuildId ? "text-accent font-medium" : "text-slate-200"
+                          className={`flex w-full items-center gap-2.5 px-3 py-2 text-sm hover:bg-ax-raised transition ${
+                            g.id === selectedGuildId ? "text-ax-accent-text font-medium" : "text-ax-body"
                           }`}
                         >
                           {g.icon ? (
                             <Image src={g.icon} alt={g.name} width={24} height={24} className="rounded-full shrink-0" />
                           ) : (
-                            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#5865F2] text-xs font-bold text-white shrink-0">
+                            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#5865F2] text-xs font-bold text-ax-heading shrink-0">
                               {g.name.slice(0, 1).toUpperCase()}
                             </div>
                           )}
                           <span className="truncate">{g.name}</span>
                           {g.id === selectedGuildId && (
-                            <svg viewBox="0 0 20 20" fill="currentColor" className="ml-auto h-4 w-4 shrink-0 text-accent">
+                            <svg viewBox="0 0 20 20" fill="currentColor" className="ml-auto h-4 w-4 shrink-0 text-ax-accent-text">
                               <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
                             </svg>
                           )}
@@ -1426,25 +1489,25 @@ export default function DiscordSettingsPage() {
                     {/* LEFT — Channel Notifications */}
                     <div className="flex flex-col gap-4">
                       <div className="flex flex-col gap-1">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Channel Notifications</p>
-                        <p className="text-xs text-slate-500">Choose which Discord channels receive each type of notification.</p>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-ax-secondary">Channel Notifications</p>
+                        <p className="text-xs text-ax-muted">Choose which Discord channels receive each type of notification.</p>
                       </div>
 
                       {loadingChannels ? (
                         <div className="flex items-center gap-3 py-2">
-                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-600 border-t-accent" />
-                          <span className="text-sm text-slate-500">Loading channels…</span>
+                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-ax-border border-t-accent" />
+                          <span className="text-sm text-ax-muted">Loading channels…</span>
                         </div>
                       ) : (
                           <div className="flex flex-col gap-3">
                           <div className="flex flex-col gap-1">
                             <div className="flex items-center gap-2">
-                              <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-300">
+                              <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-ax-secondary">
                                 <span className="h-2 w-2 rounded-full bg-red-400" /> Live Notification
                               </label>
-                              <button type="button" onClick={() => { setEditingNotif("live"); setEditDraft(templates.live || defaultTemplates.live); setTemplateSaveSuccess(false); setTemplateSaveError(null); }} className="text-xs text-accent hover:underline">Edit message</button>
+                              <button type="button" onClick={() => { setEditingNotif("live"); setEditDraft(templates.live || defaultTemplates.live); setTemplateSaveSuccess(false); setTemplateSaveError(null); }} className="text-xs text-ax-accent-text hover:underline">Edit message</button>
                             </div>
-                            <p className="text-xs text-slate-500">Posted in this channel when you go live on Twitch.</p>
+                            <p className="text-xs text-ax-muted">Posted in this channel when you go live on Twitch.</p>
                             <select value={liveChannelId} onChange={(e) => setLiveChannelId(e.target.value)} className={channelSelectClass}>
                               <option value="">Disabled</option>
                               {guildChannels.map((c) => <option key={c.id} value={c.id}>#{c.name}</option>)}
@@ -1453,23 +1516,23 @@ export default function DiscordSettingsPage() {
 
                           <div className="flex flex-col gap-1">
                             <div className="flex items-center gap-2">
-                              <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-300">
-                                <span>🔨</span> Mod Alerts
+                              <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-ax-secondary">
+                                <Gavel aria-hidden="true" strokeWidth={1.75} size={16} className="shrink-0 text-ax-secondary" /> Mod Alerts
                               </label>
-                              <button type="button" onClick={() => { setEditingNotif("mod"); setEditDraft(templates.mod || defaultTemplates.mod); setTemplateSaveSuccess(false); setTemplateSaveError(null); }} className="text-xs text-accent hover:underline">Edit message</button>
+                              <button type="button" onClick={() => { setEditingNotif("mod"); setEditDraft(templates.mod || defaultTemplates.mod); setTemplateSaveSuccess(false); setTemplateSaveError(null); }} className="text-xs text-ax-accent-text hover:underline">Edit message</button>
                             </div>
-                            <p className="text-xs text-slate-500">Ban and timeout events from your Twitch channel.</p>
+                            <p className="text-xs text-ax-muted">Ban and timeout events from your Twitch channel.</p>
                             <select value={modChannelId} onChange={(e) => setModChannelId(e.target.value)} className={channelSelectClass}>
                               <option value="">Disabled</option>
                               {guildChannels.map((c) => <option key={c.id} value={c.id}>#{c.name}</option>)}
                             </select>
                           </div>
 
-                          <section className="flex flex-col gap-2 border-t border-slate-800 pt-4">
-                            <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-300">
-                              <span>🛡️</span> Discord Mod Logs
+                          <section className="flex flex-col gap-2 border-t border-ax-subtle pt-4">
+                            <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-ax-secondary">
+                              <ShieldCheck aria-hidden="true" strokeWidth={1.75} size={16} className="shrink-0 text-ax-secondary" /> Discord Mod Logs
                             </label>
-                            <p className="text-xs text-slate-500">
+                            <p className="text-xs text-ax-muted">
                               Log moderation and server changes separately from Twitch mod alerts. Give AxyraBot View Audit Log permission for moderator details.
                             </p>
                             <select
@@ -1482,7 +1545,7 @@ export default function DiscordSettingsPage() {
                             </select>
                             {modLogChannelId && (
                               <div className="flex items-center justify-between gap-3 pt-2">
-                                <span className="text-xs text-slate-400">
+                                <span className="text-xs text-ax-secondary">
                                   {modLogEvents.filter((event) => discordModLogOptions.some((option) => option.key === event)).length} event types selected
                                 </span>
                                 <button
@@ -1491,7 +1554,7 @@ export default function DiscordSettingsPage() {
                                     setModLogEventsDraft([...modLogEvents]);
                                     setEditingModLogOptions(true);
                                   }}
-                                  className="text-xs text-accent hover:underline"
+                                  className="text-xs text-ax-accent-text hover:underline"
                                 >
                                   Edit options
                                 </button>
@@ -1499,9 +1562,9 @@ export default function DiscordSettingsPage() {
                             )}
                           </section>
 
-                          <section className="flex flex-col gap-2 border-t border-slate-800 pt-4">
-                            <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-300">
-                              <span>🍯</span> Honeypot
+                          <section className="flex flex-col gap-2 border-t border-ax-subtle pt-4">
+                            <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-ax-secondary">
+                              <BotOff aria-hidden="true" strokeWidth={1.75} size={16} className="shrink-0 text-ax-secondary" /> Honeypot
                             </label>
                             <p className="text-xs text-amber-300/80">
                               Anyone other than AxyraBot or a webhook that posts here is immediately banned. Their messages are removed across channels the bot can access; the ban also deletes up to 7 days of recent server messages. Grant Ban Members, Manage Messages, View Channel, and Read Message History across channels. Private threads the bot cannot access cannot be cleared.
@@ -1518,18 +1581,18 @@ export default function DiscordSettingsPage() {
 
                           <div className="flex flex-col gap-1">
                             <div className="flex items-center gap-2">
-                              <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-300">
-                                <span>🎂</span> Birthday Announcements
+                              <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-ax-secondary">
+                                <Cake aria-hidden="true" strokeWidth={1.75} size={16} className="shrink-0 text-ax-secondary" /> Birthday Announcements
                               </label>
-                              <button type="button" onClick={() => { setEditingNotif("birthday"); setEditDraft(templates.birthday || defaultTemplates.birthday); setTemplateSaveSuccess(false); setTemplateSaveError(null); }} className="text-xs text-accent hover:underline">Edit message</button>
+                              <button type="button" onClick={() => { setEditingNotif("birthday"); setEditDraft(templates.birthday || defaultTemplates.birthday); setTemplateSaveSuccess(false); setTemplateSaveError(null); }} className="text-xs text-ax-accent-text hover:underline">Edit message</button>
                             </div>
-                            <p className="text-xs text-slate-500">Posted at midnight in your configured timezone when there are birthdays today.</p>
+                            <p className="text-xs text-ax-muted">Posted at midnight in your configured timezone when there are birthdays today.</p>
                             <select value={bdayChannelId} onChange={(e) => setBdayChannelId(e.target.value)} className={channelSelectClass}>
                               <option value="">Disabled</option>
                               {guildChannels.map((c) => <option key={c.id} value={c.id}>#{c.name}</option>)}
                             </select>
-                            <label className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Birthday list source</label>
-                            <p className="text-xs text-slate-500">Choose which saved birthday list to announce here — your own, or one shared with you.</p>
+                            <label className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-ax-secondary">Birthday list source</label>
+                            <p className="text-xs text-ax-muted">Choose which saved birthday list to announce here — your own, or one shared with you.</p>
                             <select
                               value={bdaySourceLogin}
                               onChange={(e) => setBdaySourceLogin(e.target.value)}
@@ -1554,25 +1617,25 @@ export default function DiscordSettingsPage() {
                           type="button"
                           onClick={handleSave}
                           disabled={saving || !channelLogin || loadingSettings}
-                          className="rounded-lg bg-accent px-5 py-2 text-sm font-medium text-white hover:bg-accent/90 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                          className="rounded-lg bg-accent px-5 py-2 text-sm font-medium text-ax-btn-text hover:bg-accent/90 transition disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           {saving ? "Saving…" : "Save Settings"}
                         </button>
-                        {saveSuccess && <span className="text-sm text-emerald-400">✓ Saved!</span>}
-                        {saveError && <span className="text-sm text-red-400">{saveError}</span>}
+                        {saveSuccess && <span className="inline-flex items-center gap-1.5 text-sm text-emerald-300"><Check aria-hidden="true" strokeWidth={1.75} size={16} className="shrink-0" />Saved!</span>}
+                        {saveError && <span className="text-sm text-red-300">{saveError}</span>}
                       </div>
 
                       {/* ── Reaction Roles ── */}
-                      <div className="border-t border-slate-800 pt-5 flex flex-col gap-4">
+                      <div className="border-t border-ax-subtle pt-5 flex flex-col gap-4">
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">🎭 Reaction Roles</p>
-                            <p className="text-xs text-slate-500 mt-0.5">Post a panel — members react to gain or lose roles automatically.</p>
+                            <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-ax-secondary"><SmilePlus aria-hidden="true" strokeWidth={1.75} size={16} className="shrink-0 text-ax-secondary" /> Reaction Roles</p>
+                            <p className="text-xs text-ax-muted mt-0.5">Post a panel — members react to gain or lose roles automatically.</p>
                           </div>
                           <button
                             type="button"
                             onClick={openNewReactionPanel}
-                            className="rounded-lg bg-accent/10 border border-accent/30 px-3 py-1.5 text-xs font-medium text-accent hover:bg-accent/20 transition"
+                            className="rounded-lg bg-accent/10 border border-accent/30 px-3 py-1.5 text-xs font-medium text-ax-accent-text hover:bg-accent/20 transition"
                           >
                             + New Panel
                           </button>
@@ -1581,57 +1644,57 @@ export default function DiscordSettingsPage() {
                         {rrPanels.length > 0 && (
                           <div className="flex flex-col gap-2">
                             {rrPanels.map((panel) => (
-                              <div key={panel.id} className="flex items-start justify-between rounded-lg bg-slate-800/60 border border-slate-700/60 px-4 py-3 gap-3">
+                              <div key={panel.id} className="flex items-start justify-between rounded-lg bg-ax-raised border border-ax-border px-4 py-3 gap-3">
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium text-slate-200 truncate">{panel.title}</p>
-                                  <p className="text-xs text-slate-500 mt-0.5">{panel.entries.length} role{panel.entries.length !== 1 ? "s" : ""} · ch <span className="font-mono text-slate-400">{panel.channel_id}</span></p>
+                                  <p className="text-sm font-medium text-ax-body truncate">{panel.title}</p>
+                                  <p className="text-xs text-ax-muted mt-0.5">{panel.entries.length} role{panel.entries.length !== 1 ? "s" : ""} · ch <span className="font-mono text-ax-secondary">{panel.channel_id}</span></p>
                                   {panel.entries.map((e, i) => (
-                                    <span key={i} className="inline-flex items-center gap-1 mr-2 mt-1 text-xs text-slate-400">
-                                      {e.emoji} <span className="text-slate-500">{e.role_name || e.role_id}</span>
+                                    <span key={i} className="inline-flex items-center gap-1 mr-2 mt-1 text-xs text-ax-secondary">
+                                      {e.emoji} <span className="text-ax-muted">{e.role_name || e.role_id}</span>
                                     </span>
                                   ))}
                                 </div>
                                 <div className="flex gap-2 shrink-0">
-                                  <button type="button" onClick={() => openEditReactionPanel(panel)} className="text-xs text-accent hover:text-accent/80 transition">Edit / Resend</button>
-                                  <button type="button" onClick={() => handleDeleteReactionPanel(panel.id)} className="text-xs text-red-400 hover:text-red-300 transition">Delete</button>
+                                  <button type="button" onClick={() => openEditReactionPanel(panel)} className="text-xs text-ax-accent-text hover:text-ax-accent-text transition">Edit / Resend</button>
+                                  <button type="button" onClick={() => handleDeleteReactionPanel(panel.id)} className="text-xs text-red-300 hover:text-red-300 transition">Delete</button>
                                 </div>
                               </div>
                             ))}
                           </div>
                         )}
 
-                        {rrSendSuccess && <p className="text-sm text-emerald-400">✓ Panel sent successfully!</p>}
+                        {rrSendSuccess && <p className="flex items-center gap-1.5 text-sm text-emerald-300"><Check aria-hidden="true" strokeWidth={1.75} size={16} className="shrink-0" />Panel sent successfully!</p>}
 
                         {rrFormOpen && (
-                          <div className="rounded-xl border border-slate-700/60 bg-slate-800/40 p-5 flex flex-col gap-4">
-                            <p className="text-sm font-semibold text-slate-200">{rrEditing ? "Edit Panel" : "New Panel"}</p>
+                          <div className="rounded-xl border border-ax-border bg-ax-raised p-5 flex flex-col gap-4">
+                            <p className="text-sm font-semibold text-ax-body">{rrEditing ? "Edit Panel" : "New Panel"}</p>
 
                             <div className="flex flex-col gap-1">
-                              <label className="text-xs text-slate-400">Panel Title</label>
-                              <input type="text" value={rrTitle} onChange={(e) => setRrTitle(e.target.value)} placeholder="React for Roles" className="rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-accent/60" />
+                              <label className="text-xs text-ax-secondary">Panel Title</label>
+                              <input type="text" value={rrTitle} onChange={(e) => setRrTitle(e.target.value)} placeholder="React for Roles" className="rounded-lg bg-ax-section border border-ax-border px-3 py-2 text-sm text-ax-body placeholder:text-ax-muted focus:outline-none focus:border-accent/60" />
                             </div>
 
                             <div className="flex flex-col gap-1">
-                              <label className="text-xs text-slate-400">Description</label>
-                              <textarea rows={2} value={rrDescription} onChange={(e) => setRrDescription(e.target.value)} placeholder="React below to get a role!" className="rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-accent/60 resize-none" />
+                              <label className="text-xs text-ax-secondary">Description</label>
+                              <textarea rows={2} value={rrDescription} onChange={(e) => setRrDescription(e.target.value)} placeholder="React below to get a role!" className="rounded-lg bg-ax-section border border-ax-border px-3 py-2 text-sm text-ax-body placeholder:text-ax-muted focus:outline-none focus:border-accent/60 resize-none" />
                             </div>
 
                             <div className="flex flex-col gap-1">
-                              <label className="text-xs text-slate-400">Post to Channel</label>
-                              <select value={rrChannelId} onChange={(e) => setRrChannelId(e.target.value)} className="rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-accent/60">
+                              <label className="text-xs text-ax-secondary">Post to Channel</label>
+                              <select value={rrChannelId} onChange={(e) => setRrChannelId(e.target.value)} className="rounded-lg bg-ax-section border border-ax-border px-3 py-2 text-sm text-ax-body focus:outline-none focus:border-accent/60">
                                 <option value="">— Select channel —</option>
                                 {guildChannels.map((ch) => <option key={ch.id} value={ch.id}>#{ch.name}</option>)}
                               </select>
                             </div>
 
                             <div className="flex flex-col gap-2">
-                              <label className="text-xs text-slate-400">Emoji → Role Entries</label>
+                              <label className="text-xs text-ax-secondary">Emoji → Role Entries</label>
                               {rrEntries.map((entry, i) => (
                                 <div key={i} className="flex items-center gap-2">
                                   <select
                                     value={entry.emoji}
                                     onChange={(e) => { const next = [...rrEntries]; next[i] = { ...next[i], emoji: e.target.value }; setRrEntries(next); }}
-                                    className="w-32 rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-accent/60"
+                                    className="w-32 rounded-lg bg-ax-section border border-ax-border px-3 py-2 text-sm text-ax-body focus:outline-none focus:border-accent/60"
                                   >
                                     <option value="">— Emoji —</option>
                                     {[
@@ -1650,23 +1713,23 @@ export default function DiscordSettingsPage() {
                                   <select
                                     value={entry.role_id}
                                     onChange={(e) => { const selected = guildRoles.find((r) => r.id === e.target.value); const next = [...rrEntries]; next[i] = { ...next[i], role_id: e.target.value, role_name: selected?.name ?? "" }; setRrEntries(next); }}
-                                    className="flex-1 rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-accent/60"
+                                    className="flex-1 rounded-lg bg-ax-section border border-ax-border px-3 py-2 text-sm text-ax-body focus:outline-none focus:border-accent/60"
                                   >
                                     <option value="">— Select role —</option>
                                     {guildRoles.map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}
                                   </select>
-                                  <button type="button" onClick={() => setRrEntries((prev) => prev.filter((_, idx) => idx !== i))} className="text-slate-500 hover:text-red-400 transition text-base leading-none" aria-label="Remove entry">✕</button>
+                                  <button type="button" onClick={() => setRrEntries((prev) => prev.filter((_, idx) => idx !== i))} className="rounded p-0.5 text-ax-muted transition hover:text-red-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ax-focus" aria-label="Remove entry"><X aria-hidden="true" strokeWidth={1.75} size={16} /></button>
                                 </div>
                               ))}
-                              <button type="button" onClick={() => setRrEntries((prev) => [...prev, { emoji: "", role_id: "", role_name: "" }])} className="self-start text-xs text-accent hover:text-accent/80 transition mt-1">+ Add Entry</button>
+                              <button type="button" onClick={() => setRrEntries((prev) => [...prev, { emoji: "", role_id: "", role_name: "" }])} className="self-start text-xs text-ax-accent-text hover:text-ax-accent-text transition mt-1">+ Add Entry</button>
                             </div>
 
                             <div className="flex items-center gap-3 flex-wrap pt-1">
-                              <button type="button" onClick={handleSendReactionPanel} disabled={rrSending || !rrChannelId} className="rounded-lg bg-accent px-5 py-2 text-sm font-medium text-white hover:bg-accent/90 transition disabled:opacity-40 disabled:cursor-not-allowed">
+                              <button type="button" onClick={handleSendReactionPanel} disabled={rrSending || !rrChannelId} className="rounded-lg bg-accent px-5 py-2 text-sm font-medium text-ax-btn-text hover:bg-accent/90 transition disabled:opacity-40 disabled:cursor-not-allowed">
                                 {rrSending ? "Sending…" : rrEditing ? "Resend Panel" : "Send Panel"}
                               </button>
-                              <button type="button" onClick={() => { setRrFormOpen(false); setRrEditing(null); setRrSendError(null); }} className="rounded-lg border border-slate-600 px-5 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700/40 transition">Cancel</button>
-                              {rrSendError && <span className="text-sm text-red-400">{rrSendError}</span>}
+                              <button type="button" onClick={() => { setRrFormOpen(false); setRrEditing(null); setRrSendError(null); }} className="rounded-lg border border-ax-border px-5 py-2 text-sm font-medium text-ax-secondary hover:bg-ax-raised transition">Cancel</button>
+                              {rrSendError && <span className="text-sm text-red-300">{rrSendError}</span>}
                             </div>
                           </div>
                         )}
@@ -1676,15 +1739,15 @@ export default function DiscordSettingsPage() {
                     {/* RIGHT — Role Mappings */}
                     <div className="flex flex-col gap-4 justify-between">
                       <div className="flex flex-col gap-1">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Role Mappings</p>
-                        <p className="text-xs text-slate-500">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-ax-secondary">Role Mappings</p>
+                        <p className="text-xs text-ax-muted">
                           Match Discord roles to Twitch permission levels. Members with the assigned role will be treated as that level when using bot commands in this server.
                         </p>
                       </div>
 
                       {loadingRoles ? (
-                        <div className="flex items-center gap-2 text-sm text-slate-500">
-                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-600 border-t-accent" />
+                        <div className="flex items-center gap-2 text-sm text-ax-muted">
+                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-ax-border border-t-accent" />
                           Loading roles…
                         </div>
                       ) : (
@@ -1701,11 +1764,11 @@ export default function DiscordSettingsPage() {
                               ? `#${selectedRole.color.toString(16).padStart(6, "0")}`
                               : null;
                             return (
-                              <div key={level} className="flex flex-col gap-1.5 rounded-lg border border-slate-700/60 bg-slate-950/40 p-3">
+                              <div key={level} className="flex flex-col gap-1.5 rounded-lg border border-ax-border bg-ax-section p-3">
                                 <div className="flex items-center gap-2">
                                   <span className={`h-2 w-2 rounded-full ${meta.color} shrink-0`} />
-                                  <span className="text-xs font-semibold text-slate-200">{meta.label}</span>
-                                  <span className="text-xs text-slate-500">— {meta.desc}</span>
+                                  <span className="text-xs font-semibold text-ax-body">{meta.label}</span>
+                                  <span className="text-xs text-ax-muted">— {meta.desc}</span>
                                 </div>
                                 <select
                                   value={roleMap[level]}
@@ -1734,24 +1797,24 @@ export default function DiscordSettingsPage() {
                           type="button"
                           onClick={handleSaveRoles}
                           disabled={savingRoles || !channelLogin || !selectedGuildId}
-                          className="rounded-lg bg-accent px-5 py-2 text-sm font-medium text-white hover:bg-accent/90 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                          className="rounded-lg bg-accent px-5 py-2 text-sm font-medium text-ax-btn-text hover:bg-accent/90 transition disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           {savingRoles ? "Saving…" : "Save Roles"}
                         </button>
-                        {roleSaveSuccess && <span className="text-sm text-emerald-400">✓ Saved!</span>}
-                        {roleSaveError && <span className="text-sm text-red-400">{roleSaveError}</span>}
+                        {roleSaveSuccess && <span className="inline-flex items-center gap-1.5 text-sm text-emerald-300"><Check aria-hidden="true" strokeWidth={1.75} size={16} className="shrink-0" />Saved!</span>}
+                        {roleSaveError && <span className="text-sm text-red-300">{roleSaveError}</span>}
                       </div>
 
                       {/* ── Welcome & Auto-Roles ── */}
-                      <div className="mt-4 flex flex-col gap-3 rounded-xl border border-slate-700/60 bg-slate-950/40 p-4">
+                      <div className="mt-4 flex flex-col gap-3 rounded-xl border border-ax-border bg-ax-section p-4">
                         <div className="flex flex-col gap-0.5">
-                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Welcome & Auto-Roles</p>
-                          <p className="text-xs text-slate-500">Send a message and/or assign roles to new members when they join the server.</p>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-ax-secondary">Welcome & Auto-Roles</p>
+                          <p className="text-xs text-ax-muted">Send a message and/or assign roles to new members when they join the server.</p>
                         </div>
 
                         {/* Welcome channel */}
                         <div className="flex flex-col gap-1">
-                          <label className="text-xs font-medium text-slate-300">Welcome channel</label>
+                          <label className="text-xs font-medium text-ax-secondary">Welcome channel</label>
                           <select
                             value={welcomeChannelId}
                             onChange={(e) => setWelcomeChannelId(e.target.value)}
@@ -1767,43 +1830,43 @@ export default function DiscordSettingsPage() {
                         {/* Welcome message */}
                         {welcomeChannelId && (
                           <div className="flex flex-col gap-1">
-                            <label className="text-xs font-medium text-slate-300">Welcome message</label>
+                            <label className="text-xs font-medium text-ax-secondary">Welcome message</label>
                             <textarea
                               value={welcomeMessage}
                               onChange={(e) => setWelcomeMessage(e.target.value)}
                               rows={2}
                               placeholder="Welcome $(user) to $(server)!"
-                              className="w-full rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-accent/60 resize-y"
+                              className="w-full rounded-lg border border-ax-border bg-ax-section px-3 py-2 text-sm text-ax-body placeholder:text-ax-muted focus:outline-none focus:ring-2 focus:ring-accent/60 resize-y"
                             />
-                            <p className="text-xs text-slate-600">Variables: <code className="text-slate-500">$(user)</code> mention, <code className="text-slate-500">$(username)</code> plain name, <code className="text-slate-500">$(server)</code> server name.</p>
+                            <p className="text-xs text-ax-muted">Variables: <code className="text-ax-muted">$(user)</code> mention, <code className="text-ax-muted">$(username)</code> plain name, <code className="text-ax-muted">$(server)</code> server name.</p>
                           </div>
                         )}
 
                         {/* Welcome banner toggle */}
                         {welcomeChannelId && (
-                          <div className="flex items-center justify-between rounded-lg border border-slate-700/60 bg-slate-900/60 px-3 py-2.5">
+                          <div className="flex items-center justify-between rounded-lg border border-ax-border bg-ax-section px-3 py-2.5">
                             <div className="flex flex-col gap-0.5">
-                              <span className="text-xs font-medium text-slate-200">🖼️ Welcome banner</span>
-                              <span className="text-xs text-slate-500">Send a graphic card with the user's avatar when they join.</span>
+                              <span className="flex items-center gap-1.5 text-xs font-medium text-ax-body"><ImageIcon aria-hidden="true" strokeWidth={1.75} size={16} className="shrink-0 text-ax-secondary" /> Welcome banner</span>
+                              <span className="text-xs text-ax-muted">Send a graphic card with the user's avatar when they join.</span>
                             </div>
                             <button
                               type="button"
                               onClick={() => setWelcomeBannerEnabled((v) => !v)}
                               aria-label={welcomeBannerEnabled ? "Disable banner" : "Enable banner"}
-                              className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${welcomeBannerEnabled ? "bg-accent" : "bg-slate-600"}`}
+                              className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${welcomeBannerEnabled ? "bg-accent" : "bg-ax-border"}`}
                             >
-                              <span className={`inline-block h-4 w-4 transform rounded-full bg-slate-950 shadow transition-transform ${welcomeBannerEnabled ? "translate-x-4" : "translate-x-1"}`} />
+                              <span className={`inline-block h-4 w-4 transform rounded-full bg-ax-section shadow transition-transform ${welcomeBannerEnabled ? "translate-x-4" : "translate-x-1"}`} />
                             </button>
                           </div>
                         )}
 
                         {/* Auto-assign roles */}
                         <div className="flex flex-col gap-1">
-                          <label className="text-xs font-medium text-slate-300">Auto-assign roles on join</label>
+                          <label className="text-xs font-medium text-ax-secondary">Auto-assign roles on join</label>
                           {loadingRoles ? (
-                            <div className="text-xs text-slate-500">Loading roles…</div>
+                            <div className="text-xs text-ax-muted">Loading roles…</div>
                           ) : guildRoles.length === 0 ? (
-                            <div className="text-xs text-slate-600">No roles found in this server.</div>
+                            <div className="text-xs text-ax-muted">No roles found in this server.</div>
                           ) : (
                             <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto">
                               {guildRoles.map((role) => {
@@ -1820,13 +1883,13 @@ export default function DiscordSettingsPage() {
                                     }
                                     className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium transition ${
                                       checked
-                                        ? "border-accent bg-accent/20 text-white"
-                                        : "border-slate-700 bg-slate-800/60 text-slate-300 hover:border-slate-500"
+                                        ? "border-accent bg-accent/20 text-ax-heading"
+                                        : "border-ax-border bg-ax-raised text-ax-body hover:border-ax-muted"
                                     }`}
                                   >
                                     {hex && <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: hex }} />}
                                     {role.name}
-                                    {checked && <span className="text-accent">✓</span>}
+                                    {checked && <Check aria-hidden="true" strokeWidth={1.75} size={14} className="shrink-0 text-ax-accent-text" />}
                                   </button>
                                 );
                               })}
@@ -1835,9 +1898,9 @@ export default function DiscordSettingsPage() {
                         </div>
 
                         {/* Leave logs channel */}
-                        <div className="flex flex-col gap-1 border-t border-slate-800/60 pt-3 mt-1">
-                          <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">Leave Logs</label>
-                          <p className="text-xs text-slate-500">When a member leaves, post a message in this channel.</p>
+                        <div className="flex flex-col gap-1 border-t border-ax-subtle pt-3 mt-1">
+                          <label className="text-xs font-semibold uppercase tracking-wide text-ax-secondary">Leave Logs</label>
+                          <p className="text-xs text-ax-muted">When a member leaves, post a message in this channel.</p>
                           <select
                             value={leaveChannelId}
                             onChange={(e) => setLeaveChannelId(e.target.value)}
@@ -1849,7 +1912,7 @@ export default function DiscordSettingsPage() {
                             ))}
                           </select>
                           {leaveChannelId && (
-                            <p className="text-xs text-slate-600">Message format: <code className="text-slate-500">USERNAME has left the server</code></p>
+                            <p className="text-xs text-ax-muted">Message format: <code className="text-ax-muted">USERNAME has left the server</code></p>
                           )}
                         </div>
 
@@ -1858,12 +1921,12 @@ export default function DiscordSettingsPage() {
                             type="button"
                             onClick={handleSaveWelcome}
                             disabled={savingWelcome || !selectedGuildId}
-                            className="rounded-lg bg-accent px-5 py-2 text-sm font-medium text-white hover:bg-accent/90 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="rounded-lg bg-accent px-5 py-2 text-sm font-medium text-ax-btn-text hover:bg-accent/90 transition disabled:opacity-40 disabled:cursor-not-allowed"
                           >
                             {savingWelcome ? "Saving…" : "Save Welcome"}
                           </button>
-                          {welcomeSaveSuccess && <span className="text-sm text-emerald-400">✓ Saved!</span>}
-                          {welcomeSaveError && <span className="text-sm text-red-400">{welcomeSaveError}</span>}
+                          {welcomeSaveSuccess && <span className="inline-flex items-center gap-1.5 text-sm text-emerald-300"><Check aria-hidden="true" strokeWidth={1.75} size={16} className="shrink-0" />Saved!</span>}
+                          {welcomeSaveError && <span className="text-sm text-red-300">{welcomeSaveError}</span>}
                         </div>
                       </div>
                     </div>
@@ -1873,16 +1936,16 @@ export default function DiscordSettingsPage() {
 
                 {/* ── Bot Modules ── */}
                 {selectedGuildId && (
-                <div className="border-t border-slate-800 pt-5 flex flex-col gap-4">
+                <div className="border-t border-ax-subtle pt-5 flex flex-col gap-4">
                   <div className="flex flex-col gap-1">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Bot Modules</p>
-                    <p className="text-xs text-slate-500">Click a module to configure individual commands and settings. Toggle the switch to enable or disable the entire module.</p>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-ax-secondary">Bot Modules</p>
+                    <p className="text-xs text-ax-muted">Click a module to configure individual commands and settings. Toggle the switch to enable or disable the entire module.</p>
                   </div>
 
                   {loadingModules ? (
                     <div className="flex items-center gap-3 py-2">
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-600 border-t-accent" />
-                      <span className="text-sm text-slate-500">Loading modules…</span>
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-ax-border border-t-accent" />
+                      <span className="text-sm text-ax-muted">Loading modules…</span>
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
@@ -1895,17 +1958,17 @@ export default function DiscordSettingsPage() {
                             key={mod.key}
                             type="button"
                             onClick={() => { setOpenModuleKey(mod.key); setPendingCmdSettings({ ...cmdSettings }); }}
-                            className={`group flex flex-col rounded-xl border text-left transition hover:border-accent/40 hover:bg-slate-800/40 ${
+                            className={`group flex flex-col rounded-xl border text-left transition hover:border-accent/40 hover:bg-ax-raised ${
                               enabled
-                                ? "border-slate-700/60 bg-slate-950/40"
-                                : "border-slate-800/60 bg-slate-900/30 opacity-60"
+                                ? "border-ax-border bg-ax-section"
+                                : "border-ax-subtle bg-ax-section opacity-60"
                             }`}
                           >
                             <div className="flex items-start gap-3 p-4">
-                              <span className="text-xl mt-0.5 shrink-0">{mod.icon}</span>
+                              <mod.icon aria-hidden="true" strokeWidth={1.75} size={20} className="mt-0.5 shrink-0 text-ax-secondary" />
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center justify-between gap-2">
-                                  <span className="text-sm font-semibold text-slate-100 group-hover:text-white">{mod.label}</span>
+                                  <span className="text-sm font-semibold text-ax-body group-hover:text-ax-heading">{mod.label}</span>
                                   {/* Module-level toggle — stop propagation so clicking it doesn't open the modal */}
                                   <span
                                     role="button"
@@ -1914,16 +1977,16 @@ export default function DiscordSettingsPage() {
                                     onClick={(e) => { e.stopPropagation(); if (!isSaving) handleModuleToggle(mod.key, !enabled); }}
                                     onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.stopPropagation(); if (!isSaving) handleModuleToggle(mod.key, !enabled); } }}
                                     className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors cursor-pointer ${
-                                      enabled ? "bg-emerald-500" : "bg-slate-600"
+                                      enabled ? "bg-emerald-500" : "bg-ax-border"
                                     } ${isSaving ? "opacity-50 pointer-events-none" : ""}`}
                                   >
-                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-slate-950 shadow transition-transform ${enabled ? "translate-x-4" : "translate-x-1"}`} />
+                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-ax-section shadow transition-transform ${enabled ? "translate-x-4" : "translate-x-1"}`} />
                                   </span>
                                 </div>
-                                <p className="text-xs text-slate-500 mt-0.5 leading-relaxed line-clamp-2">{mod.description}</p>
+                                <p className="text-xs text-ax-muted mt-0.5 leading-relaxed line-clamp-2">{mod.description}</p>
                               </div>
                             </div>
-                            <div className="flex items-center justify-between border-t border-slate-800/60 px-4 py-2 text-xs text-slate-500 group-hover:text-slate-400 transition">
+                            <div className="flex items-center justify-between border-t border-ax-subtle px-4 py-2 text-xs text-ax-muted group-hover:text-ax-secondary transition">
                               <span>{enabledCmds} / {mod.commands.length} commands active</span>
                               <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 opacity-50 group-hover:opacity-100 transition">
                                 <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
@@ -1939,37 +2002,37 @@ export default function DiscordSettingsPage() {
 
                 {/* ── Guild Access (channel owners only) ── */}
                 {selectedGuildId && !isEditor && (
-                  <div className="border-t border-slate-800 pt-5 flex flex-col gap-4">
+                  <div className="border-t border-ax-subtle pt-5 flex flex-col gap-4">
                     <div className="flex flex-col gap-1">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Guild Access</p>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-ax-secondary">Guild Access</p>
+                      <p className="text-xs text-ax-muted">
                         Control which Twitch editors can view and manage this server&apos;s bot settings. Editors not listed here will not see this server at all.
                       </p>
                     </div>
 
                     {loadingManagers ? (
                       <div className="flex items-center gap-3 py-1">
-                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-600 border-t-accent" />
-                        <span className="text-sm text-slate-500">Loading…</span>
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-ax-border border-t-accent" />
+                        <span className="text-sm text-ax-muted">Loading…</span>
                       </div>
                     ) : (
                       <div className="flex flex-col gap-3">
                         {guildManagers.length === 0 ? (
-                          <p className="text-xs text-slate-500 italic">No editors have been granted access to this server yet.</p>
+                          <p className="text-xs text-ax-muted italic">No editors have been granted access to this server yet.</p>
                         ) : (
                           <div className="flex flex-wrap gap-2">
                             {guildManagers.map((m) => (
-                              <div key={m} className="flex items-center gap-1.5 rounded-full border border-slate-700 bg-slate-950/60 px-3 py-1 text-xs text-slate-200">
+                              <div key={m} className="flex items-center gap-1.5 rounded-full border border-ax-border bg-ax-section px-3 py-1 text-xs text-ax-body">
                                 <span>{m}</span>
                                 <button
                                   type="button"
                                   onClick={() => handleRemoveManager(m)}
                                   disabled={removingManager === m}
-                                  className="ml-0.5 text-slate-500 hover:text-red-400 transition disabled:opacity-40"
+                                  className="ml-0.5 text-ax-muted hover:text-red-300 transition disabled:opacity-40"
                                   aria-label={`Remove ${m}`}
                                 >
                                   {removingManager === m ? (
-                                    <span className="inline-block h-3 w-3 animate-spin rounded-full border border-slate-500 border-t-slate-200" />
+                                    <span className="inline-block h-3 w-3 animate-spin rounded-full border border-ax-muted border-t-slate-200" />
                                   ) : (
                                     <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
                                       <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
@@ -1989,13 +2052,13 @@ export default function DiscordSettingsPage() {
                             onChange={(e) => setAddManagerInput(e.target.value)}
                             onKeyDown={(e) => { if (e.key === "Enter") handleAddManager(); }}
                             placeholder="Twitch username"
-                            className="rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-1.5 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-accent/60 w-48"
+                            className="rounded-lg border border-ax-border bg-ax-section px-3 py-1.5 text-sm text-ax-body placeholder:text-ax-muted focus:outline-none focus:ring-2 focus:ring-accent/60 w-48"
                           />
                           <button
                             type="button"
                             onClick={handleAddManager}
                             disabled={addingManager || !addManagerInput.trim()}
-                            className="rounded-lg bg-accent px-4 py-1.5 text-sm font-medium text-white hover:bg-accent/90 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="rounded-lg bg-accent px-4 py-1.5 text-sm font-medium text-ax-btn-text hover:bg-accent/90 transition disabled:opacity-40 disabled:cursor-not-allowed"
                           >
                             {addingManager ? "Adding…" : "Add"}
                           </button>
@@ -2007,25 +2070,25 @@ export default function DiscordSettingsPage() {
 
                 {/* ── Ticket System ── */}
                 {selectedGuildId && (
-                  <div className="border-t border-slate-800 pt-5 flex flex-col gap-4">
+                  <div className="border-t border-ax-subtle pt-5 flex flex-col gap-4">
                     <div className="flex flex-col gap-1">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">🎫 Ticket System</p>
-                      <p className="text-xs text-slate-500">
+                      <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-ax-secondary"><Ticket aria-hidden="true" strokeWidth={1.75} size={16} className="shrink-0 text-ax-secondary" /> Ticket System</p>
+                      <p className="text-xs text-ax-muted">
                         Configure the support ticket panel. Users click a button to open a private channel with selected support roles.
                       </p>
                     </div>
 
                     {loadingTicketConfig ? (
                       <div className="flex items-center gap-3 py-2">
-                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-600 border-t-accent" />
-                        <span className="text-sm text-slate-500">Loading ticket config…</span>
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-ax-border border-t-accent" />
+                        <span className="text-sm text-ax-muted">Loading ticket config…</span>
                       </div>
                     ) : (
                       <div className="flex flex-col gap-5">
                         {/* Panel channel */}
                         <div className="flex flex-col gap-1.5">
-                          <label className="text-xs font-semibold uppercase tracking-wide text-slate-300">Panel Channel</label>
-                          <p className="text-xs text-slate-500">The channel where the ticket open button will be posted.</p>
+                          <label className="text-xs font-semibold uppercase tracking-wide text-ax-secondary">Panel Channel</label>
+                          <p className="text-xs text-ax-muted">The channel where the ticket open button will be posted.</p>
                           <select
                             value={ticketPanelChannelId}
                             onChange={(e) => setTicketPanelChannelId(e.target.value)}
@@ -2038,8 +2101,8 @@ export default function DiscordSettingsPage() {
 
                         {/* Log channel */}
                         <div className="flex flex-col gap-1.5">
-                          <label className="text-xs font-semibold uppercase tracking-wide text-slate-300">Log Channel <span className="font-normal text-slate-500">(optional)</span></label>
-                          <p className="text-xs text-slate-500">Ticket open/close events will be logged here.</p>
+                          <label className="text-xs font-semibold uppercase tracking-wide text-ax-secondary">Log Channel <span className="font-normal text-ax-muted">(optional)</span></label>
+                          <p className="text-xs text-ax-muted">Ticket open/close events will be logged here.</p>
                           <select
                             value={ticketLogChannelId}
                             onChange={(e) => setTicketLogChannelId(e.target.value)}
@@ -2052,8 +2115,8 @@ export default function DiscordSettingsPage() {
 
                         {/* Category */}
                         <div className="flex flex-col gap-1.5">
-                          <label className="text-xs font-semibold uppercase tracking-wide text-slate-300">Category <span className="font-normal text-slate-500">(optional)</span></label>
-                          <p className="text-xs text-slate-500">Ticket channels will be created inside this category.</p>
+                          <label className="text-xs font-semibold uppercase tracking-wide text-ax-secondary">Category <span className="font-normal text-ax-muted">(optional)</span></label>
+                          <p className="text-xs text-ax-muted">Ticket channels will be created inside this category.</p>
                           <select
                             value={ticketCategoryId}
                             onChange={(e) => setTicketCategoryId(e.target.value)}
@@ -2066,10 +2129,10 @@ export default function DiscordSettingsPage() {
 
                         {/* Support roles */}
                         <div className="flex flex-col gap-1.5">
-                          <label className="text-xs font-semibold uppercase tracking-wide text-slate-300">Support Roles</label>
-                          <p className="text-xs text-slate-500">These roles can see and respond to every ticket channel.</p>
+                          <label className="text-xs font-semibold uppercase tracking-wide text-ax-secondary">Support Roles</label>
+                          <p className="text-xs text-ax-muted">These roles can see and respond to every ticket channel.</p>
                           {loadingRoles ? (
-                            <span className="text-xs text-slate-500">Loading roles…</span>
+                            <span className="text-xs text-ax-muted">Loading roles…</span>
                           ) : (
                             <div className="flex flex-wrap gap-2 max-w-xl">
                               {guildRoles.filter((r) => r.name !== "@everyone").map((r) => {
@@ -2085,11 +2148,11 @@ export default function DiscordSettingsPage() {
                                     style={selected && hex ? { borderColor: hex, color: hex } : undefined}
                                     className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
                                       selected
-                                        ? "border-accent bg-accent/10 text-accent"
-                                        : "border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-500 hover:text-slate-300"
+                                        ? "border-accent bg-accent/10 text-ax-accent-text"
+                                        : "border-ax-border bg-ax-section text-ax-secondary hover:border-ax-muted hover:text-ax-secondary"
                                     }`}
                                   >
-                                    {selected ? "✓ " : ""}{r.name}
+                                    {selected && <Check aria-hidden="true" strokeWidth={1.75} size={14} className="mr-1 inline-block shrink-0 align-[-2px]" />}{r.name}
                                   </button>
                                 );
                               })}
@@ -2100,33 +2163,33 @@ export default function DiscordSettingsPage() {
                         {/* Panel title / body / button label */}
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                           <div className="flex flex-col gap-1.5">
-                            <label className="text-xs font-semibold uppercase tracking-wide text-slate-300">Panel Title</label>
+                            <label className="text-xs font-semibold uppercase tracking-wide text-ax-secondary">Panel Title</label>
                             <input
                               type="text"
                               value={ticketPanelTitle}
                               onChange={(e) => setTicketPanelTitle(e.target.value)}
                               placeholder="Support Tickets"
-                              className="rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-accent/60"
+                              className="rounded-lg border border-ax-border bg-ax-section px-3 py-2 text-sm text-ax-body placeholder:text-ax-muted focus:outline-none focus:ring-2 focus:ring-accent/60"
                             />
                           </div>
                           <div className="flex flex-col gap-1.5">
-                            <label className="text-xs font-semibold uppercase tracking-wide text-slate-300">Button Label</label>
+                            <label className="text-xs font-semibold uppercase tracking-wide text-ax-secondary">Button Label</label>
                             <input
                               type="text"
                               value={ticketButtonLabel}
                               onChange={(e) => setTicketButtonLabel(e.target.value)}
                               placeholder="🎫 Open Ticket"
-                              className="rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-accent/60"
+                              className="rounded-lg border border-ax-border bg-ax-section px-3 py-2 text-sm text-ax-body placeholder:text-ax-muted focus:outline-none focus:ring-2 focus:ring-accent/60"
                             />
                           </div>
                           <div className="sm:col-span-2 flex flex-col gap-1.5">
-                            <label className="text-xs font-semibold uppercase tracking-wide text-slate-300">Panel Message</label>
+                            <label className="text-xs font-semibold uppercase tracking-wide text-ax-secondary">Panel Message</label>
                             <textarea
                               value={ticketPanelBody}
                               onChange={(e) => setTicketPanelBody(e.target.value)}
                               rows={2}
                               placeholder="Click the button below to open a support ticket."
-                              className="rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-accent/60 resize-none"
+                              className="rounded-lg border border-ax-border bg-ax-section px-3 py-2 text-sm text-ax-body placeholder:text-ax-muted focus:outline-none focus:ring-2 focus:ring-accent/60 resize-none"
                             />
                           </div>
                         </div>
@@ -2137,7 +2200,7 @@ export default function DiscordSettingsPage() {
                             type="button"
                             onClick={handleSaveTicketConfig}
                             disabled={savingTicketConfig || !selectedGuildId}
-                            className="rounded-lg bg-accent px-5 py-2 text-sm font-medium text-white hover:bg-accent/90 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="rounded-lg bg-accent px-5 py-2 text-sm font-medium text-ax-btn-text hover:bg-accent/90 transition disabled:opacity-40 disabled:cursor-not-allowed"
                           >
                             {savingTicketConfig ? "Saving…" : "Save Config"}
                           </button>
@@ -2145,20 +2208,20 @@ export default function DiscordSettingsPage() {
                             type="button"
                             onClick={handleSendTicketPanel}
                             disabled={sendingPanel || !ticketPanelChannelId || !selectedGuildId}
-                            className="rounded-lg border border-accent/40 bg-accent/10 px-5 py-2 text-sm font-medium text-accent hover:bg-accent/20 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="rounded-lg border border-accent/40 bg-accent/10 px-5 py-2 text-sm font-medium text-ax-accent-text hover:bg-accent/20 transition disabled:opacity-40 disabled:cursor-not-allowed"
                           >
                             {sendingPanel ? "Sending…" : "Send Panel"}
                           </button>
-                          {ticketSaveSuccess && <span className="text-sm text-emerald-400">✓ Config saved!</span>}
-                          {ticketSaveError && <span className="text-sm text-red-400">{ticketSaveError}</span>}
-                          {sendPanelSuccess && <span className="text-sm text-emerald-400">✓ Panel sent!</span>}
-                          {sendPanelError && <span className="text-sm text-red-400">{sendPanelError}</span>}
+                          {ticketSaveSuccess && <span className="inline-flex items-center gap-1.5 text-sm text-emerald-300"><Check aria-hidden="true" strokeWidth={1.75} size={16} className="shrink-0" />Config saved!</span>}
+                          {ticketSaveError && <span className="text-sm text-red-300">{ticketSaveError}</span>}
+                          {sendPanelSuccess && <span className="inline-flex items-center gap-1.5 text-sm text-emerald-300"><Check aria-hidden="true" strokeWidth={1.75} size={16} className="shrink-0" />Panel sent!</span>}
+                          {sendPanelError && <span className="text-sm text-red-300">{sendPanelError}</span>}
                         </div>
 
                         {/* Panel message link */}
                         {ticketPanelMessageId && ticketPanelChannelId && (
-                          <p className="text-xs text-slate-500">
-                            Active panel message ID: <span className="font-mono text-slate-400">{ticketPanelMessageId}</span>
+                          <p className="text-xs text-ax-muted">
+                            Active panel message ID: <span className="font-mono text-ax-secondary">{ticketPanelMessageId}</span>
                             {" "}&mdash; sending a new panel posts a fresh message to the channel.
                           </p>
                         )}
@@ -2185,38 +2248,38 @@ export default function DiscordSettingsPage() {
       );
       return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" onClick={() => setOpenModuleKey(null)}>
-          <div className="w-full max-w-2xl max-h-[85vh] rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-2xl max-h-[85vh] rounded-2xl border border-ax-border bg-ax-section shadow-2xl flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
 
             {/* Modal header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 shrink-0">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-ax-subtle shrink-0">
               <div className="flex items-center gap-3">
-                <span className="text-2xl">{mod.icon}</span>
+                <mod.icon aria-hidden="true" strokeWidth={1.75} size={24} className="shrink-0 text-ax-secondary" />
                 <div>
-                  <p className="text-sm font-semibold text-slate-100">{mod.label} Module</p>
-                  <p className="text-xs text-slate-500">{mod.commands.length} commands · click a command to toggle it on or off</p>
+                  <p className="text-sm font-semibold text-ax-body">{mod.label} Module</p>
+                  <p className="text-xs text-ax-muted">{mod.commands.length} commands · click a command to toggle it on or off</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
                 {/* Module-level toggle */}
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-slate-400">{modEnabled ? "Enabled" : "Disabled"}</span>
+                  <span className="text-xs text-ax-secondary">{modEnabled ? "Enabled" : "Disabled"}</span>
                   <button
                     type="button"
                     onClick={() => !isSavingMod && handleModuleToggle(mod.key, !modEnabled)}
                     disabled={isSavingMod}
-                    className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${modEnabled ? "bg-emerald-500" : "bg-slate-600"} ${isSavingMod ? "opacity-50" : ""}`}
+                    className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${modEnabled ? "bg-emerald-500" : "bg-ax-border"} ${isSavingMod ? "opacity-50" : ""}`}
                   >
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-slate-950 shadow transition-transform ${modEnabled ? "translate-x-4" : "translate-x-1"}`} />
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-ax-section shadow transition-transform ${modEnabled ? "translate-x-4" : "translate-x-1"}`} />
                   </button>
                 </div>
-                <button type="button" onClick={() => setOpenModuleKey(null)} className="rounded-lg p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition">
+                <button type="button" onClick={() => setOpenModuleKey(null)} className="rounded-lg p-1.5 text-ax-secondary hover:text-ax-body hover:bg-ax-raised transition">
                   <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4"><path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" /></svg>
                 </button>
               </div>
             </div>
 
             {/* Command list — scrollable */}
-            <div className="flex-1 overflow-y-auto divide-y divide-slate-800/60">
+            <div className="flex-1 overflow-y-auto divide-y divide-ax-subtle">
               {mod.commands.map((cmd) => {
                 const cmdKey = `cmd:${cmd.name}`;
                 const cmdEnabled = guildModules[cmdKey] !== false;
@@ -2226,21 +2289,21 @@ export default function DiscordSettingsPage() {
                     {/* Command row */}
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex items-start gap-3 min-w-0">
-                        <code className="shrink-0 mt-0.5 rounded bg-slate-800 px-2 py-0.5 text-xs font-mono text-accent">/{cmd.name}</code>
-                        <span className="text-sm text-slate-300 leading-relaxed">{cmd.description}</span>
+                        <code className="shrink-0 mt-0.5 rounded bg-ax-raised px-2 py-0.5 text-xs font-mono text-ax-accent-text">/{cmd.name}</code>
+                        <span className="text-sm text-ax-secondary leading-relaxed">{cmd.description}</span>
                       </div>
                       <button
                         type="button"
                         onClick={() => handleCmdToggle(cmd.name, !cmdEnabled)}
-                        className={`relative shrink-0 mt-0.5 inline-flex h-5 w-9 items-center rounded-full transition-colors ${cmdEnabled ? "bg-emerald-500" : "bg-slate-600"}`}
+                        className={`relative shrink-0 mt-0.5 inline-flex h-5 w-9 items-center rounded-full transition-colors ${cmdEnabled ? "bg-emerald-500" : "bg-ax-border"}`}
                       >
-                        <span className={`inline-block h-4 w-4 transform rounded-full bg-slate-950 shadow transition-transform ${cmdEnabled ? "translate-x-4" : "translate-x-1"}`} />
+                        <span className={`inline-block h-4 w-4 transform rounded-full bg-ax-section shadow transition-transform ${cmdEnabled ? "translate-x-4" : "translate-x-1"}`} />
                       </button>
                     </div>
 
                     {/* Per-command settings (only shown when command is enabled) */}
                     {hasSettings && cmdEnabled && (
-                      <div className="ml-0 flex flex-col gap-3 pl-4 border-l border-slate-700/50">
+                      <div className="ml-0 flex flex-col gap-3 pl-4 border-l border-ax-border">
                         {(cmd.settings ?? []).map((field) => {
                           const currentVal = pendingCmdSettings[field.key] ?? field.defaultValue ?? "";
                           const isToggle = field.type === "toggle";
@@ -2249,16 +2312,16 @@ export default function DiscordSettingsPage() {
                             <div key={field.key} className="flex flex-col gap-1">
                               <div className="flex items-center justify-between gap-4">
                                 <div className="flex flex-col gap-0.5">
-                                  <span className="text-xs font-medium text-slate-300">{field.label}</span>
-                                  {field.description && <span className="text-xs text-slate-500">{field.description}</span>}
+                                  <span className="text-xs font-medium text-ax-secondary">{field.label}</span>
+                                  {field.description && <span className="text-xs text-ax-muted">{field.description}</span>}
                                 </div>
                                 {isToggle && (
                                   <button
                                     type="button"
                                     onClick={() => setPendingCmdSettings((prev) => ({ ...prev, [field.key]: isTrueVal ? "false" : "true" }))}
-                                    className={`relative shrink-0 inline-flex h-5 w-9 items-center rounded-full transition-colors ${isTrueVal ? "bg-emerald-500" : "bg-slate-600"}`}
+                                    className={`relative shrink-0 inline-flex h-5 w-9 items-center rounded-full transition-colors ${isTrueVal ? "bg-emerald-500" : "bg-ax-border"}`}
                                   >
-                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-slate-950 shadow transition-transform ${isTrueVal ? "translate-x-4" : "translate-x-1"}`} />
+                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-ax-section shadow transition-transform ${isTrueVal ? "translate-x-4" : "translate-x-1"}`} />
                                   </button>
                                 )}
                               </div>
@@ -2270,7 +2333,7 @@ export default function DiscordSettingsPage() {
                                   value={currentVal}
                                   placeholder={field.placeholder}
                                   onChange={(e) => setPendingCmdSettings((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                                  className="w-40 rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-accent/60"
+                                  className="w-40 rounded-lg border border-ax-border bg-ax-section px-3 py-1.5 text-sm text-ax-body focus:outline-none focus:ring-2 focus:ring-accent/60"
                                 />
                               )}
                               {field.type === "text" && (
@@ -2279,14 +2342,14 @@ export default function DiscordSettingsPage() {
                                   value={currentVal}
                                   placeholder={field.placeholder}
                                   onChange={(e) => setPendingCmdSettings((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                                  className="w-full max-w-xs rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-accent/60"
+                                  className="w-full max-w-xs rounded-lg border border-ax-border bg-ax-section px-3 py-1.5 text-sm text-ax-body focus:outline-none focus:ring-2 focus:ring-accent/60"
                                 />
                               )}
                               {field.type === "select" && (
                                 <select
                                   value={currentVal}
                                   onChange={(e) => setPendingCmdSettings((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                                  className="w-48 rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-accent/60"
+                                  className="w-48 rounded-lg border border-ax-border bg-ax-section px-3 py-1.5 text-sm text-ax-body focus:outline-none focus:ring-2 focus:ring-accent/60"
                                 >
                                   {(field.options ?? []).map((opt) => (
                                     <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -2304,10 +2367,10 @@ export default function DiscordSettingsPage() {
             </div>
 
             {/* Modal footer */}
-            <div className="flex items-center justify-between gap-4 px-6 py-4 border-t border-slate-800 bg-slate-950/40 shrink-0">
-              <p className="text-xs text-slate-500">Command toggles save instantly. Click Save for settings changes.</p>
+            <div className="flex items-center justify-between gap-4 px-6 py-4 border-t border-ax-subtle bg-ax-section shrink-0">
+              <p className="text-xs text-ax-muted">Command toggles save instantly. Click Save for settings changes.</p>
               <div className="flex items-center gap-2">
-                <button type="button" onClick={() => setOpenModuleKey(null)} className="rounded-lg border border-slate-700 px-4 py-1.5 text-sm text-slate-300 hover:bg-slate-800 transition">
+                <button type="button" onClick={() => setOpenModuleKey(null)} className="rounded-lg border border-ax-border px-4 py-1.5 text-sm text-ax-secondary hover:bg-ax-raised transition">
                   Close
                 </button>
                 {hasDirty && (
@@ -2315,7 +2378,7 @@ export default function DiscordSettingsPage() {
                     type="button"
                     onClick={handleSaveCmdSettings}
                     disabled={savingCmdSettings}
-                    className="rounded-lg bg-accent px-4 py-1.5 text-sm font-medium text-white hover:bg-accent/90 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="rounded-lg bg-accent px-4 py-1.5 text-sm font-medium text-ax-btn-text hover:bg-accent/90 transition disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     {savingCmdSettings ? "Saving…" : "Save Settings"}
                   </button>
@@ -2330,14 +2393,14 @@ export default function DiscordSettingsPage() {
     {/* ── Ticket roles / category modal ── */}
     {editingTicketRoles && (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setEditingTicketRoles(false)}>
-        <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="w-full max-w-md rounded-2xl border border-ax-border bg-ax-section shadow-2xl flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
           {/* Header */}
-          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-ax-subtle">
             <div className="flex flex-col gap-0.5">
-              <p className="text-sm font-semibold text-slate-100">🎫 Ticket Channel Settings</p>
-              <p className="text-xs text-slate-500">Choose the category and roles attached to every created ticket channel.</p>
+              <p className="flex items-center gap-2 text-sm font-semibold text-ax-body"><Ticket aria-hidden="true" strokeWidth={1.75} size={16} className="shrink-0 text-ax-secondary" /> Ticket Channel Settings</p>
+              <p className="text-xs text-ax-muted">Choose the category and roles attached to every created ticket channel.</p>
             </div>
-            <button type="button" onClick={() => setEditingTicketRoles(false)} className="rounded-lg p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition">
+            <button type="button" onClick={() => setEditingTicketRoles(false)} className="rounded-lg p-1.5 text-ax-secondary hover:text-ax-body hover:bg-ax-raised transition">
               <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4"><path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" /></svg>
             </button>
           </div>
@@ -2345,12 +2408,12 @@ export default function DiscordSettingsPage() {
           {/* Category picker */}
           <div className="flex flex-col gap-4 px-5 pt-5">
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold uppercase tracking-wide text-slate-300">Category</label>
-              <p className="text-xs text-slate-500">Ticket channels will be created inside this category. Leave blank for no category.</p>
+              <label className="text-xs font-semibold uppercase tracking-wide text-ax-secondary">Category</label>
+              <p className="text-xs text-ax-muted">Ticket channels will be created inside this category. Leave blank for no category.</p>
               <select
                 value={ticketCategoryId}
                 onChange={(e) => setTicketCategoryId(e.target.value)}
-                className="rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-accent/60 w-full"
+                className="rounded-lg border border-ax-border bg-ax-section px-3 py-2 text-sm text-ax-body focus:outline-none focus:ring-2 focus:ring-accent/60 w-full"
               >
                 <option value="">No category</option>
                 {guildCategories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -2359,12 +2422,12 @@ export default function DiscordSettingsPage() {
 
             {/* Support roles */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold uppercase tracking-wide text-slate-300">Support Roles</label>
-              <p className="text-xs text-slate-500">These roles can see and respond to every ticket channel. Toggle to select.</p>
+              <label className="text-xs font-semibold uppercase tracking-wide text-ax-secondary">Support Roles</label>
+              <p className="text-xs text-ax-muted">These roles can see and respond to every ticket channel. Toggle to select.</p>
               {loadingRoles ? (
-                <span className="text-xs text-slate-500">Loading roles…</span>
+                <span className="text-xs text-ax-muted">Loading roles…</span>
               ) : guildRoles.filter((r) => r.name !== "@everyone").length === 0 ? (
-                <span className="text-xs text-slate-500">No roles found.</span>
+                <span className="text-xs text-ax-muted">No roles found.</span>
               ) : (
                 <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto pb-1">
                   {guildRoles.filter((r) => r.name !== "@everyone").map((r) => {
@@ -2380,11 +2443,11 @@ export default function DiscordSettingsPage() {
                         style={selected && hex ? { borderColor: hex, color: hex } : undefined}
                         className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
                           selected
-                            ? "border-accent bg-accent/10 text-accent"
-                            : "border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-500 hover:text-slate-300"
+                            ? "border-accent bg-accent/10 text-ax-accent-text"
+                            : "border-ax-border bg-ax-section text-ax-secondary hover:border-ax-muted hover:text-ax-secondary"
                         }`}
                       >
-                        {selected ? "✓ " : ""}{r.name}
+                        {selected && <Check aria-hidden="true" strokeWidth={1.75} size={14} className="mr-1 inline-block shrink-0 align-[-2px]" />}{r.name}
                       </button>
                     );
                   })}
@@ -2394,13 +2457,13 @@ export default function DiscordSettingsPage() {
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between gap-3 px-5 py-4 mt-4 border-t border-slate-800 bg-slate-950/40">
+          <div className="flex items-center justify-between gap-3 px-5 py-4 mt-4 border-t border-ax-subtle bg-ax-section">
             <div className="flex items-center gap-3">
-              {ticketRoleSaveSuccess && <span className="text-sm text-emerald-400">✓ Saved!</span>}
-              {ticketRoleSaveError && <span className="text-sm text-red-400">{ticketRoleSaveError}</span>}
+              {ticketRoleSaveSuccess && <span className="inline-flex items-center gap-1.5 text-sm text-emerald-300"><Check aria-hidden="true" strokeWidth={1.75} size={16} className="shrink-0" />Saved!</span>}
+              {ticketRoleSaveError && <span className="text-sm text-red-300">{ticketRoleSaveError}</span>}
             </div>
             <div className="flex items-center gap-2">
-              <button type="button" onClick={() => setEditingTicketRoles(false)} className="rounded-lg border border-slate-700 px-4 py-1.5 text-sm text-slate-300 hover:bg-slate-800 transition">
+              <button type="button" onClick={() => setEditingTicketRoles(false)} className="rounded-lg border border-ax-border px-4 py-1.5 text-sm text-ax-secondary hover:bg-ax-raised transition">
                 Cancel
               </button>
               <button
@@ -2438,7 +2501,7 @@ export default function DiscordSettingsPage() {
                     setTicketRoleSaving(false);
                   }
                 }}
-                className="rounded-lg bg-accent px-4 py-1.5 text-sm font-medium text-white hover:bg-accent/90 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                className="rounded-lg bg-accent px-4 py-1.5 text-sm font-medium text-ax-btn-text hover:bg-accent/90 transition disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {ticketRoleSaving ? "Saving…" : "Save"}
               </button>
@@ -2451,18 +2514,19 @@ export default function DiscordSettingsPage() {
     {/* ── Notification template edit modal ── */}
     {editingNotif && (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-        <div className="w-full max-w-lg rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl flex flex-col gap-0 overflow-hidden">
+        <div className="w-full max-w-lg rounded-2xl border border-ax-border bg-ax-section shadow-2xl flex flex-col gap-0 overflow-hidden">
           {/* Header */}
-          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-ax-subtle">
             <div className="flex flex-col gap-0.5">
-              <p className="text-sm font-semibold text-slate-100">
-                {editingNotif === "live" && "✏️ Edit Live Notification"}
-                {editingNotif === "mod" && "✏️ Edit Mod Alert"}
-                {editingNotif === "birthday" && "✏️ Edit Birthday Announcement"}
+              <p className="flex items-center gap-2 text-sm font-semibold text-ax-body">
+                <Pencil aria-hidden="true" strokeWidth={1.75} size={16} className="shrink-0 text-ax-secondary" />
+                {editingNotif === "live" && "Edit Live Notification"}
+                {editingNotif === "mod" && "Edit Mod Alert"}
+                {editingNotif === "birthday" && "Edit Birthday Announcement"}
               </p>
-              <p className="text-xs text-slate-500">Customize the Discord message. Leave blank to use the default.</p>
+              <p className="text-xs text-ax-muted">Customize the Discord message. Leave blank to use the default.</p>
             </div>
-            <button type="button" onClick={() => setEditingNotif(null)} className="rounded-lg p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition">
+            <button type="button" onClick={() => setEditingNotif(null)} className="rounded-lg p-1.5 text-ax-secondary hover:text-ax-body hover:bg-ax-raised transition">
               <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4"><path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" /></svg>
             </button>
           </div>
@@ -2474,12 +2538,12 @@ export default function DiscordSettingsPage() {
               onChange={(e) => setEditDraft(e.target.value)}
               rows={4}
               placeholder={defaultTemplates[editingNotif]}
-              className="w-full rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 font-mono placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-accent/60 resize-y"
+              className="w-full rounded-lg border border-ax-border bg-ax-section px-3 py-2 text-sm text-ax-body font-mono placeholder:text-ax-muted focus:outline-none focus:ring-2 focus:ring-accent/60 resize-y"
             />
             <button
               type="button"
               onClick={() => setEditDraft(defaultTemplates[editingNotif])}
-              className="self-start text-xs text-slate-500 hover:text-slate-300 transition"
+              className="self-start text-xs text-ax-muted hover:text-ax-secondary transition"
             >
               Reset to default
             </button>
@@ -2487,18 +2551,18 @@ export default function DiscordSettingsPage() {
 
           {/* Variables reference */}
           <div className="px-5 pt-3 pb-1">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Available variables</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-ax-muted mb-2">Available variables</p>
             <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
               {templateVars[editingNotif].map(({ name, desc }) => (
                 <div key={name} className="flex items-baseline gap-2">
                   <code
-                    className="shrink-0 rounded bg-slate-800 px-1.5 py-0.5 text-xs font-mono text-accent cursor-pointer hover:bg-slate-700 transition"
+                    className="shrink-0 rounded bg-ax-raised px-1.5 py-0.5 text-xs font-mono text-ax-accent-text cursor-pointer hover:bg-ax-raised transition"
                     title="Click to insert"
                     onClick={() => setEditDraft((d) => d + name)}
                   >
                     {name}
                   </code>
-                  <span className="text-xs text-slate-500 truncate">{desc}</span>
+                  <span className="text-xs text-ax-muted truncate">{desc}</span>
                 </div>
               ))}
             </div>
@@ -2506,14 +2570,14 @@ export default function DiscordSettingsPage() {
 
           {/* Role mentions */}
           <div className="px-5 pt-2 pb-1">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Mention a role</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-ax-muted mb-2">Mention a role</p>
             <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
               {/* @everyone is always available */}
               <button
                 type="button"
                 title="Insert @everyone"
                 onClick={() => setEditDraft((d) => d + "@everyone")}
-                className="inline-flex items-center gap-1 rounded-full border border-slate-600 bg-slate-800/70 px-2.5 py-0.5 text-xs font-medium text-slate-200 hover:bg-slate-700 transition"
+                className="inline-flex items-center gap-1 rounded-full border border-ax-border bg-ax-raised px-2.5 py-0.5 text-xs font-medium text-ax-body hover:bg-ax-raised transition"
               >
                 @everyone
               </button>
@@ -2525,7 +2589,7 @@ export default function DiscordSettingsPage() {
                       type="button"
                       title={`Insert <@&${role.id}>`}
                       onClick={() => setEditDraft((d) => d + `<@&${role.id}>`)}
-                      className="inline-flex items-center gap-1 rounded-full border border-slate-700 bg-slate-800/70 px-2.5 py-0.5 text-xs font-medium text-slate-200 hover:bg-slate-700 transition"
+                      className="inline-flex items-center gap-1 rounded-full border border-ax-border bg-ax-raised px-2.5 py-0.5 text-xs font-medium text-ax-body hover:bg-ax-raised transition"
                     >
                       {hex && (
                         <span
@@ -2542,27 +2606,27 @@ export default function DiscordSettingsPage() {
 
           {/* Discord markdown tip */}
           <div className="px-5 py-3">
-            <p className="text-xs text-slate-600">
-              Supports Discord markdown: <code className="text-slate-500">**bold**</code>, <code className="text-slate-500">*italic*</code>, <code className="text-slate-500">`code`</code>, newlines with{" "}
-              <code className="text-slate-500">\n</code> in the template text.
+            <p className="text-xs text-ax-muted">
+              Supports Discord markdown: <code className="text-ax-muted">**bold**</code>, <code className="text-ax-muted">*italic*</code>, <code className="text-ax-muted">`code`</code>, newlines with{" "}
+              <code className="text-ax-muted">\n</code> in the template text.
             </p>
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between gap-3 px-5 py-4 border-t border-slate-800 bg-slate-950/40">
+          <div className="flex items-center justify-between gap-3 px-5 py-4 border-t border-ax-subtle bg-ax-section">
             <div className="flex items-center gap-3">
-              {templateSaveSuccess && <span className="text-sm text-emerald-400">✓ Saved!</span>}
-              {templateSaveError && <span className="text-sm text-red-400">{templateSaveError}</span>}
+              {templateSaveSuccess && <span className="inline-flex items-center gap-1.5 text-sm text-emerald-300"><Check aria-hidden="true" strokeWidth={1.75} size={16} className="shrink-0" />Saved!</span>}
+              {templateSaveError && <span className="text-sm text-red-300">{templateSaveError}</span>}
             </div>
             <div className="flex items-center gap-2">
-              <button type="button" onClick={() => setEditingNotif(null)} className="rounded-lg border border-slate-700 px-4 py-1.5 text-sm text-slate-300 hover:bg-slate-800 transition">
+              <button type="button" onClick={() => setEditingNotif(null)} className="rounded-lg border border-ax-border px-4 py-1.5 text-sm text-ax-secondary hover:bg-ax-raised transition">
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleSaveTemplate}
                 disabled={savingTemplate || !channelLogin}
-                className="rounded-lg bg-accent px-4 py-1.5 text-sm font-medium text-white hover:bg-accent/90 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                className="rounded-lg bg-accent px-4 py-1.5 text-sm font-medium text-ax-btn-text hover:bg-accent/90 transition disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {savingTemplate ? "Saving…" : "Save"}
               </button>
@@ -2578,20 +2642,20 @@ export default function DiscordSettingsPage() {
           role="dialog"
           aria-modal="true"
           aria-labelledby="discord-mod-log-options-title"
-          className="flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-slate-700 bg-slate-900 shadow-2xl"
+          className="flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-ax-border bg-ax-section shadow-2xl"
         >
-          <header className="flex items-center justify-between border-b border-slate-800 px-5 py-4">
+          <header className="flex items-center justify-between border-b border-ax-subtle px-5 py-4">
             <div>
-              <h2 id="discord-mod-log-options-title" className="text-sm font-semibold text-slate-100">
+              <h2 id="discord-mod-log-options-title" className="text-sm font-semibold text-ax-body">
                 Edit Discord mod-log options
               </h2>
-              <p className="mt-1 text-xs text-slate-500">Choose which events appear in the selected log channel.</p>
+              <p className="mt-1 text-xs text-ax-muted">Choose which events appear in the selected log channel.</p>
             </div>
             <button
               type="button"
               aria-label="Close mod-log options"
               onClick={() => setEditingModLogOptions(false)}
-              className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-800 hover:text-slate-200"
+              className="rounded-lg p-1.5 text-ax-secondary transition hover:bg-ax-raised hover:text-ax-body"
             >
               <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4"><path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" /></svg>
             </button>
@@ -2600,7 +2664,7 @@ export default function DiscordSettingsPage() {
             {discordModLogOptions.map((option) => {
               const checked = modLogEventsDraft.includes(option.key);
               return (
-                <label key={option.key} className="flex cursor-pointer items-start gap-2 text-sm text-slate-300">
+                <label key={option.key} className="flex cursor-pointer items-start gap-2 text-sm text-ax-secondary">
                   <input
                     type="checkbox"
                     checked={checked}
@@ -2616,13 +2680,13 @@ export default function DiscordSettingsPage() {
               );
             })}
           </div>
-          <footer className="flex flex-col-reverse gap-3 border-t border-slate-800 bg-slate-950/40 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs text-slate-500">Press Save Settings on the page to store these selections.</p>
+          <footer className="flex flex-col-reverse gap-3 border-t border-ax-subtle bg-ax-section px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs text-ax-muted">Press Save Settings on the page to store these selections.</p>
             <div className="flex justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setEditingModLogOptions(false)}
-                className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 transition hover:bg-slate-800"
+                className="rounded-lg border border-ax-border px-4 py-2 text-sm text-ax-secondary transition hover:bg-ax-raised"
               >
                 Cancel
               </button>
@@ -2632,7 +2696,7 @@ export default function DiscordSettingsPage() {
                   setModLogEvents([...modLogEventsDraft]);
                   setEditingModLogOptions(false);
                 }}
-                className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-sky-300"
+                className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-ax-btn-text transition hover:bg-ax-btn-hover"
               >
                 Apply
               </button>

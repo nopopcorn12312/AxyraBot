@@ -9,6 +9,7 @@ import ManagingChannelBadge from "../components/ManagingChannelBadge";
 import { usePersistentSectionState } from "../hooks/usePersistentSectionState";
 import { useRequireAuth } from "../hooks/useRequireAuth";
 import { revokeSession } from "../lib/session";
+import NavIcon from "../components/NavIcon";
 
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://your-backend.onrender.com";
 const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL;
@@ -46,11 +47,11 @@ function ModuleToggle({ enabled, onChange, disabled = false }: ToggleProps) {
       disabled={disabled}
       aria-pressed={enabled}
       className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-        enabled ? "bg-emerald-500" : "bg-slate-600"
+        enabled ? "bg-emerald-500" : "bg-ax-border"
       } ${disabled ? "cursor-not-allowed opacity-50" : ""}`}
     >
       <span
-        className={`inline-block h-4 w-4 transform rounded-full bg-slate-950 shadow transition-transform ${
+        className={`inline-block h-4 w-4 transform rounded-full bg-ax-section shadow transition-transform ${
           enabled ? "translate-x-4" : "translate-x-1"
         }`}
       />
@@ -396,15 +397,16 @@ export default function ModulesPage() {
   };
 
   return (
-    <main className="min-h-screen flex flex-col bg-[radial-gradient(circle_at_top,_#1e293b,_#020617)]">
+    <main className="min-h-screen flex flex-col bg-ax-bg">
       <header className="w-full flex items-center justify-between px-6 py-4">
         <div className="flex items-center gap-4 flex-1">
           <button
+            aria-label="Toggle navigation"
             type="button"
-            onClick={() => setSidebarOpen((open) => !open)}
-            className="mr-2 rounded-lg bg-slate-900/70 px-3 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800 border border-slate-700"
+            aria-expanded={sidebarOpen} onClick={() => setSidebarOpen((open) => !open)}
+            className="mr-2 rounded-lg bg-ax-section px-3 py-2 text-sm font-medium text-ax-body hover:bg-ax-raised border border-ax-border"
           >
-            ☰
+            <NavIcon name="menu" size={20} tone="inherit" />
           </button>
           <Link href="/" className="flex items-center gap-4">
             <Image
@@ -415,8 +417,8 @@ export default function ModulesPage() {
               className="rounded-full"
             />
             <div className="text-2xl font-semibold tracking-tight">
-              <span className="text-accent">Axyra</span>
-              <span className="text-white">Bot</span>
+              <span className="text-ax-accent-text">Axyra</span>
+              <span className="text-ax-heading">Bot</span>
             </div>
           </Link>
         </div>
@@ -429,16 +431,16 @@ export default function ModulesPage() {
               <ManagingChannelBadge />
               <Link
                 href="/import"
-                className="inline-flex items-center gap-1 rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1.5 text-xs font-medium text-slate-100 hover:bg-slate-800 hover:border-slate-500 transition"
+                className="inline-flex items-center gap-1 rounded-full border border-ax-border bg-ax-section px-3 py-1.5 text-xs font-medium text-ax-body hover:bg-ax-raised hover:border-ax-muted transition"
               >
-                <span className="text-xs">⬆</span>
+                <NavIcon name="import" size={16} tone="inherit" />
                 <span>Import</span>
               </Link>
               <div className="relative" ref={menuRef}>
                 <button
                   type="button"
-                  onClick={() => setMenuOpen((open) => !open)}
-                  className="flex items-center gap-2 rounded-full bg-slate-900/80 px-1.5 py-1 hover:bg-slate-800 transition"
+                  aria-expanded={menuOpen} onClick={() => setMenuOpen((open) => !open)}
+                  className="flex items-center gap-2 rounded-full bg-ax-section px-1.5 py-1 hover:bg-ax-raised transition"
                 >
                   {avatarUrl && (
                     <Image
@@ -451,11 +453,11 @@ export default function ModulesPage() {
                   )}
                 </button>
                 {menuOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-36 rounded-lg border border-slate-700 bg-slate-900/95 py-2 shadow-lg">
+                  <div className="absolute right-0 top-full mt-2 w-36 rounded-lg border border-ax-border bg-ax-section py-2 shadow-lg">
                     <button
                       type="button"
                       onClick={handleLogout}
-                      className="w-full px-4 py-2 text-sm text-left text-slate-200 hover:bg-slate-800"
+                      className="w-full px-4 py-2 text-sm text-left text-ax-body hover:bg-ax-raised"
                     >
                       Log out
                     </button>
@@ -469,43 +471,45 @@ export default function ModulesPage() {
 
       <div className="flex flex-1 w-full gap-6 px-4 pb-6 items-stretch">
         <div
-          className={`${sidebarOpen ? "w-60" : "w-16"} flex flex-col rounded-2xl border border-slate-800 bg-slate-900/80 p-3 transition-all duration-200`}
+          className={`${sidebarOpen ? "w-60" : "w-16"} flex flex-col rounded-2xl border border-ax-subtle bg-ax-section p-3 transition-all duration-200`}
         >
-          <nav className="mt-1 flex flex-col gap-4 text-sm text-slate-200">
+          <nav className="mt-1 flex flex-col gap-4 text-sm text-ax-body">
             {/* Main section */}
             <div className="flex flex-col gap-2">
               <button
                 type="button"
-                onClick={() => setMainSectionOpen((open) => !open)}
-                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-200"
+                aria-expanded={mainSectionOpen} onClick={() => setMainSectionOpen((open) => !open)}
+                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary hover:text-ax-body"
               >
                 <span>Main</span>
-                {sidebarOpen && <span className="text-base font-bold">{mainSectionOpen ? "▾" : "▸"}</span>}
+                {sidebarOpen && <NavIcon name={mainSectionOpen ? "chevronDown" : "chevronRight"} size={16} tone="inherit" />}
               </button>
               {mainSectionOpen && (
                 <>
                   <Link
                     href="/dashboard"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/dashboard" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/dashboard"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">📊</span>
-                    {sidebarOpen && <span>Dashboard</span>}
+                    <NavIcon name="dashboard" />
+                    {sidebarOpen ? <span>Dashboard</span> : <span className="sr-only">Dashboard</span>}
                   </Link>
 
                   <Link
                     href="/commands"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/commands" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/commands"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">❓</span>
-                    {sidebarOpen && <span>Commands</span>}
+                    <NavIcon name="commands" />
+                    {sidebarOpen ? <span>Commands</span> : <span className="sr-only">Commands</span>}
                   </Link>
 
                 </>
@@ -516,37 +520,39 @@ export default function ModulesPage() {
             <div className="flex flex-col gap-2">
               <button
                 type="button"
-                onClick={() => setModerationOpen((open) => !open)}
-                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-200"
+                aria-expanded={moderationOpen} onClick={() => setModerationOpen((open) => !open)}
+                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary hover:text-ax-body"
               >
                 <span>Moderation</span>
                 {sidebarOpen && (
-                  <span className="text-base font-bold">{moderationOpen ? "▾" : "▸"}</span>
+                  <NavIcon name={moderationOpen ? "chevronDown" : "chevronRight"} size={16} tone="inherit" />
                 )}
               </button>
               {moderationOpen && (
                 <>
                   <Link
                     href="/moderation/blocked-terms"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/moderation/blocked-terms" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/moderation/blocked-terms"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">🚫</span>
-                    {sidebarOpen && <span>Blocked Terms</span>}
+                    <NavIcon name="blockedTerms" />
+                    {sidebarOpen ? <span>Blocked Terms</span> : <span className="sr-only">Blocked Terms</span>}
                   </Link>
                   <Link
                     href="/moderation/spam-filters"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/moderation/spam-filters" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/moderation/spam-filters"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">🧹</span>
-                    {sidebarOpen && <span>Spam Filters</span>}
+                    <NavIcon name="spamFilters" />
+                    {sidebarOpen ? <span>Spam Filters</span> : <span className="sr-only">Spam Filters</span>}
                   </Link>
                 </>
               )}
@@ -556,58 +562,62 @@ export default function ModulesPage() {
             <div className="flex flex-col gap-2">
               <button
                 type="button"
-                onClick={() => setVanitySectionOpen((open) => !open)}
-                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-200"
+                aria-expanded={vanitySectionOpen} onClick={() => setVanitySectionOpen((open) => !open)}
+                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary hover:text-ax-body"
               >
                 <span>Vanity</span>
-                {sidebarOpen && <span className="text-base font-bold">{vanitySectionOpen ? "▾" : "▸"}</span>}
+                {sidebarOpen && <NavIcon name={vanitySectionOpen ? "chevronDown" : "chevronRight"} size={16} tone="inherit" />}
               </button>
               {vanitySectionOpen && (
                 <>
                   <Link
                     href="/modules"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/modules" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/modules"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">🧩</span>
-                    {sidebarOpen && <span>Modules</span>}
+                    <NavIcon name="modules" />
+                    {sidebarOpen ? <span>Modules</span> : <span className="sr-only">Modules</span>}
                   </Link>
                   <Link
                     href="/birthdays"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/birthdays" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/birthdays"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">🎂</span>
-                    {sidebarOpen && <span>Birthdays</span>}
+                    <NavIcon name="birthdays" />
+                    {sidebarOpen ? <span>Birthdays</span> : <span className="sr-only">Birthdays</span>}
                   </Link>
                   <Link
                     href="/giveaways"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/giveaways" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/giveaways"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">🎁</span>
-                    {sidebarOpen && <span>Giveaways</span>}
+                    <NavIcon name="giveaways" />
+                    {sidebarOpen ? <span>Giveaways</span> : <span className="sr-only">Giveaways</span>}
                   </Link>
                   {!isEditor && (
                   <Link
                     href="/roles"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/roles" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/roles"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">🎭</span>
-                    {sidebarOpen && <span>Roles</span>}
+                    <NavIcon name="roles" />
+                    {sidebarOpen ? <span>Roles</span> : <span className="sr-only">Roles</span>}
                   </Link>
                   )}
                 </>
@@ -616,13 +626,16 @@ export default function ModulesPage() {
 
             {/* Integrations section */}
             <div className="flex flex-col gap-2">
-              <button type="button" onClick={() => {}} className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+              <button type="button" onClick={() => {}} className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary">
                 <span>Integrations</span>
               </button>
-              <Link href="/discord/settings" className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
-                pathname === "/discord/settings" ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]" : "text-slate-200 hover:bg-slate-800/80"
-              }`}>
-                <span className="text-lg">🎮</span>{sidebarOpen && <span>Discord</span>}
+              <Link href="/discord/settings" aria-current={pathname === "/discord/settings" ? "page" : undefined}
+ className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+   pathname === "/discord/settings"
+     ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+     : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}>
+                <NavIcon name="discord" />{sidebarOpen ? <span>Discord</span> : <span className="sr-only">Discord</span>}
               </Link>
             </div>
 
@@ -630,46 +643,49 @@ export default function ModulesPage() {
             <div className="flex flex-col gap-2">
               <button
                 type="button"
-                onClick={() => setOtherSectionOpen((open) => !open)}
-                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-200"
+                aria-expanded={otherSectionOpen} onClick={() => setOtherSectionOpen((open) => !open)}
+                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary hover:text-ax-body"
               >
                 <span>Other</span>
-                {sidebarOpen && <span className="text-base font-bold">{otherSectionOpen ? "▾" : "▸"}</span>}
+                {sidebarOpen && <NavIcon name={otherSectionOpen ? "chevronDown" : "chevronRight"} size={16} tone="inherit" />}
               </button>
               {otherSectionOpen && (
                 <>
                   <Link
                     href="/privacy"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/privacy" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/privacy"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">🔒</span>
-                    {sidebarOpen && <span>Privacy</span>}
+                    <NavIcon name="privacy" />
+                    {sidebarOpen ? <span>Privacy</span> : <span className="sr-only">Privacy</span>}
                   </Link>
                   <Link
                     href="/terms"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/terms" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/terms"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">📜</span>
-                    {sidebarOpen && <span>Terms</span>}
+                    <NavIcon name="terms" />
+                    {sidebarOpen ? <span>Terms</span> : <span className="sr-only">Terms</span>}
                   </Link>
                   <Link
                     href="/api-docs"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/api-docs" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/api-docs"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">📘</span>
-                    {sidebarOpen && <span>API Docs</span>}
+                    <NavIcon name="apiDocs" />
+                    {sidebarOpen ? <span>API Docs</span> : <span className="sr-only">API Docs</span>}
                   </Link>
                 </>
               )}
@@ -677,30 +693,30 @@ export default function ModulesPage() {
           </nav>
         </div>
 
-        <div className="flex-1 flex flex-col gap-6 text-slate-50">
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-6">
+        <div className="flex-1 flex flex-col gap-6 text-ax-heading">
+          <div className="rounded-2xl border border-ax-subtle bg-ax-section p-6">
             <h1 className="text-2xl font-semibold mb-2">Modules</h1>
-            <p className="text-sm text-slate-400 mb-4">
+            <p className="text-sm text-ax-secondary mb-4">
               Enable or disable optional automation modules for your channel.
             </p>
             {!login && (
-              <p className="text-sm text-slate-400">
+              <p className="text-sm text-ax-secondary">
                 Log in on the homepage to manage modules for your channel.
               </p>
             )}
             {login && (
               <>
                 {loading && (
-                  <p className="text-sm text-slate-400">Loading modules…</p>
+                  <p className="text-sm text-ax-secondary">Loading modules…</p>
                 )}
                 {error && (
-                  <p className="text-sm text-red-400 mb-2">{error}</p>
+                  <p className="text-sm text-red-300 mb-2">{error}</p>
                 )}
                 <div className="space-y-4 mt-2">
                   {modules.map((m) => (
                     <div
                       key={m.name}
-                      className="rounded-xl border border-slate-800 bg-slate-950/50"
+                      className="rounded-xl border border-ax-subtle bg-ax-section"
                     >
                       <button
                         type="button"
@@ -712,17 +728,20 @@ export default function ModulesPage() {
                         className="flex w-full items-center justify-between gap-4 px-4 py-3"
                       >
                         <div className="flex flex-col items-start text-left">
-                          <span className="text-sm font-medium text-slate-100">
+                          <span className="text-sm font-medium text-ax-body">
                             {m.label}
                           </span>
-                          <span className="text-xs text-slate-400">
+                          <span className="text-xs text-ax-secondary">
                             {m.description}
                           </span>
                         </div>
                         <div className="flex items-center gap-3">
-                          <span className="text-base font-bold text-slate-400">
-                            {openModule === m.name ? "▾" : "▸"}
-                          </span>
+                          <NavIcon
+                            name={openModule === m.name ? "chevronDown" : "chevronRight"}
+                            size={18}
+                            tone="inherit"
+                            className="text-ax-secondary"
+                          />
                           <ModuleToggle
                             enabled={m.enabled}
                             onChange={(next) => handleToggle(m.name, next)}
@@ -732,33 +751,33 @@ export default function ModulesPage() {
 
                       {/* Live announcement dropdown */}
                       {openModule === m.name && m.name === "live_announcement" && (
-                        <div className="border-t border-slate-800 px-4 py-3">
+                        <div className="border-t border-ax-subtle px-4 py-3">
                           <div className="mb-2 flex items-center justify-between gap-4">
-                            <span className="text-xs font-semibold text-slate-200">
+                            <span className="text-xs font-semibold text-ax-body">
                               Announcement message
                             </span>
                           </div>
-                          <p className="mb-1 text-xs text-slate-400">
+                          <p className="mb-1 text-xs text-ax-secondary">
                             Current message: {m.message || defaultLiveAnnouncementMessage}
                           </p>
-                          <div className="mt-3 border-t border-slate-800 pt-3">
+                          <div className="mt-3 border-t border-ax-subtle pt-3">
                             <div className="flex flex-col gap-2">
-                              <label className="text-xs font-medium text-slate-300">
+                              <label className="text-xs font-medium text-ax-secondary">
                                 Announcement message
                               </label>
                               <input
                                 type="text"
                                 value={editMessage}
                                 onChange={(e) => setEditMessage(e.target.value)}
-                                className="w-full rounded-md border border-slate-700 bg-slate-900/80 px-2 py-1 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-accent/60"
+                                className="w-full rounded-md border border-ax-border bg-ax-section px-2 py-1 text-sm text-ax-body focus:outline-none focus:ring-2 focus:ring-accent/60"
                                 placeholder={defaultLiveAnnouncementMessage}
                               />
-                              <p className="text-[11px] text-slate-400">
+                              <p className="text-[11px] text-ax-secondary">
                                 You can use $(channel), $(game), and $(title) as
                                 variables.
                               </p>
                               {editError && (
-                                <div className="text-xs text-red-400">{editError}</div>
+                                <div className="text-xs text-red-300">{editError}</div>
                               )}
                               <div className="mt-1 flex gap-2 justify-end">
                                 <button
@@ -767,7 +786,7 @@ export default function ModulesPage() {
                                     setEditMessage(m.message ?? "");
                                     setEditError(null);
                                   }}
-                                  className="rounded-md border border-slate-700 px-3 py-1 text-xs font-medium text-slate-200 hover:bg-slate-800/80"
+                                  className="rounded-md border border-ax-border px-3 py-1 text-xs font-medium text-ax-body hover:bg-ax-raised"
                                   disabled={savingEdit}
                                 >
                                   Cancel
@@ -808,7 +827,7 @@ export default function ModulesPage() {
                                       setSavingEdit(false);
                                     }
                                   }}
-                                  className="rounded-md border border-slate-700 px-3 py-1 text-xs font-medium text-slate-200 hover:bg-slate-800/80 disabled:opacity-60"
+                                  className="rounded-md border border-ax-border px-3 py-1 text-xs font-medium text-ax-body hover:bg-ax-raised disabled:opacity-60"
                                   disabled={savingEdit}
                                 >
                                   Restore Default
@@ -852,7 +871,7 @@ export default function ModulesPage() {
                                       setSavingEdit(false);
                                     }
                                   }}
-                                  className="rounded-md bg-accent px-3 py-1 text-xs font-medium text-white hover:bg-accent/90 disabled:opacity-60"
+                                  className="rounded-md bg-accent px-3 py-1 text-xs font-medium text-ax-btn-text hover:bg-accent/90 disabled:opacity-60"
                                   disabled={savingEdit}
                                 >
                                   {savingEdit ? "Saving..." : "Save changes"}
@@ -865,16 +884,16 @@ export default function ModulesPage() {
 
                       {/* Raid auto-shoutout dropdown */}
                       {openModule === m.name && m.name === "raid_shoutout" && (
-                        <div className="border-t border-slate-800 px-4 py-3">
+                        <div className="border-t border-ax-subtle px-4 py-3">
                           <div className="mb-2 flex items-center justify-between gap-4">
-                            <span className="text-xs font-semibold text-slate-200">
+                            <span className="text-xs font-semibold text-ax-body">
                               Shoutout message
                             </span>
                           </div>
-                          <div className="flex items-center justify-between gap-4 rounded-md border border-slate-800 bg-slate-950/40 px-3 py-2">
+                          <div className="flex items-center justify-between gap-4 rounded-md border border-ax-subtle bg-ax-section px-3 py-2">
                             <div className="flex flex-col gap-0.5">
-                              <span className="text-xs font-medium text-slate-200">Native Twitch /shoutout command</span>
-                              <span className="text-[11px] text-slate-500">Independently sends Twitch&apos;s built-in shoutout when a raid arrives.</span>
+                              <span className="text-xs font-medium text-ax-body">Native Twitch /shoutout command</span>
+                              <span className="text-[11px] text-ax-muted">Independently sends Twitch&apos;s built-in shoutout when a raid arrives.</span>
                             </div>
                             <ModuleToggle
                               enabled={m.native_shoutout_enabled ?? true}
@@ -882,12 +901,12 @@ export default function ModulesPage() {
                               disabled={savingNativeShoutout}
                             />
                           </div>
-                          <div className="flex flex-col gap-2 rounded-md border border-slate-800 bg-slate-950/40 px-3 py-2 sm:flex-row sm:items-end sm:justify-between">
+                          <div className="flex flex-col gap-2 rounded-md border border-ax-subtle bg-ax-section px-3 py-2 sm:flex-row sm:items-end sm:justify-between">
                             <div className="flex flex-col gap-1">
-                              <label htmlFor="native-shoutout-min-viewers" className="text-xs font-medium text-slate-200">
+                              <label htmlFor="native-shoutout-min-viewers" className="text-xs font-medium text-ax-body">
                                 Minimum raid viewers for native shoutout
                               </label>
-                              <p className="text-[11px] text-slate-500">0 sends it for every raid. Below the minimum, only the custom chat message is sent.</p>
+                              <p className="text-[11px] text-ax-muted">0 sends it for every raid. Below the minimum, only the custom chat message is sent.</p>
                               <input
                                 id="native-shoutout-min-viewers"
                                 type="number"
@@ -904,39 +923,39 @@ export default function ModulesPage() {
                                     ));
                                   }
                                 }}
-                                className="w-32 rounded-md border border-slate-700 bg-slate-900/80 px-2 py-1 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-accent/60"
+                                className="w-32 rounded-md border border-ax-border bg-ax-section px-2 py-1 text-sm text-ax-body focus:outline-none focus:ring-2 focus:ring-accent/60"
                               />
                             </div>
                             <button
                               type="button"
                               onClick={() => void handleNativeShoutoutThresholdSave(m)}
                               disabled={savingNativeShoutoutThreshold}
-                              className="self-start rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white hover:bg-accent/90 disabled:opacity-60 sm:self-auto"
+                              className="self-start rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-ax-btn-text hover:bg-accent/90 disabled:opacity-60 sm:self-auto"
                             >
                               {savingNativeShoutoutThreshold ? "Saving..." : "Save threshold"}
                             </button>
                           </div>
-                          <p className="mb-1 text-xs text-slate-400">
+                          <p className="mb-1 text-xs text-ax-secondary">
                             Current message: {m.message || defaultRaidShoutoutMessage}
                           </p>
-                          <div className="mt-3 border-t border-slate-800 pt-3">
+                          <div className="mt-3 border-t border-ax-subtle pt-3">
                             <div className="flex flex-col gap-2">
-                              <label className="text-xs font-medium text-slate-300">
+                              <label className="text-xs font-medium text-ax-secondary">
                                 Shoutout message
                               </label>
                               <input
                                 type="text"
                                 value={editMessage}
                                 onChange={(e) => setEditMessage(e.target.value)}
-                                className="w-full rounded-md border border-slate-700 bg-slate-900/80 px-2 py-1 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-accent/60"
+                                className="w-full rounded-md border border-ax-border bg-ax-section px-2 py-1 text-sm text-ax-body focus:outline-none focus:ring-2 focus:ring-accent/60"
                                 placeholder={defaultRaidShoutoutMessage}
                               />
-                              <p className="text-[11px] text-slate-400">
+                              <p className="text-[11px] text-ax-secondary">
                                 You can use $(raider) and $(game) as variables.
                                 This custom chat message is sent independently of the native shoutout toggle above.
                               </p>
                               {editError && (
-                                <div className="text-xs text-red-400">{editError}</div>
+                                <div className="text-xs text-red-300">{editError}</div>
                               )}
                               <div className="mt-1 flex gap-2 justify-end">
                                 <button
@@ -945,7 +964,7 @@ export default function ModulesPage() {
                                     setEditMessage(m.message ?? "");
                                     setEditError(null);
                                   }}
-                                  className="rounded-md border border-slate-700 px-3 py-1 text-xs font-medium text-slate-200 hover:bg-slate-800/80"
+                                  className="rounded-md border border-ax-border px-3 py-1 text-xs font-medium text-ax-body hover:bg-ax-raised"
                                   disabled={savingEdit}
                                 >
                                   Cancel
@@ -986,7 +1005,7 @@ export default function ModulesPage() {
                                       setSavingEdit(false);
                                     }
                                   }}
-                                  className="rounded-md border border-slate-700 px-3 py-1 text-xs font-medium text-slate-200 hover:bg-slate-800/80 disabled:opacity-60"
+                                  className="rounded-md border border-ax-border px-3 py-1 text-xs font-medium text-ax-body hover:bg-ax-raised disabled:opacity-60"
                                   disabled={savingEdit}
                                 >
                                   Restore Default
@@ -1030,7 +1049,7 @@ export default function ModulesPage() {
                                       setSavingEdit(false);
                                     }
                                   }}
-                                  className="rounded-md bg-accent px-3 py-1 text-xs font-medium text-white hover:bg-accent/90 disabled:opacity-60"
+                                  className="rounded-md bg-accent px-3 py-1 text-xs font-medium text-ax-btn-text hover:bg-accent/90 disabled:opacity-60"
                                   disabled={savingEdit}
                                 >
                                   {savingEdit ? "Saving..." : "Save changes"}
@@ -1043,15 +1062,15 @@ export default function ModulesPage() {
 
                       {/* Birthdays module dropdown */}
                       {openModule === m.name && m.name === "birthdays" && (
-                        <div className="border-t border-slate-800 px-4 py-3 text-xs text-slate-200">
-                          <p className="mb-2 text-slate-400">
+                        <div className="border-t border-ax-subtle px-4 py-3 text-xs text-ax-body">
+                          <p className="mb-2 text-ax-secondary">
                             Control individual birthday commands and customize how the bot responds.
                           </p>
                           {birthdayCommandsError && (
-                            <p className="mb-2 text-red-400">{birthdayCommandsError}</p>
+                            <p className="mb-2 text-red-300">{birthdayCommandsError}</p>
                           )}
                           {loadingBirthdayCommands && (
-                            <p className="mb-2 text-slate-400">Loading birthday commands…</p>
+                            <p className="mb-2 text-ax-secondary">Loading birthday commands…</p>
                           )}
                           {!loadingBirthdayCommands && (
                             <div className="space-y-3">
@@ -1061,12 +1080,12 @@ export default function ModulesPage() {
                                 return (
                                 <div
                                   key={cmd.name}
-                                  className="rounded-lg border border-slate-800 bg-slate-950/80 px-3 py-2"
+                                  className="rounded-lg border border-ax-subtle bg-ax-section px-3 py-2"
                                 >
                                   <div className="flex items-center justify-between gap-3">
                                     <div>
                                       <div className="flex items-center gap-2">
-                                        <span className="font-semibold text-slate-100">
+                                        <span className="font-semibold text-ax-body">
                                           {cmd.name}
                                         </span>
                                       </div>
@@ -1092,18 +1111,18 @@ export default function ModulesPage() {
                                             ),
                                           )
                                         }
-                                        className="w-full rounded-md border border-slate-700 bg-slate-900/80 px-2 py-1 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-accent/60"
+                                        className="w-full rounded-md border border-ax-border bg-ax-section px-2 py-1 text-xs text-ax-body focus:outline-none focus:ring-2 focus:ring-accent/60"
                                         placeholder="Leave empty to use the default response"
                                       />
-                                      <p className="text-base font-bold text-slate-400">
+                                      <p className="text-base font-bold text-ax-secondary">
                                         You can use simple placeholders like
                                         {" "}
-                                        <code className="rounded bg-slate-800 px-1 py-0.5 text-[10px]">
+                                        <code className="rounded bg-ax-raised px-1 py-0.5 text-[10px]">
                                           $(names)
                                         </code>
                                         ,
                                         {" "}
-                                        <code className="rounded bg-slate-800 px-1 py-0.5 text-[10px]">
+                                        <code className="rounded bg-ax-raised px-1 py-0.5 text-[10px]">
                                           $(date)
                                         </code>
                                         .
@@ -1114,7 +1133,7 @@ export default function ModulesPage() {
                                           onClick={() =>
                                             handleBirthdayCommandMessageReset(cmd.name)
                                           }
-                                          className="rounded-md border border-slate-700 px-2 py-0.5 text-[11px] text-slate-200 hover:bg-slate-800/80"
+                                          className="rounded-md border border-ax-border px-2 py-0.5 text-[11px] text-ax-body hover:bg-ax-raised"
                                         >
                                           Reset
                                         </button>
@@ -1126,7 +1145,7 @@ export default function ModulesPage() {
                                               cmd.message,
                                             )
                                           }
-                                          className="rounded-md bg-accent px-2 py-0.5 text-[11px] font-medium text-white hover:bg-accent/90"
+                                          className="rounded-md bg-accent px-2 py-0.5 text-[11px] font-medium text-ax-btn-text hover:bg-accent/90"
                                         >
                                           Save
                                         </button>
@@ -1142,7 +1161,7 @@ export default function ModulesPage() {
                     </div>
                   ))}
                   {modules.length === 0 && !loading && !error && (
-                    <p className="text-sm text-slate-400">
+                    <p className="text-sm text-ax-secondary">
                       No modules available yet.
                     </p>
                   )}

@@ -10,6 +10,8 @@ import { usePersistentSectionState } from "../hooks/usePersistentSectionState";
 import { responsiveSidebarClassName, useResponsiveSidebar } from "../hooks/useResponsiveSidebar";
 import { useRequireAuth } from "../hooks/useRequireAuth";
 import { revokeSession } from "../lib/session";
+import NavIcon from "../components/NavIcon";
+import { Star, Trophy } from "lucide-react";
 
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://your-backend.onrender.com";
 
@@ -240,22 +242,23 @@ export default function GiveawaysPage() {
   }, []);
 
   return (
-    <main className="min-h-screen flex flex-col bg-[radial-gradient(circle_at_top,_#1e293b,_#020617)]">
+    <main className="min-h-screen flex flex-col bg-ax-bg">
       {/* ── Header ── */}
       <header className="w-full flex items-center justify-between px-6 py-4">
         <div className="flex items-center gap-4 flex-1">
           <button
+            aria-label="Toggle navigation"
             type="button"
             onClick={toggleSidebar}
-            className="mr-2 rounded-lg bg-slate-900/70 px-3 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800 border border-slate-700"
+            className="mr-2 rounded-lg bg-ax-section px-3 py-2 text-sm font-medium text-ax-body hover:bg-ax-raised border border-ax-border"
           >
-            ☰
+            <NavIcon name="menu" size={20} tone="inherit" />
           </button>
           <Link href="/" className="flex items-center gap-4">
             <Image src={AxyraBotPFP} alt="AxyraBot logo" width={32} height={32} className="rounded-full" />
             <div className="text-2xl font-semibold tracking-tight">
-              <span className="text-accent">Axyra</span>
-              <span className="text-white">Bot</span>
+              <span className="text-ax-accent-text">Axyra</span>
+              <span className="text-ax-heading">Bot</span>
             </div>
           </Link>
         </div>
@@ -265,27 +268,27 @@ export default function GiveawaysPage() {
               <ManagingChannelBadge />
               <Link
                 href="/import"
-                className="inline-flex items-center gap-1 rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1.5 text-xs font-medium text-slate-100 hover:bg-slate-800 hover:border-slate-500 transition"
+                className="inline-flex items-center gap-1 rounded-full border border-ax-border bg-ax-section px-3 py-1.5 text-xs font-medium text-ax-body hover:bg-ax-raised hover:border-ax-muted transition"
               >
-                <span className="text-xs">⬆</span>
+                <NavIcon name="import" size={16} tone="inherit" />
                 <span>Import</span>
               </Link>
               <div className="relative" ref={menuRef}>
                 <button
                   type="button"
-                  onClick={() => setMenuOpen((o) => !o)}
-                  className="flex items-center gap-2 rounded-full bg-slate-900/80 px-1.5 py-1 hover:bg-slate-800 transition"
+                  aria-expanded={menuOpen} onClick={() => setMenuOpen((o) => !o)}
+                  className="flex items-center gap-2 rounded-full bg-ax-section px-1.5 py-1 hover:bg-ax-raised transition"
                 >
                   {avatarUrl && (
                     <Image src={avatarUrl} alt="Twitch profile picture" width={32} height={32} className="rounded-full" />
                   )}
                 </button>
                 {menuOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-36 rounded-lg border border-slate-700 bg-slate-900/95 py-2 shadow-lg">
+                  <div className="absolute right-0 top-full mt-2 w-36 rounded-lg border border-ax-border bg-ax-section py-2 shadow-lg">
                     <button
                       type="button"
                       onClick={handleLogout}
-                      className="w-full px-4 py-2 text-sm text-left text-slate-200 hover:bg-slate-800"
+                      className="w-full px-4 py-2 text-sm text-left text-ax-body hover:bg-ax-raised"
                     >
                       Log out
                     </button>
@@ -302,65 +305,105 @@ export default function GiveawaysPage() {
         {mobileSidebarOpen && <button type="button" aria-label="Close dashboard menu" onClick={closeMobileSidebar} className="fixed inset-0 z-40 bg-black/60 md:hidden" />}
         {/* Sidebar */}
         <div className={responsiveSidebarClassName(sidebarOpen, mobileSidebarOpen)}>
-          <div className="mb-3 flex items-center justify-between border-b border-slate-800 px-2 pb-3 md:hidden">
-            <span className="text-sm font-semibold text-slate-100">Dashboard menu</span>
-            <button type="button" onClick={closeMobileSidebar} className="rounded-md px-2 py-1 text-sm text-slate-400 hover:bg-slate-800 hover:text-white">Close</button>
+          <div className="mb-3 flex items-center justify-between border-b border-ax-subtle px-2 pb-3 md:hidden">
+            <span className="text-sm font-semibold text-ax-body">Dashboard menu</span>
+            <button type="button" onClick={closeMobileSidebar} className="rounded-md px-2 py-1 text-sm text-ax-secondary hover:bg-ax-raised hover:text-ax-heading">Close</button>
           </div>
-          <nav className="mt-1 flex flex-col gap-4 text-sm text-slate-200">
+          <nav className="mt-1 flex flex-col gap-4 text-sm text-ax-body">
             {/* Main */}
             <div className="flex flex-col gap-2">
-              <button type="button" onClick={() => setMainSectionOpen((o) => !o)} className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-200">
+              <button type="button" aria-expanded={mainSectionOpen} onClick={() => setMainSectionOpen((o) => !o)} className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary hover:text-ax-body">
                 <span>Main</span>
-                {sidebarOpen && <span className="text-base font-bold">{mainSectionOpen ? "▾" : "▸"}</span>}
+                {sidebarOpen && <NavIcon name={mainSectionOpen ? "chevronDown" : "chevronRight"} size={16} tone="inherit" />}
               </button>
               {mainSectionOpen && (
                 <>
-                  <Link href="/dashboard" className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${pathname === "/dashboard" ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]" : "text-slate-200 hover:bg-slate-800/80"}`}>
-                    <span className="text-lg">📊</span>{sidebarOpen && <span>Dashboard</span>}
+                  <Link href="/dashboard" aria-current={pathname === "/dashboard" ? "page" : undefined}
+ className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+   pathname === "/dashboard"
+     ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+     : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}>
+                    <NavIcon name="dashboard" />{sidebarOpen ? <span>Dashboard</span> : <span className="sr-only">Dashboard</span>}
                   </Link>
-                  <Link href="/commands" className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${pathname === "/commands" ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]" : "text-slate-200 hover:bg-slate-800/80"}`}>
-                    <span className="text-lg">❓</span>{sidebarOpen && <span>Commands</span>}
+                  <Link href="/commands" aria-current={pathname === "/commands" ? "page" : undefined}
+ className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+   pathname === "/commands"
+     ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+     : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}>
+                    <NavIcon name="commands" />{sidebarOpen ? <span>Commands</span> : <span className="sr-only">Commands</span>}
                   </Link>
                 </>
               )}
             </div>
             {/* Moderation */}
             <div className="flex flex-col gap-2">
-              <button type="button" onClick={() => setModerationOpen((o) => !o)} className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-200">
+              <button type="button" aria-expanded={moderationOpen} onClick={() => setModerationOpen((o) => !o)} className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary hover:text-ax-body">
                 <span>Moderation</span>
-                {sidebarOpen && <span className="text-base font-bold">{moderationOpen ? "▾" : "▸"}</span>}
+                {sidebarOpen && <NavIcon name={moderationOpen ? "chevronDown" : "chevronRight"} size={16} tone="inherit" />}
               </button>
               {moderationOpen && (
                 <>
-                  <Link href="/moderation/blocked-terms" className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${pathname === "/moderation/blocked-terms" ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]" : "text-slate-200 hover:bg-slate-800/80"}`}>
-                    <span className="text-lg">🚫</span>{sidebarOpen && <span>Blocked Terms</span>}
+                  <Link href="/moderation/blocked-terms" aria-current={pathname === "/moderation/blocked-terms" ? "page" : undefined}
+ className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+   pathname === "/moderation/blocked-terms"
+     ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+     : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}>
+                    <NavIcon name="blockedTerms" />{sidebarOpen ? <span>Blocked Terms</span> : <span className="sr-only">Blocked Terms</span>}
                   </Link>
-                  <Link href="/moderation/spam-filters" className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${pathname === "/moderation/spam-filters" ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]" : "text-slate-200 hover:bg-slate-800/80"}`}>
-                    <span className="text-lg">🧹</span>{sidebarOpen && <span>Spam Filters</span>}
+                  <Link href="/moderation/spam-filters" aria-current={pathname === "/moderation/spam-filters" ? "page" : undefined}
+ className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+   pathname === "/moderation/spam-filters"
+     ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+     : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}>
+                    <NavIcon name="spamFilters" />{sidebarOpen ? <span>Spam Filters</span> : <span className="sr-only">Spam Filters</span>}
                   </Link>
                 </>
               )}
             </div>
             {/* Vanity */}
             <div className="flex flex-col gap-2">
-              <button type="button" onClick={() => setVanitySectionOpen((o) => !o)} className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-200">
+              <button type="button" aria-expanded={vanitySectionOpen} onClick={() => setVanitySectionOpen((o) => !o)} className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary hover:text-ax-body">
                 <span>Vanity</span>
-                {sidebarOpen && <span className="text-base font-bold">{vanitySectionOpen ? "▾" : "▸"}</span>}
+                {sidebarOpen && <NavIcon name={vanitySectionOpen ? "chevronDown" : "chevronRight"} size={16} tone="inherit" />}
               </button>
               {vanitySectionOpen && (
                 <>
-                  <Link href="/modules" className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${pathname === "/modules" ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]" : "text-slate-200 hover:bg-slate-800/80"}`}>
-                    <span className="text-lg">🧩</span>{sidebarOpen && <span>Modules</span>}
+                  <Link href="/modules" aria-current={pathname === "/modules" ? "page" : undefined}
+ className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+   pathname === "/modules"
+     ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+     : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}>
+                    <NavIcon name="modules" />{sidebarOpen ? <span>Modules</span> : <span className="sr-only">Modules</span>}
                   </Link>
-                  <Link href="/birthdays" className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${pathname === "/birthdays" ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]" : "text-slate-200 hover:bg-slate-800/80"}`}>
-                    <span className="text-lg">🎂</span>{sidebarOpen && <span>Birthdays</span>}
+                  <Link href="/birthdays" aria-current={pathname === "/birthdays" ? "page" : undefined}
+ className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+   pathname === "/birthdays"
+     ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+     : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}>
+                    <NavIcon name="birthdays" />{sidebarOpen ? <span>Birthdays</span> : <span className="sr-only">Birthdays</span>}
                   </Link>
-                  <Link href="/giveaways" className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${pathname === "/giveaways" ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]" : "text-slate-200 hover:bg-slate-800/80"}`}>
-                    <span className="text-lg">🎁</span>{sidebarOpen && <span>Giveaways</span>}
+                  <Link href="/giveaways" aria-current={pathname === "/giveaways" ? "page" : undefined}
+ className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+   pathname === "/giveaways"
+     ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+     : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}>
+                    <NavIcon name="giveaways" />{sidebarOpen ? <span>Giveaways</span> : <span className="sr-only">Giveaways</span>}
                   </Link>
                   {!isEditor && (
-                    <Link href="/roles" className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${pathname === "/roles" ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]" : "text-slate-200 hover:bg-slate-800/80"}`}>
-                      <span className="text-lg">🎭</span>{sidebarOpen && <span>Roles</span>}
+                    <Link href="/roles" aria-current={pathname === "/roles" ? "page" : undefined}
+ className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+   pathname === "/roles"
+     ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+     : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}>
+                      <NavIcon name="roles" />{sidebarOpen ? <span>Roles</span> : <span className="sr-only">Roles</span>}
                     </Link>
                   )}
                 </>
@@ -368,29 +411,49 @@ export default function GiveawaysPage() {
             </div>
             {/* Integrations */}
             <div className="flex flex-col gap-2">
-              <button type="button" onClick={() => {}} className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+              <button type="button" onClick={() => {}} className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary">
                 <span>Integrations</span>
               </button>
-              <Link href="/discord/settings" className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${pathname === "/discord/settings" ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]" : "text-slate-200 hover:bg-slate-800/80"}`}>
-                <span className="text-lg">🎮</span>{sidebarOpen && <span>Discord</span>}
+              <Link href="/discord/settings" aria-current={pathname === "/discord/settings" ? "page" : undefined}
+ className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+   pathname === "/discord/settings"
+     ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+     : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}>
+                <NavIcon name="discord" />{sidebarOpen ? <span>Discord</span> : <span className="sr-only">Discord</span>}
               </Link>
             </div>
             {/* Other */}
             <div className="flex flex-col gap-2">
-              <button type="button" onClick={() => setOtherSectionOpen((o) => !o)} className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-200">
+              <button type="button" aria-expanded={otherSectionOpen} onClick={() => setOtherSectionOpen((o) => !o)} className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary hover:text-ax-body">
                 <span>Other</span>
-                {sidebarOpen && <span className="text-base font-bold">{otherSectionOpen ? "▾" : "▸"}</span>}
+                {sidebarOpen && <NavIcon name={otherSectionOpen ? "chevronDown" : "chevronRight"} size={16} tone="inherit" />}
               </button>
               {otherSectionOpen && (
                 <>
-                  <Link href="/privacy" className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${pathname === "/privacy" ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]" : "text-slate-200 hover:bg-slate-800/80"}`}>
-                    <span className="text-lg">🔒</span>{sidebarOpen && <span>Privacy</span>}
+                  <Link href="/privacy" aria-current={pathname === "/privacy" ? "page" : undefined}
+ className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+   pathname === "/privacy"
+     ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+     : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}>
+                    <NavIcon name="privacy" />{sidebarOpen ? <span>Privacy</span> : <span className="sr-only">Privacy</span>}
                   </Link>
-                  <Link href="/terms" className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${pathname === "/terms" ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]" : "text-slate-200 hover:bg-slate-800/80"}`}>
-                    <span className="text-lg">📜</span>{sidebarOpen && <span>Terms</span>}
+                  <Link href="/terms" aria-current={pathname === "/terms" ? "page" : undefined}
+ className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+   pathname === "/terms"
+     ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+     : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}>
+                    <NavIcon name="terms" />{sidebarOpen ? <span>Terms</span> : <span className="sr-only">Terms</span>}
                   </Link>
-                  <Link href="/api-docs" className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${pathname === "/api-docs" ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]" : "text-slate-200 hover:bg-slate-800/80"}`}>
-                    <span className="text-lg">📘</span>{sidebarOpen && <span>API Docs</span>}
+                  <Link href="/api-docs" aria-current={pathname === "/api-docs" ? "page" : undefined}
+ className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+   pathname === "/api-docs"
+     ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+     : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}>
+                    <NavIcon name="apiDocs" />{sidebarOpen ? <span>API Docs</span> : <span className="sr-only">API Docs</span>}
                   </Link>
                 </>
               )}
@@ -399,20 +462,20 @@ export default function GiveawaysPage() {
         </div>
 
         {/* ── Three-panel giveaway layout ── */}
-        <div className="flex flex-1 gap-4 text-slate-50 min-h-0 overflow-hidden">
+        <div className="flex flex-1 gap-4 text-ax-heading min-h-0 overflow-hidden">
 
           {/* Users Panel */}
-          <div className="flex w-64 shrink-0 flex-col rounded-2xl border border-slate-800 bg-slate-900/80 p-4">
+          <div className="flex w-64 shrink-0 flex-col rounded-2xl border border-ax-subtle bg-ax-section p-4">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="font-semibold text-slate-100">Users</h2>
+              <h2 className="font-semibold text-ax-body">Users</h2>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-400">{entries.length} Users</span>
+                <span className="text-xs text-ax-secondary">{entries.length} Users</span>
                 {entries.length > 0 && (
                   <button
                     type="button"
                     onClick={handleClear}
                     title="Clear all entries"
-                    className="text-slate-400 hover:text-slate-200 transition"
+                    className="text-ax-secondary hover:text-ax-body transition"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
                       <path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 1 0 .23 1.482l.149-.022.841 10.518A2.75 2.75 0 0 0 7.596 19h4.807a2.75 2.75 0 0 0 2.742-2.53l.841-10.52.149.023a.75.75 0 0 0 .23-1.482A41.03 41.03 0 0 0 14 4.193V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4ZM8.58 7.72a.75.75 0 0 0-1.5.06l.3 7.5a.75.75 0 1 0 1.5-.06l-.3-7.5Zm4.34.06a.75.75 0 1 0-1.5-.06l-.3 7.5a.75.75 0 1 0 1.5.06l.3-7.5Z" clipRule="evenodd" />
@@ -423,7 +486,7 @@ export default function GiveawaysPage() {
             </div>
             {/* Search */}
             <div className="relative mb-3">
-              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500">
+              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ax-muted">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
                   <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9Z" clipRule="evenodd" />
                 </svg>
@@ -433,31 +496,36 @@ export default function GiveawaysPage() {
                 placeholder="Search Users..."
                 value={userSearch}
                 onChange={(e) => setUserSearch(e.target.value)}
-                className="w-full rounded-lg border border-slate-700 bg-slate-800 py-1.5 pl-8 pr-3 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="w-full rounded-lg border border-ax-border bg-ax-raised py-1.5 pl-8 pr-3 text-xs text-ax-body placeholder-ax-muted focus:outline-none focus:ring-1 focus:ring-ax-focus"
               />
             </div>
             {/* Entry list */}
             <div className="flex-1 overflow-y-auto flex flex-col gap-1">
               {filteredEntries.length === 0 && (
-                <p className="text-center text-xs text-slate-500 mt-8">
+                <p className="text-center text-xs text-ax-muted mt-8">
                   {entries.length === 0 ? "No entries yet." : "No results."}
                 </p>
               )}
               {filteredEntries.map((e) => (
                 <div
                   key={e.login}
-                  className="flex items-center justify-between rounded-lg px-2 py-1.5 text-xs hover:bg-slate-800/60 group"
+                  className="flex items-center justify-between rounded-lg px-2 py-1.5 text-xs hover:bg-ax-raised group"
                 >
                   <div className="flex items-center gap-1.5 min-w-0">
-                    {e.isMod && <span title="Moderator" className="text-xs font-bold text-green-400">MOD</span>}
-                    {e.isVip && <span title="VIP" className="text-xs font-bold text-pink-400">VIP</span>}
-                    {e.isSubscriber && <span title="Subscriber" className="text-purple-400">★</span>}
-                    <span className="truncate text-slate-200">{e.displayName || e.login}</span>
+                    {e.isMod && <span title="Moderator" className="text-xs font-bold text-green-300">MOD</span>}
+                    {e.isVip && <span title="VIP" className="text-xs font-bold text-pink-300">VIP</span>}
+                    {e.isSubscriber && (
+                      <span title="Subscriber" className="inline-flex text-purple-300">
+                        <Star aria-hidden="true" strokeWidth={1.75} size={14} fill="currentColor" />
+                        <span className="sr-only">Subscriber</span>
+                      </span>
+                    )}
+                    <span className="truncate text-ax-body">{e.displayName || e.login}</span>
                   </div>
                   <button
                     type="button"
                     onClick={() => handleRemoveEntry(e.login)}
-                    className="ml-1 shrink-0 text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition"
+                    className="ml-1 shrink-0 text-ax-muted hover:text-red-300 opacity-0 group-hover:opacity-100 transition"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-3.5 w-3.5">
                       <path d="M5.28 4.22a.75.75 0 0 0-1.06 1.06L6.94 8l-2.72 2.72a.75.75 0 1 0 1.06 1.06L8 9.06l2.72 2.72a.75.75 0 1 0 1.06-1.06L9.06 8l2.72-2.72a.75.75 0 0 0-1.06-1.06L8 6.94 5.28 4.22Z" />
@@ -469,12 +537,12 @@ export default function GiveawaysPage() {
           </div>
 
           {/* Settings Panel */}
-          <div className="flex flex-1 flex-col rounded-2xl border border-slate-800 bg-slate-900/80 p-6 overflow-y-auto">
+          <div className="flex flex-1 flex-col rounded-2xl border border-ax-subtle bg-ax-section p-6 overflow-y-auto">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h1 className="text-xl font-semibold">Giveaways</h1>
-                <p className="text-sm text-slate-400 mt-0.5">Reward your viewers with giveaways.</p>
+                <p className="text-sm text-ax-secondary mt-0.5">Reward your viewers with giveaways.</p>
               </div>
               <button
                 type="button"
@@ -482,8 +550,8 @@ export default function GiveawaysPage() {
                 disabled={loadingToggle || !login}
                 className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold transition disabled:opacity-50 ${
                   isActive
-                    ? "bg-red-600 hover:bg-red-500 text-white"
-                    : "bg-emerald-600 hover:bg-emerald-500 text-white"
+                    ? "bg-red-600 hover:bg-red-500 text-ax-heading"
+                    : "bg-emerald-600 hover:bg-emerald-500 text-ax-heading"
                 }`}
               >
                 {isActive ? (
@@ -503,9 +571,9 @@ export default function GiveawaysPage() {
             {/* Keyword phrase */}
             <div className="mb-5">
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-sm font-medium text-slate-300">Keyword Phrase</span>
+                <span className="text-sm font-medium text-ax-secondary">Keyword Phrase</span>
                 <label className="flex items-center gap-2 cursor-pointer">
-                  <span className="text-xs text-slate-400">Chat Announcements</span>
+                  <span className="text-xs text-ax-secondary">Chat Announcements</span>
                   <input
                     type="checkbox"
                     checked={chatAnnounce}
@@ -519,16 +587,16 @@ export default function GiveawaysPage() {
                 placeholder="Keyword Phrase"
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
-                className="w-full rounded-lg border border-slate-700 bg-slate-800/60 px-4 py-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full rounded-lg border border-ax-border bg-ax-raised px-4 py-3 text-sm text-ax-body placeholder-ax-muted focus:outline-none focus:ring-2 focus:ring-ax-focus"
               />
-              <p className="mt-1.5 text-xs text-slate-500">
+              <p className="mt-1.5 text-xs text-ax-muted">
                 The message must exactly match the keyword — case-sensitive. No extra text allowed.
               </p>
             </div>
 
             {/* Subscriber luck multiplier */}
             <div className="mb-8">
-              <label className="mb-2 block text-sm font-medium text-slate-300">
+              <label className="mb-2 block text-sm font-medium text-ax-secondary">
                 Subscriber luck multiplier
               </label>
               <div className="flex items-center gap-3">
@@ -541,11 +609,11 @@ export default function GiveawaysPage() {
                   onChange={(e) => setSubMultiplier(Number(e.target.value))}
                   className="flex-1 accent-indigo-500"
                 />
-                <div className="flex h-8 w-16 items-center justify-center rounded border border-slate-700 bg-slate-800 text-sm text-slate-100">
+                <div className="flex h-8 w-16 items-center justify-center rounded border border-ax-border bg-ax-raised text-sm text-ax-body">
                   {subMultiplier}x
                 </div>
               </div>
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 text-xs text-ax-muted">
                 {subMultiplier === 1
                   ? "Subscribers have the same luck as everyone else in the giveaway."
                   : `Subscribers have ${subMultiplier}x more chances to win.`}
@@ -555,22 +623,22 @@ export default function GiveawaysPage() {
             {/* Winner display / Pick button */}
             {winner ? (
               <div className="rounded-xl border border-yellow-500/40 bg-yellow-500/10 p-4 text-center">
-                <p className="text-xs uppercase tracking-wide text-yellow-400 mb-1">🎉 Winner</p>
+                <p className="mb-1 flex items-center justify-center gap-1.5 text-xs uppercase tracking-wide text-yellow-300"><Trophy aria-hidden="true" strokeWidth={1.75} size={16} /> Winner</p>
                 <p className="text-2xl font-bold text-yellow-200">{winner.displayName || winner.login}</p>
-                <p className="text-xs text-slate-400 mt-1">@{winner.login}{winner.isSubscriber ? " · Subscriber" : ""}</p>
+                <p className="text-xs text-ax-secondary mt-1">@{winner.login}{winner.isSubscriber ? " · Subscriber" : ""}</p>
                 <div className="mt-3 flex justify-center gap-2">
                   <button
                     type="button"
                     onClick={handlePickWinner}
                     disabled={pickingWinner || entries.length === 0}
-                    className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs text-slate-200 hover:bg-slate-700 disabled:opacity-40 transition"
+                    className="rounded-lg border border-ax-border bg-ax-raised px-3 py-1.5 text-xs text-ax-body hover:bg-ax-raised disabled:opacity-40 transition"
                   >
                     Reroll
                   </button>
                   <button
                     type="button"
                     onClick={handleClear}
-                    className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs text-slate-200 hover:bg-slate-700 transition"
+                    className="rounded-lg border border-ax-border bg-ax-raised px-3 py-1.5 text-xs text-ax-body hover:bg-ax-raised transition"
                   >
                     Clear
                   </button>
@@ -581,7 +649,7 @@ export default function GiveawaysPage() {
                 type="button"
                 onClick={handlePickWinner}
                 disabled={pickingWinner || entries.length === 0}
-                className="w-full rounded-lg bg-slate-700/60 py-3 text-sm font-semibold uppercase tracking-widest text-slate-400 hover:bg-slate-700 hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-50 transition"
+                className="w-full rounded-lg bg-ax-raised py-3 text-sm font-semibold uppercase tracking-widest text-ax-body hover:bg-ax-border hover:text-ax-heading disabled:cursor-not-allowed disabled:opacity-50 transition"
               >
                 {entries.length === 0 ? "NO ENTRIES YET" : pickingWinner ? "PICKING…" : "PICK WINNER"}
               </button>
@@ -589,11 +657,11 @@ export default function GiveawaysPage() {
           </div>
 
           {/* Chat Panel */}
-          <div className="flex w-96 shrink-0 flex-col rounded-2xl border border-slate-800 bg-slate-900/80 overflow-hidden">
-            <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
-              <h2 className="font-semibold text-slate-100">Stream Chat</h2>
+          <div className="flex w-96 shrink-0 flex-col rounded-2xl border border-ax-subtle bg-ax-section overflow-hidden">
+            <div className="flex items-center justify-between border-b border-ax-subtle px-4 py-3">
+              <h2 className="font-semibold text-ax-body">Stream Chat</h2>
               {chatChannel && (
-                <span className="text-xs text-slate-500">#{chatChannel}</span>
+                <span className="text-xs text-ax-muted">#{chatChannel}</span>
               )}
             </div>
             <div className="flex-1 min-h-0">
@@ -605,7 +673,7 @@ export default function GiveawaysPage() {
                 />
               ) : (
                 <div className="flex h-full items-center justify-center">
-                  <p className="text-xs text-slate-500">Log in to view chat.</p>
+                  <p className="text-xs text-ax-muted">Log in to view chat.</p>
                 </div>
               )}
             </div>

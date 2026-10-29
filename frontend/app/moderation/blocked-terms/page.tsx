@@ -10,6 +10,7 @@ import { useRequireAuth } from "../../hooks/useRequireAuth";
 import AxyraLogo from "../../images/AxyraBotPFP.png";
 import ManagingChannelBadge from "../../components/ManagingChannelBadge";
 import { revokeSession } from "../../lib/session";
+import NavIcon from "../../components/NavIcon";
 
 const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL || "";
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://your-backend.onrender.com";
@@ -134,15 +135,16 @@ export default function BlockedTermsPage() {
   }, [showAddModal]);
 
   return (
-    <main className="min-h-screen flex flex-col bg-[radial-gradient(circle_at_top,_#1e293b,_#020617)]">
+    <main className="min-h-screen flex flex-col bg-ax-bg">
       <header className="w-full flex items-center justify-between px-6 py-4">
         <div className="flex items-center gap-4 flex-1">
           <button
+            aria-label="Toggle navigation"
             type="button"
-            onClick={() => setSidebarOpen((open) => !open)}
-            className="mr-2 rounded-lg bg-slate-900/70 px-3 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800 border border-slate-700"
+            aria-expanded={sidebarOpen} onClick={() => setSidebarOpen((open) => !open)}
+            className="mr-2 rounded-lg bg-ax-section px-3 py-2 text-sm font-medium text-ax-body hover:bg-ax-raised border border-ax-border"
           >
-            ☰
+            <NavIcon name="menu" size={20} tone="inherit" />
           </button>
           <Link href="/" className="flex items-center gap-4">
             <Image
@@ -153,8 +155,8 @@ export default function BlockedTermsPage() {
               className="rounded-full"
             />
             <div className="text-2xl font-semibold tracking-tight">
-              <span className="text-accent">Axyra</span>
-              <span className="text-white">Bot</span>
+              <span className="text-ax-accent-text">Axyra</span>
+              <span className="text-ax-heading">Bot</span>
             </div>
           </Link>
         </div>
@@ -165,16 +167,16 @@ export default function BlockedTermsPage() {
               <ManagingChannelBadge />
               <Link
                 href="/import"
-                className="inline-flex items-center gap-1 rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1.5 text-xs font-medium text-slate-100 hover:bg-slate-800 hover:border-slate-500 transition"
+                className="inline-flex items-center gap-1 rounded-full border border-ax-border bg-ax-section px-3 py-1.5 text-xs font-medium text-ax-body hover:bg-ax-raised hover:border-ax-muted transition"
               >
-                <span className="text-xs">⬆</span>
+                <NavIcon name="import" size={16} tone="inherit" />
                 <span>Import</span>
               </Link>
               <div className="relative" ref={menuRef}>
                 <button
                   type="button"
-                  onClick={() => setMenuOpen((open) => !open)}
-                  className="flex items-center gap-2 rounded-full bg-slate-900/80 px-1.5 py-1 hover:bg-slate-800 transition"
+                  aria-expanded={menuOpen} onClick={() => setMenuOpen((open) => !open)}
+                  className="flex items-center gap-2 rounded-full bg-ax-section px-1.5 py-1 hover:bg-ax-raised transition"
                 >
                   {avatarUrl && (
                     <Image
@@ -187,11 +189,11 @@ export default function BlockedTermsPage() {
                   )}
                 </button>
                 {menuOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-36 rounded-lg border border-slate-700 bg-slate-900/95 py-2 shadow-lg">
+                  <div className="absolute right-0 top-full mt-2 w-36 rounded-lg border border-ax-border bg-ax-section py-2 shadow-lg">
                     <button
                       type="button"
                       onClick={handleLogout}
-                      className="w-full px-4 py-2 text-sm text-left text-slate-200 hover:bg-slate-800"
+                      className="w-full px-4 py-2 text-sm text-left text-ax-body hover:bg-ax-raised"
                     >
                       Log out
                     </button>
@@ -205,43 +207,45 @@ export default function BlockedTermsPage() {
 
       <div className="flex flex-1 w-full gap-6 px-4 pb-6 items-stretch">
         <div
-          className={`${sidebarOpen ? "w-60" : "w-16"} flex flex-col rounded-2xl border border-slate-800 bg-slate-900/80 p-3 transition-all duration-200`}
+          className={`${sidebarOpen ? "w-60" : "w-16"} flex flex-col rounded-2xl border border-ax-subtle bg-ax-section p-3 transition-all duration-200`}
         >
-          <nav className="mt-1 flex flex-col gap-4 text-sm text-slate-200">
+          <nav className="mt-1 flex flex-col gap-4 text-sm text-ax-body">
             {/* Main section */}
             <div className="flex flex-col gap-2">
               <button
                 type="button"
-                onClick={() => setMainSectionOpen((open) => !open)}
-                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-200"
+                aria-expanded={mainSectionOpen} onClick={() => setMainSectionOpen((open) => !open)}
+                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary hover:text-ax-body"
               >
                 <span>Main</span>
-                {sidebarOpen && <span className="text-base font-bold">{mainSectionOpen ? "▾" : "▸"}</span>}
+                {sidebarOpen && <NavIcon name={mainSectionOpen ? "chevronDown" : "chevronRight"} size={16} tone="inherit" />}
               </button>
               {mainSectionOpen && (
                 <>
                   <Link
                     href="/dashboard"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/dashboard" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/dashboard"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">📊</span>
-                    {sidebarOpen && <span>Dashboard</span>}
+                    <NavIcon name="dashboard" />
+                    {sidebarOpen ? <span>Dashboard</span> : <span className="sr-only">Dashboard</span>}
                   </Link>
 
                   <Link
                     href="/commands"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/commands" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/commands"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">❓</span>
-                    {sidebarOpen && <span>Commands</span>}
+                    <NavIcon name="commands" />
+                    {sidebarOpen ? <span>Commands</span> : <span className="sr-only">Commands</span>}
                   </Link>
 
                 </>
@@ -252,37 +256,39 @@ export default function BlockedTermsPage() {
             <div className="flex flex-col gap-2">
               <button
                 type="button"
-                onClick={() => setModerationOpen((open) => !open)}
-                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-200"
+                aria-expanded={moderationOpen} onClick={() => setModerationOpen((open) => !open)}
+                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary hover:text-ax-body"
               >
                 <span>Moderation</span>
                 {sidebarOpen && (
-                  <span className="text-base font-bold">{moderationOpen ? "▾" : "▸"}</span>
+                  <NavIcon name={moderationOpen ? "chevronDown" : "chevronRight"} size={16} tone="inherit" />
                 )}
               </button>
               {moderationOpen && (
                 <>
                   <Link
                     href="/moderation/blocked-terms"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/moderation/blocked-terms" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/moderation/blocked-terms"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">🚫</span>
-                    {sidebarOpen && <span>Blocked Terms</span>}
+                    <NavIcon name="blockedTerms" />
+                    {sidebarOpen ? <span>Blocked Terms</span> : <span className="sr-only">Blocked Terms</span>}
                   </Link>
                   <Link
                     href="/moderation/spam-filters"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/moderation/spam-filters" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/moderation/spam-filters"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">🧹</span>
-                    {sidebarOpen && <span>Spam Filters</span>}
+                    <NavIcon name="spamFilters" />
+                    {sidebarOpen ? <span>Spam Filters</span> : <span className="sr-only">Spam Filters</span>}
                   </Link>
                 </>
               )}
@@ -292,58 +298,62 @@ export default function BlockedTermsPage() {
             <div className="flex flex-col gap-2">
               <button
                 type="button"
-                onClick={() => setVanitySectionOpen((open) => !open)}
-                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-200"
+                aria-expanded={vanitySectionOpen} onClick={() => setVanitySectionOpen((open) => !open)}
+                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary hover:text-ax-body"
               >
                 <span>Vanity</span>
-                {sidebarOpen && <span className="text-base font-bold">{vanitySectionOpen ? "▾" : "▸"}</span>}
+                {sidebarOpen && <NavIcon name={vanitySectionOpen ? "chevronDown" : "chevronRight"} size={16} tone="inherit" />}
               </button>
               {vanitySectionOpen && (
                 <>
                   <Link
                     href="/modules"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/modules" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/modules"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">🧩</span>
-                    {sidebarOpen && <span>Modules</span>}
+                    <NavIcon name="modules" />
+                    {sidebarOpen ? <span>Modules</span> : <span className="sr-only">Modules</span>}
                   </Link>
                   <Link
                     href="/birthdays"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/birthdays" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/birthdays"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">🎂</span>
-                    {sidebarOpen && <span>Birthdays</span>}
+                    <NavIcon name="birthdays" />
+                    {sidebarOpen ? <span>Birthdays</span> : <span className="sr-only">Birthdays</span>}
                   </Link>
                   <Link
                     href="/giveaways"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/giveaways" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/giveaways"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">🎁</span>
-                    {sidebarOpen && <span>Giveaways</span>}
+                    <NavIcon name="giveaways" />
+                    {sidebarOpen ? <span>Giveaways</span> : <span className="sr-only">Giveaways</span>}
                   </Link>
                   {!isEditor && (
                   <Link
                     href="/roles"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/roles" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/roles"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">🎭</span>
-                    {sidebarOpen && <span>Roles</span>}
+                    <NavIcon name="roles" />
+                    {sidebarOpen ? <span>Roles</span> : <span className="sr-only">Roles</span>}
                   </Link>
                   )}
                 </>
@@ -352,13 +362,16 @@ export default function BlockedTermsPage() {
 
             {/* Integrations section */}
             <div className="flex flex-col gap-2">
-              <button type="button" onClick={() => {}} className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+              <button type="button" onClick={() => {}} className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary">
                 <span>Integrations</span>
               </button>
-              <Link href="/discord/settings" className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
-                pathname === "/discord/settings" ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]" : "text-slate-200 hover:bg-slate-800/80"
-              }`}>
-                <span className="text-lg">🎮</span>{sidebarOpen && <span>Discord</span>}
+              <Link href="/discord/settings" aria-current={pathname === "/discord/settings" ? "page" : undefined}
+ className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+   pathname === "/discord/settings"
+     ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+     : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}>
+                <NavIcon name="discord" />{sidebarOpen ? <span>Discord</span> : <span className="sr-only">Discord</span>}
               </Link>
             </div>
 
@@ -366,46 +379,49 @@ export default function BlockedTermsPage() {
             <div className="flex flex-col gap-2">
               <button
                 type="button"
-                onClick={() => setOtherSectionOpen((open) => !open)}
-                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-200"
+                aria-expanded={otherSectionOpen} onClick={() => setOtherSectionOpen((open) => !open)}
+                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary hover:text-ax-body"
               >
                 <span>Other</span>
-                {sidebarOpen && <span className="text-base font-bold">{otherSectionOpen ? "▾" : "▸"}</span>}
+                {sidebarOpen && <NavIcon name={otherSectionOpen ? "chevronDown" : "chevronRight"} size={16} tone="inherit" />}
               </button>
               {otherSectionOpen && (
                 <>
                   <Link
                     href="/privacy"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/privacy" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/privacy"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">🔒</span>
-                    {sidebarOpen && <span>Privacy</span>}
+                    <NavIcon name="privacy" />
+                    {sidebarOpen ? <span>Privacy</span> : <span className="sr-only">Privacy</span>}
                   </Link>
                   <Link
                     href="/terms"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/terms" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/terms"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">📄</span>
-                    {sidebarOpen && <span>Terms</span>}
+                    <NavIcon name="terms" />
+                    {sidebarOpen ? <span>Terms</span> : <span className="sr-only">Terms</span>}
                   </Link>
                   <Link
                     href="/api-docs"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/api-docs" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/api-docs"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">📘</span>
-                    {sidebarOpen && <span>API Docs</span>}
+                    <NavIcon name="apiDocs" />
+                    {sidebarOpen ? <span>API Docs</span> : <span className="sr-only">API Docs</span>}
                   </Link>
                 </>
               )}
@@ -414,27 +430,27 @@ export default function BlockedTermsPage() {
         </div>
 
         <main className="flex-1 overflow-hidden">
-          <div className="h-full rounded-2xl border border-slate-800 bg-slate-900/80 p-6 shadow-lg shadow-slate-950/40 flex flex-col">
+          <div className="h-full rounded-2xl border border-ax-subtle bg-ax-section p-6 shadow-lg shadow-black/30 flex flex-col">
             <div className="mb-4 flex items-center justify-between gap-4">
               <div>
-                <h1 className="text-xl font-semibold text-slate-50">Blocked Terms</h1>
-                <p className="mt-1 text-sm text-slate-400">
+                <h1 className="text-xl font-semibold text-ax-heading">Blocked Terms</h1>
+                <p className="mt-1 text-sm text-ax-secondary">
                   Words and phrases that trigger an automatic action in your chat.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => { setNewTerm(""); setNewAction("delete"); setTimeoutSeconds("60"); setAddError(null); setShowAddModal(true); }}
-                className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent/90 transition shadow-[0_0_14px_rgba(129,140,248,0.4)]"
+                className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-ax-btn-text hover:bg-accent/90 transition shadow-[0_0_14px_rgba(56,189,248,0.35)]"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4"><path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" /></svg>
                 Add Blocked Term
               </button>
             </div>
 
-            <div className="flex-1 overflow-auto rounded-xl border border-slate-800 bg-slate-950/60 min-h-0">
+            <div className="flex-1 overflow-auto rounded-xl border border-ax-subtle bg-ax-section min-h-0">
               <table className="min-w-full w-full table-fixed h-full text-sm text-left">
-                <thead className="bg-slate-900/80 text-slate-300 sticky top-0 z-10">
+                <thead className="bg-ax-section text-ax-secondary sticky top-0 z-10">
                   <tr>
                     <th className="px-4 py-3 font-semibold">Term</th>
                     <th className="px-4 py-3 font-semibold w-40">Action</th>
@@ -443,9 +459,9 @@ export default function BlockedTermsPage() {
                 </thead>
                 <tbody>
                   {blockedTerms.map((row) => (
-                    <tr key={row.id} className="border-t border-slate-800 hover:bg-slate-900/60">
-                      <td className="px-4 py-2 font-mono text-slate-100 truncate">{row.term}</td>
-                      <td className="px-4 py-2 text-slate-300 capitalize">
+                    <tr key={row.id} className="border-t border-ax-subtle hover:bg-ax-section">
+                      <td className="px-4 py-2 font-mono text-ax-body truncate">{row.term}</td>
+                      <td className="px-4 py-2 text-ax-secondary capitalize">
                         {row.action === "timeout" ? `Timeout (${row.timeout_seconds}s)` : row.action === "ban" ? "Ban" : "Delete message"}
                       </td>
                       <td className="px-4 py-2 text-center">
@@ -466,7 +482,7 @@ export default function BlockedTermsPage() {
                               setDeletingId(null);
                             }
                           }}
-                          className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-red-700 bg-red-700/80 text-white hover:bg-red-600/90 disabled:opacity-50"
+                          className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-red-700 bg-red-700/80 text-ax-heading hover:bg-red-600/90 disabled:opacity-50"
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
                             <path d="M6 2a1 1 0 0 0-1 1v1H3.5a.5.5 0 0 0 0 1h.54l.76 10.137A2 2 0 0 0 6.79 17h6.42a2 2 0 0 0 1.99-1.863L15.96 5H16.5a.5.5 0 0 0 0-1H15V3a1 1 0 0 0-1-1H6Zm1 2V3h6v1H7Z" />
@@ -477,12 +493,12 @@ export default function BlockedTermsPage() {
                   ))}
                   {blockedTerms.length === 0 && (
                     <tr>
-                      <td colSpan={3} className="px-4 py-6 text-center text-slate-400">
+                      <td colSpan={3} className="px-4 py-6 text-center text-ax-secondary">
                         No blocked terms yet. Click &ldquo;Add Blocked Term&rdquo; to get started.
                       </td>
                     </tr>
                   )}
-                  <tr className="h-full border-t border-slate-800"><td colSpan={3} /></tr>
+                  <tr className="h-full border-t border-ax-subtle"><td colSpan={3} /></tr>
                 </tbody>
               </table>
             </div>
@@ -496,13 +512,13 @@ export default function BlockedTermsPage() {
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
           onMouseDown={(e) => { if (e.target === e.currentTarget) setShowAddModal(false); }}
         >
-          <div ref={modalRef} className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl">
+          <div ref={modalRef} className="w-full max-w-md rounded-2xl border border-ax-border bg-ax-section p-6 shadow-2xl">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-semibold text-slate-50">Add Blocked Term</h2>
+              <h2 className="text-lg font-semibold text-ax-heading">Add Blocked Term</h2>
               <button
                 type="button"
                 onClick={() => setShowAddModal(false)}
-                className="text-slate-400 hover:text-slate-200 transition"
+                className="text-ax-secondary hover:text-ax-body transition"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5"><path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" /></svg>
               </button>
@@ -511,25 +527,25 @@ export default function BlockedTermsPage() {
             <div className="flex flex-col gap-4">
               {/* Term input */}
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-slate-300">Blocked term or phrase</label>
+                <label className="text-xs font-medium text-ax-secondary">Blocked term or phrase</label>
                 <input
                   type="text"
                   placeholder="e.g. badword"
                   value={newTerm}
                   onChange={(e) => setNewTerm(e.target.value)}
-                  className="rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-accent/60"
+                  className="rounded-lg border border-ax-border bg-ax-section px-3 py-2 text-sm text-ax-body placeholder-ax-muted focus:outline-none focus:ring-2 focus:ring-accent/60"
                   autoFocus
                 />
               </div>
 
               {/* Action dropdown + timeout seconds */}
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-slate-300">Action</label>
+                <label className="text-xs font-medium text-ax-secondary">Action</label>
                 <div className="flex items-center gap-3">
                   <select
                     value={newAction}
                     onChange={(e) => setNewAction(e.target.value as "timeout" | "delete" | "ban")}
-                    className="flex-1 rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-accent/60"
+                    className="flex-1 rounded-lg border border-ax-border bg-ax-section px-3 py-2 text-sm text-ax-body focus:outline-none focus:ring-2 focus:ring-accent/60"
                   >
                     <option value="timeout">Timeout</option>
                     <option value="delete">Delete message</option>
@@ -543,23 +559,23 @@ export default function BlockedTermsPage() {
                         max="1209600"
                         value={timeoutSeconds}
                         onChange={(e) => setTimeoutSeconds(e.target.value)}
-                        className="w-24 rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-accent/60"
+                        className="w-24 rounded-lg border border-ax-border bg-ax-section px-3 py-2 text-sm text-ax-body focus:outline-none focus:ring-2 focus:ring-accent/60"
                       />
-                      <span className="text-sm text-slate-400 whitespace-nowrap">seconds</span>
+                      <span className="text-sm text-ax-secondary whitespace-nowrap">seconds</span>
                     </div>
                   )}
                 </div>
               </div>
 
               {addError && (
-                <div className="text-xs text-red-400">{addError}</div>
+                <div className="text-xs text-red-300">{addError}</div>
               )}
               {/* Buttons */}
               <div className="flex justify-end gap-2 mt-1">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800 transition"
+                  className="rounded-lg border border-ax-border px-4 py-2 text-sm font-medium text-ax-body hover:bg-ax-raised transition"
                   disabled={adding}
                 >
                   Cancel
@@ -603,7 +619,7 @@ export default function BlockedTermsPage() {
                     }
                   }}
                   disabled={!newTerm.trim() || adding}
-                  className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent/90 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-ax-btn-text hover:bg-accent/90 transition disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {adding ? "Adding..." : "Add Term"}
                 </button>

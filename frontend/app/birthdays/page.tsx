@@ -10,6 +10,7 @@ import { usePersistentSectionState } from "../hooks/usePersistentSectionState";
 import { responsiveSidebarClassName, useResponsiveSidebar } from "../hooks/useResponsiveSidebar";
 import { useRequireAuth } from "../hooks/useRequireAuth";
 import { revokeSession } from "../lib/session";
+import NavIcon from "../components/NavIcon";
 
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://your-backend.onrender.com";
 const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL;
@@ -827,15 +828,16 @@ export default function BirthdaysPage() {
   };
 
   return (
-    <main className="min-h-screen flex flex-col bg-[radial-gradient(circle_at_top,_#1e293b,_#020617)]">
+    <main className="min-h-screen flex flex-col bg-ax-bg">
       <header className="w-full flex items-center justify-between px-6 py-4">
         <div className="flex items-center gap-4 flex-1">
           <button
+            aria-label="Toggle navigation"
             type="button"
             onClick={toggleSidebar}
-            className="mr-2 rounded-lg bg-slate-900/70 px-3 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800 border border-slate-700"
+            className="mr-2 rounded-lg bg-ax-section px-3 py-2 text-sm font-medium text-ax-body hover:bg-ax-raised border border-ax-border"
           >
-            ☰
+            <NavIcon name="menu" size={20} tone="inherit" />
           </button>
           <Link href="/" className="flex items-center gap-4">
             <Image
@@ -846,8 +848,8 @@ export default function BirthdaysPage() {
               className="rounded-full"
             />
             <div className="text-2xl font-semibold tracking-tight">
-              <span className="text-accent">Axyra</span>
-              <span className="text-white">Bot</span>
+              <span className="text-ax-accent-text">Axyra</span>
+              <span className="text-ax-heading">Bot</span>
             </div>
           </Link>
         </div>
@@ -860,16 +862,16 @@ export default function BirthdaysPage() {
               <ManagingChannelBadge />
               <Link
                 href="/import"
-                className="inline-flex items-center gap-1 rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1.5 text-xs font-medium text-slate-100 hover:bg-slate-800 hover:border-slate-500 transition"
+                className="inline-flex items-center gap-1 rounded-full border border-ax-border bg-ax-section px-3 py-1.5 text-xs font-medium text-ax-body hover:bg-ax-raised hover:border-ax-muted transition"
               >
-                <span className="text-xs">⬆</span>
+                <NavIcon name="import" size={16} tone="inherit" />
                 <span>Import</span>
               </Link>
               <div className="relative" ref={menuRef}>
                 <button
                   type="button"
-                  onClick={() => setMenuOpen((open) => !open)}
-                  className="flex items-center gap-2 rounded-full bg-slate-900/80 px-1.5 py-1 hover:bg-slate-800 transition"
+                  aria-expanded={menuOpen} onClick={() => setMenuOpen((open) => !open)}
+                  className="flex items-center gap-2 rounded-full bg-ax-section px-1.5 py-1 hover:bg-ax-raised transition"
                 >
                   {avatarUrl && (
                     <Image
@@ -882,11 +884,11 @@ export default function BirthdaysPage() {
                   )}
                 </button>
                 {menuOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-36 rounded-lg border border-slate-700 bg-slate-900/95 py-2 shadow-lg">
+                  <div className="absolute right-0 top-full mt-2 w-36 rounded-lg border border-ax-border bg-ax-section py-2 shadow-lg">
                     <button
                       type="button"
                       onClick={handleLogout}
-                      className="w-full px-4 py-2 text-sm text-left text-slate-200 hover:bg-slate-800"
+                      className="w-full px-4 py-2 text-sm text-left text-ax-body hover:bg-ax-raised"
                     >
                       Log out
                     </button>
@@ -901,45 +903,47 @@ export default function BirthdaysPage() {
       <div className="flex flex-1 w-full flex-col items-stretch gap-3 px-3 pb-4 md:min-h-0 md:flex-row md:gap-6 md:px-4 md:pb-6">
         {mobileSidebarOpen && <button type="button" aria-label="Close dashboard menu" onClick={closeMobileSidebar} className="fixed inset-0 z-40 bg-black/60 md:hidden" />}
         <div className={responsiveSidebarClassName(sidebarOpen, mobileSidebarOpen)}>
-          <div className="mb-3 flex items-center justify-between border-b border-slate-800 px-2 pb-3 md:hidden">
-            <span className="text-sm font-semibold text-slate-100">Dashboard menu</span>
-            <button type="button" onClick={closeMobileSidebar} className="rounded-md px-2 py-1 text-sm text-slate-400 hover:bg-slate-800 hover:text-white">Close</button>
+          <div className="mb-3 flex items-center justify-between border-b border-ax-subtle px-2 pb-3 md:hidden">
+            <span className="text-sm font-semibold text-ax-body">Dashboard menu</span>
+            <button type="button" onClick={closeMobileSidebar} className="rounded-md px-2 py-1 text-sm text-ax-secondary hover:bg-ax-raised hover:text-ax-heading">Close</button>
           </div>
-          <nav className="mt-1 flex flex-col gap-4 text-sm text-slate-200">
+          <nav className="mt-1 flex flex-col gap-4 text-sm text-ax-body">
             {/* Main section */}
             <div className="flex flex-col gap-2">
               <button
                 type="button"
-                onClick={() => setMainSectionOpen((open) => !open)}
-                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-200"
+                aria-expanded={mainSectionOpen} onClick={() => setMainSectionOpen((open) => !open)}
+                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary hover:text-ax-body"
               >
                 <span>Main</span>
-                {sidebarOpen && <span className="text-base font-bold">{mainSectionOpen ? "▾" : "▸"}</span>}
+                {sidebarOpen && <NavIcon name={mainSectionOpen ? "chevronDown" : "chevronRight"} size={16} tone="inherit" />}
               </button>
               {mainSectionOpen && (
                 <>
                   <Link
                     href="/dashboard"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/dashboard" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/dashboard"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">📊</span>
-                    {sidebarOpen && <span>Dashboard</span>}
+                    <NavIcon name="dashboard" />
+                    {sidebarOpen ? <span>Dashboard</span> : <span className="sr-only">Dashboard</span>}
                   </Link>
 
                   <Link
                     href="/commands"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/commands" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/commands"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">❓</span>
-                    {sidebarOpen && <span>Commands</span>}
+                    <NavIcon name="commands" />
+                    {sidebarOpen ? <span>Commands</span> : <span className="sr-only">Commands</span>}
                   </Link>
 
                 </>
@@ -950,37 +954,39 @@ export default function BirthdaysPage() {
             <div className="flex flex-col gap-2">
               <button
                 type="button"
-                onClick={() => setModerationOpen((open) => !open)}
-                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-200"
+                aria-expanded={moderationOpen} onClick={() => setModerationOpen((open) => !open)}
+                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary hover:text-ax-body"
               >
                 <span>Moderation</span>
                 {sidebarOpen && (
-                  <span className="text-base font-bold">{moderationOpen ? "▾" : "▸"}</span>
+                  <NavIcon name={moderationOpen ? "chevronDown" : "chevronRight"} size={16} tone="inherit" />
                 )}
               </button>
               {moderationOpen && (
                 <>
                   <Link
                     href="/moderation/blocked-terms"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/moderation/blocked-terms" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/moderation/blocked-terms"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">🚫</span>
-                    {sidebarOpen && <span>Blocked Terms</span>}
+                    <NavIcon name="blockedTerms" />
+                    {sidebarOpen ? <span>Blocked Terms</span> : <span className="sr-only">Blocked Terms</span>}
                   </Link>
                   <Link
                     href="/moderation/spam-filters"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/moderation/spam-filters" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/moderation/spam-filters"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">🧹</span>
-                    {sidebarOpen && <span>Spam Filters</span>}
+                    <NavIcon name="spamFilters" />
+                    {sidebarOpen ? <span>Spam Filters</span> : <span className="sr-only">Spam Filters</span>}
                   </Link>
                 </>
               )}
@@ -990,58 +996,62 @@ export default function BirthdaysPage() {
             <div className="flex flex-col gap-2">
               <button
                 type="button"
-                onClick={() => setVanitySectionOpen((open) => !open)}
-                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-200"
+                aria-expanded={vanitySectionOpen} onClick={() => setVanitySectionOpen((open) => !open)}
+                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary hover:text-ax-body"
               >
                 <span>Vanity</span>
-                {sidebarOpen && <span className="text-base font-bold">{vanitySectionOpen ? "▾" : "▸"}</span>}
+                {sidebarOpen && <NavIcon name={vanitySectionOpen ? "chevronDown" : "chevronRight"} size={16} tone="inherit" />}
               </button>
               {vanitySectionOpen && (
                 <>
                   <Link
                     href="/modules"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/modules" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/modules"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">🧩</span>
-                    {sidebarOpen && <span>Modules</span>}
+                    <NavIcon name="modules" />
+                    {sidebarOpen ? <span>Modules</span> : <span className="sr-only">Modules</span>}
                   </Link>
                   <Link
                     href="/birthdays"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/birthdays" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/birthdays"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">🎂</span>
-                    {sidebarOpen && <span>Birthdays</span>}
+                    <NavIcon name="birthdays" />
+                    {sidebarOpen ? <span>Birthdays</span> : <span className="sr-only">Birthdays</span>}
                   </Link>
                   <Link
                     href="/giveaways"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/giveaways" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/giveaways"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">🎁</span>
-                    {sidebarOpen && <span>Giveaways</span>}
+                    <NavIcon name="giveaways" />
+                    {sidebarOpen ? <span>Giveaways</span> : <span className="sr-only">Giveaways</span>}
                   </Link>
                   {!isEditor && (
                   <Link
                     href="/roles"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/roles" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/roles"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">🎭</span>
-                    {sidebarOpen && <span>Roles</span>}
+                    <NavIcon name="roles" />
+                    {sidebarOpen ? <span>Roles</span> : <span className="sr-only">Roles</span>}
                   </Link>
                   )}
                 </>
@@ -1050,13 +1060,16 @@ export default function BirthdaysPage() {
 
             {/* Integrations section */}
             <div className="flex flex-col gap-2">
-              <button type="button" onClick={() => {}} className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+              <button type="button" onClick={() => {}} className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary">
                 <span>Integrations</span>
               </button>
-              <Link href="/discord/settings" className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
-                pathname === "/discord/settings" ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]" : "text-slate-200 hover:bg-slate-800/80"
-              }`}>
-                <span className="text-lg">🎮</span>{sidebarOpen && <span>Discord</span>}
+              <Link href="/discord/settings" aria-current={pathname === "/discord/settings" ? "page" : undefined}
+ className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+   pathname === "/discord/settings"
+     ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+     : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+ }`}>
+                <NavIcon name="discord" />{sidebarOpen ? <span>Discord</span> : <span className="sr-only">Discord</span>}
               </Link>
             </div>
 
@@ -1064,46 +1077,49 @@ export default function BirthdaysPage() {
             <div className="flex flex-col gap-2">
               <button
                 type="button"
-                onClick={() => setOtherSectionOpen((open) => !open)}
-                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-200"
+                aria-expanded={otherSectionOpen} onClick={() => setOtherSectionOpen((open) => !open)}
+                className="flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wide text-ax-secondary hover:text-ax-body"
               >
                 <span>Other</span>
-                {sidebarOpen && <span className="text-base font-bold">{otherSectionOpen ? "▾" : "▸"}</span>}
+                {sidebarOpen && <NavIcon name={otherSectionOpen ? "chevronDown" : "chevronRight"} size={16} tone="inherit" />}
               </button>
               {otherSectionOpen && (
                 <>
                   <Link
                     href="/privacy"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/privacy" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/privacy"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">🔒</span>
-                    {sidebarOpen && <span>Privacy</span>}
+                    <NavIcon name="privacy" />
+                    {sidebarOpen ? <span>Privacy</span> : <span className="sr-only">Privacy</span>}
                   </Link>
                   <Link
                     href="/terms"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/terms" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/terms"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">📜</span>
-                    {sidebarOpen && <span>Terms</span>}
+                    <NavIcon name="terms" />
+                    {sidebarOpen ? <span>Terms</span> : <span className="sr-only">Terms</span>}
                   </Link>
                   <Link
                     href="/api-docs"
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition ${
+                    aria-current={pathname === "/api-docs" ? "page" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-left font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       pathname === "/api-docs"
-                        ? "bg-accent text-white shadow-[0_0_18px_rgba(129,140,248,0.6)]"
-                        : "text-slate-200 hover:bg-slate-800/80"
+                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
+                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
                     }`}
                   >
-                    <span className="text-lg">📘</span>
-                    {sidebarOpen && <span>API Docs</span>}
+                    <NavIcon name="apiDocs" />
+                    {sidebarOpen ? <span>API Docs</span> : <span className="sr-only">API Docs</span>}
                   </Link>
                 </>
               )}
@@ -1111,8 +1127,8 @@ export default function BirthdaysPage() {
           </nav>
         </div>
 
-        <div className="flex-1 flex flex-col gap-6 text-slate-50">
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-6">
+        <div className="flex-1 flex flex-col gap-6 text-ax-heading">
+          <div className="rounded-2xl border border-ax-subtle bg-ax-section p-6">
             <div className="mb-2 flex items-center justify-between gap-4">
               <h1 className="text-2xl font-semibold">Birthdays</h1>
               {selectedList && (
@@ -1120,7 +1136,7 @@ export default function BirthdaysPage() {
                   <button
                     type="button"
                     onClick={() => { setAddEntries(""); setAddError(null); setShowAddModal(true); }}
-                    className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-indigo-500"
+                    className="inline-flex items-center rounded-md bg-ax-accent px-3 py-1.5 text-xs font-medium text-ax-btn-text transition-colors hover:bg-ax-btn-hover"
                   >
                     Add Birthdays
                   </button>
@@ -1130,8 +1146,8 @@ export default function BirthdaysPage() {
                     disabled={moduleSaving}
                     className={`inline-flex items-center rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
                       moduleEnabled
-                        ? "bg-red-600 text-white hover:bg-red-500 disabled:bg-red-700"
-                        : "bg-emerald-600 text-white hover:bg-emerald-500 disabled:bg-emerald-700"
+                        ? "bg-red-600 text-ax-heading hover:bg-red-500 disabled:bg-red-700"
+                        : "bg-emerald-600 text-ax-heading hover:bg-emerald-500 disabled:bg-emerald-700"
                     }`}
                   >
                     {moduleEnabled ? "Disable Birthdays" : "Enable Birthdays"}
@@ -1143,13 +1159,13 @@ export default function BirthdaysPage() {
               <div className="mb-4 flex items-center gap-2">
                 {listOptions.length > 1 && (
                   <>
-                    <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                    <label className="text-[11px] font-semibold uppercase tracking-wide text-ax-secondary">
                       Editing list:
                     </label>
                     <select
                       value={selectedList ?? ""}
                       onChange={(e) => setSelectedList(e.target.value)}
-                      className="rounded-md border border-slate-700 bg-slate-900/80 px-2 py-1.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-accent/60"
+                      className="rounded-md border border-ax-border bg-ax-section px-2 py-1.5 text-sm text-ax-body focus:outline-none focus:ring-2 focus:ring-accent/60"
                     >
                       {listOptions.map((opt) => (
                         <option key={opt.value} value={opt.value}>
@@ -1162,7 +1178,7 @@ export default function BirthdaysPage() {
                 <button
                   type="button"
                   onClick={() => { setNewListName(""); setNewListError(null); setShowNewListModal(true); }}
-                  className="inline-flex items-center rounded-md border border-slate-700 px-2 py-1.5 text-xs font-medium text-slate-300 hover:bg-slate-800"
+                  className="inline-flex items-center rounded-md border border-ax-border px-2 py-1.5 text-xs font-medium text-ax-secondary hover:bg-ax-raised"
                 >
                   + New list
                 </button>
@@ -1173,10 +1189,10 @@ export default function BirthdaysPage() {
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
                 <div
                   ref={newListModalRef}
-                  className="w-full max-w-md rounded-xl border border-slate-700 bg-slate-900 p-6 shadow-xl"
+                  className="w-full max-w-md rounded-xl border border-ax-border bg-ax-section p-6 shadow-xl"
                 >
-                  <h2 className="mb-4 text-base font-semibold text-slate-100">Create a new birthday list</h2>
-                  <p className="mb-2 text-xs text-slate-400">
+                  <h2 className="mb-4 text-base font-semibold text-ax-body">Create a new birthday list</h2>
+                  <p className="mb-2 text-xs text-ax-secondary">
                     Give your new list a name. It starts out empty and can be selected
                     from the &quot;Editing list&quot; dropdown, or set as a friend&apos;s
                     Discord announcement source.
@@ -1186,16 +1202,16 @@ export default function BirthdaysPage() {
                     value={newListName}
                     onChange={(e) => setNewListName(e.target.value)}
                     placeholder="e.g. Mod team birthdays"
-                    className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full rounded-lg border border-ax-border bg-ax-raised px-3 py-2 text-sm text-ax-body placeholder-ax-muted focus:outline-none focus:ring-2 focus:ring-ax-focus"
                   />
                   {newListError && (
-                    <p className="mt-2 text-xs text-red-400">{newListError}</p>
+                    <p className="mt-2 text-xs text-red-300">{newListError}</p>
                   )}
                   <div className="mt-4 flex justify-end gap-2">
                     <button
                       type="button"
                       onClick={() => { setShowNewListModal(false); setNewListName(""); setNewListError(null); }}
-                      className="rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800"
+                      className="rounded-md border border-ax-border px-3 py-1.5 text-xs text-ax-secondary hover:bg-ax-raised"
                     >
                       Cancel
                     </button>
@@ -1203,7 +1219,7 @@ export default function BirthdaysPage() {
                       type="button"
                       onClick={handleCreateList}
                       disabled={creatingList || !newListName.trim()}
-                      className="rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
+                      className="rounded-md bg-ax-accent px-3 py-1.5 text-xs font-medium text-ax-btn-text hover:bg-ax-btn-hover disabled:opacity-50"
                     >
                       {creatingList ? "Creating…" : "Create"}
                     </button>
@@ -1216,31 +1232,31 @@ export default function BirthdaysPage() {
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
                 <div
                   ref={addModalRef}
-                  className="w-full max-w-md rounded-xl border border-slate-700 bg-slate-900 p-6 shadow-xl"
+                  className="w-full max-w-md rounded-xl border border-ax-border bg-ax-section p-6 shadow-xl"
                 >
-                  <h2 className="mb-4 text-base font-semibold text-slate-100">Add Birthdays</h2>
+                  <h2 className="mb-4 text-base font-semibold text-ax-body">Add Birthdays</h2>
                   <textarea
-                    className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full rounded-lg border border-ax-border bg-ax-raised px-3 py-2 text-sm text-ax-body placeholder-ax-muted focus:outline-none focus:ring-2 focus:ring-ax-focus"
                     rows={6}
                     placeholder={"StreamerName 6 15\nAnotherUser 12 3\nViewerFriend 1 28"}
                     value={addEntries}
                     onChange={(e) => setAddEntries(e.target.value)}
                   />
-                  <p className="mt-2 text-xs text-slate-400">
-                    One birthday per line. Format: <span className="font-mono text-slate-300">Username Month Day</span>
+                  <p className="mt-2 text-xs text-ax-secondary">
+                    One birthday per line. Format: <span className="font-mono text-ax-secondary">Username Month Day</span>
                     <br />
-                    Example: <span className="font-mono text-slate-300">StreamerName 6 15</span> for June 15th.
+                    Example: <span className="font-mono text-ax-secondary">StreamerName 6 15</span> for June 15th.
                     <br />
                     You can add multiple birthdays at once — one per line.
                   </p>
                   {addError && (
-                    <pre className="mt-2 whitespace-pre-wrap text-xs text-red-400">{addError}</pre>
+                    <pre className="mt-2 whitespace-pre-wrap text-xs text-red-300">{addError}</pre>
                   )}
                   <div className="mt-4 flex justify-end gap-2">
                     <button
                       type="button"
                       onClick={() => { setShowAddModal(false); setAddEntries(""); setAddError(null); }}
-                      className="rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800"
+                      className="rounded-md border border-ax-border px-3 py-1.5 text-xs text-ax-secondary hover:bg-ax-raised"
                     >
                       Cancel
                     </button>
@@ -1248,7 +1264,7 @@ export default function BirthdaysPage() {
                       type="button"
                       onClick={handleAddBirthdays}
                       disabled={adding || !addEntries.trim()}
-                      className="rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
+                      className="rounded-md bg-ax-accent px-3 py-1.5 text-xs font-medium text-ax-btn-text hover:bg-ax-btn-hover disabled:opacity-50"
                     >
                       {adding ? "Saving…" : "Save"}
                     </button>
@@ -1256,26 +1272,26 @@ export default function BirthdaysPage() {
                 </div>
               </div>
             )}
-            <p className="mb-4 text-sm text-slate-400">
+            <p className="mb-4 text-sm text-ax-secondary">
               View birthdays saved for {selectedList ?? "your channel"} and choose the
               timezone the bot should use when announcing birthdays. Ask a friend to
               grant you Editor access from their Roles page to manage their list too.
             </p>
             {moduleError && (
-              <p className="-mt-2 mb-2 text-xs text-red-400">{moduleError}</p>
+              <p className="-mt-2 mb-2 text-xs text-red-300">{moduleError}</p>
             )}
             {!selectedList && (
-              <p className="text-sm text-slate-400">
+              <p className="text-sm text-ax-secondary">
                 Log in on the homepage to manage birthdays for your channel.
               </p>
             )}
             {selectedList && (
               <div className="space-y-6 mt-2">
-                <section className="rounded-xl border border-slate-800 bg-slate-950/50 px-4 py-3">
-                  <h2 className="text-sm font-semibold text-slate-100 mb-2">
+                <section className="rounded-xl border border-ax-subtle bg-ax-section px-4 py-3">
+                  <h2 className="text-sm font-semibold text-ax-body mb-2">
                     Timezone
                   </h2>
-                  <p className="text-xs text-slate-400 mb-2">
+                  <p className="text-xs text-ax-secondary mb-2">
                     Choose your timezone. The bot will use this when deciding which
                     birthdays are &quot;today&quot; and which one is next.
                   </p>
@@ -1283,7 +1299,7 @@ export default function BirthdaysPage() {
                     <select
                       value={timezone}
                       onChange={(e) => setTimezone(e.target.value)}
-                      className="flex-1 rounded-md border border-slate-700 bg-slate-900/80 px-2 py-1.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-accent/60"
+                      className="flex-1 rounded-md border border-ax-border bg-ax-section px-2 py-1.5 text-sm text-ax-body focus:outline-none focus:ring-2 focus:ring-accent/60"
                     >
                       <option value="" disabled>
                         Select a timezone
@@ -1298,41 +1314,41 @@ export default function BirthdaysPage() {
                       type="button"
                       onClick={handleSaveTimezone}
                       disabled={timezoneSaving || !timezone}
-                      className="inline-flex items-center justify-center rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white hover:bg-accent/90 disabled:opacity-60"
+                      className="inline-flex items-center justify-center rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-ax-btn-text hover:bg-accent/90 disabled:opacity-60"
                     >
                       {timezoneSaving ? "Saving..." : "Save timezone"}
                     </button>
                   </div>
                   {timezoneError && (
-                    <p className="mt-2 text-xs text-red-400">{timezoneError}</p>
+                    <p className="mt-2 text-xs text-red-300">{timezoneError}</p>
                   )}
                   {timezoneStatus && (
-                    <p className="mt-2 text-xs text-emerald-400">{timezoneStatus}</p>
+                    <p className="mt-2 text-xs text-emerald-300">{timezoneStatus}</p>
                   )}
                 </section>
 
-                <section className="rounded-xl border border-slate-800 bg-slate-950/50 px-4 py-3">
-                  <h2 className="text-sm font-semibold text-slate-100 mb-2">
+                <section className="rounded-xl border border-ax-subtle bg-ax-section px-4 py-3">
+                  <h2 className="text-sm font-semibold text-ax-body mb-2">
                     Saved birthdays
                   </h2>
                   {loadingBirthdays && (
-                    <p className="text-xs text-slate-400">Loading birthdays…</p>
+                    <p className="text-xs text-ax-secondary">Loading birthdays…</p>
                   )}
                   {birthdaysError && (
-                    <p className="text-xs text-red-400">{birthdaysError}</p>
+                    <p className="text-xs text-red-300">{birthdaysError}</p>
                   )}
                   {!loadingBirthdays && !birthdaysError && birthdays.length === 0 && (
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-ax-secondary">
                       No birthdays have been saved yet. Mods can add birthdays
                       from chat using
                       {" "}
-                      <code className="mx-1 rounded bg-slate-800 px-1 py-0.5 text-[11px]">
+                      <code className="mx-1 rounded bg-ax-raised px-1 py-0.5 text-[11px]">
                         !addbday
                       </code>
                       {" "}
                       and viewers can add their own with
                       {" "}
-                      <code className="mx-1 rounded bg-slate-800 px-1 py-0.5 text-[11px]">
+                      <code className="mx-1 rounded bg-ax-raised px-1 py-0.5 text-[11px]">
                         !addmybday
                       </code>
                       .
@@ -1346,7 +1362,7 @@ export default function BirthdaysPage() {
                       <>
                         <table className="mt-2 min-w-full text-sm">
                           <thead>
-                            <tr className="border-b border-slate-800 text-left text-xs uppercase tracking-wide text-slate-400">
+                            <tr className="border-b border-ax-subtle text-left text-xs uppercase tracking-wide text-ax-secondary">
                               <th className="py-2 pr-3">Name</th>
                               <th className="py-2 pr-3">Birthday</th>
                               <th className="py-2">Actions</th>
@@ -1356,12 +1372,12 @@ export default function BirthdaysPage() {
                             {pageRows.map((b) => (
                               <tr
                                 key={`${b.userLogin}-${b.month}-${b.day}`}
-                                className="border-b border-slate-900/60"
+                                className="border-b border-ax-subtle"
                               >
-                                <td className="py-2 pr-3 text-slate-100">
+                                <td className="py-2 pr-3 text-ax-body">
                                   {b.displayName || b.userLogin}
                                 </td>
-                                <td className="py-2 pr-3 text-slate-200">
+                                <td className="py-2 pr-3 text-ax-body">
                                   {formatMonthDay(b.month, b.day)}
                                 </td>
                                 <td className="py-2">
@@ -1369,7 +1385,7 @@ export default function BirthdaysPage() {
                                     type="button"
                                     onClick={() => handleDeleteBirthday(b.userLogin)}
                                     disabled={deletingBirthday === b.userLogin}
-                                    className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-red-700 bg-red-700/80 text-white hover:bg-red-600/90 disabled:opacity-50"
+                                    className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-red-700 bg-red-700/80 text-ax-heading hover:bg-red-600/90 disabled:opacity-50"
                                   >
                                     <span className="sr-only">Delete birthday</span>
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
@@ -1387,19 +1403,19 @@ export default function BirthdaysPage() {
                               type="button"
                               onClick={() => setBirthdayPage((p) => Math.max(1, p - 1))}
                               disabled={safePage === 1}
-                              className="flex items-center justify-center text-slate-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition"
+                              className="flex items-center justify-center text-ax-secondary hover:text-ax-heading disabled:opacity-30 disabled:cursor-not-allowed transition"
                             >
                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="h-7 w-7"><polyline points="15 18 9 12 15 6" /></svg>
                             </button>
-                            <span className="text-sm text-slate-300">
-                              Page <span className="font-semibold text-slate-100">{safePage}</span> of{" "}
-                              <span className="font-semibold text-slate-100">{totalPages}</span>
+                            <span className="text-sm text-ax-secondary">
+                              Page <span className="font-semibold text-ax-body">{safePage}</span> of{" "}
+                              <span className="font-semibold text-ax-body">{totalPages}</span>
                             </span>
                             <button
                               type="button"
                               onClick={() => setBirthdayPage((p) => Math.min(totalPages, p + 1))}
                               disabled={safePage === totalPages}
-                              className="flex items-center justify-center text-slate-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition"
+                              className="flex items-center justify-center text-ax-secondary hover:text-ax-heading disabled:opacity-30 disabled:cursor-not-allowed transition"
                             >
                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="h-7 w-7"><polyline points="9 18 15 12 9 6" /></svg>
                             </button>
