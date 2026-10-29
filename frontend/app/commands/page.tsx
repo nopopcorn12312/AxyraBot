@@ -662,17 +662,17 @@ function CommandsPage() {
         <div className="flex-1 flex flex-col gap-6 text-ax-heading min-h-0">
           <div className="w-full flex-1 flex flex-col rounded-2xl border border-ax-subtle bg-ax-section p-6 min-h-0">
             <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <h1 className="text-3xl font-semibold">Commands</h1>
                 <div className="inline-flex rounded-full bg-ax-section border border-ax-border p-1.5 text-sm">
                   <button
                     type="button"
                     onClick={() => setView("default")}
-                    aria-current={view === "default" ? "page" : undefined}
-                    className={`group px-4 py-1.5 rounded-full font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+                    aria-pressed={view === "default"}
+                    className={`whitespace-nowrap rounded-full px-3 py-1.5 font-medium transition sm:px-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       view === "default"
-                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
-                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+                        ? "bg-ax-accent text-ax-btn-text"
+                        : "text-ax-body hover:bg-ax-raised hover:text-ax-heading"
                     }`}
                   >
                     Default commands
@@ -680,11 +680,11 @@ function CommandsPage() {
                   <button
                     type="button"
                     onClick={() => setView("custom")}
-                    aria-current={view === "custom" ? "page" : undefined}
-                    className={`group ml-1 px-4 py-1.5 rounded-full font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
+                    aria-pressed={view === "custom"}
+                    className={`ml-1 whitespace-nowrap rounded-full px-3 py-1.5 font-medium transition sm:px-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
                       view === "custom"
-                        ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
-                        : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
+                        ? "bg-ax-accent text-ax-btn-text"
+                        : "text-ax-body hover:bg-ax-raised hover:text-ax-heading"
                     }`}
                   >
                     Custom commands

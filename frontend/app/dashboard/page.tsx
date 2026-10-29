@@ -447,7 +447,7 @@ export default function DashboardPage() {
       )}
       <div className="flex flex-1 w-full items-stretch gap-3 px-3 pb-4 md:min-h-0 md:gap-6 md:px-4 md:pb-6">
         <div
-          className={`${mobileSidebarOpen ? "fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] rounded-none shadow-2xl" : "hidden"} ${sidebarOpen ? "md:w-60" : "md:w-16"} flex-col border border-ax-subtle bg-ax-section p-3 transition-all duration-200 md:relative md:inset-auto md:z-auto md:flex md:max-w-none md:rounded-2xl md:bg-ax-section md:shadow-none`}
+          className={`${mobileSidebarOpen ? "fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] rounded-none shadow-2xl" : "hidden"} ${sidebarOpen ? "md:w-60" : "md:invisible md:w-0 md:-mr-6 md:-translate-x-4 md:overflow-hidden md:!border-0 md:!p-0 md:opacity-0"} flex-col border border-ax-subtle bg-ax-section p-3 transition-all duration-200 whitespace-nowrap motion-reduce:transition-none md:relative md:inset-auto md:z-auto md:flex md:max-w-none md:rounded-2xl md:bg-ax-section md:shadow-none`}
         >
           <div className="mb-3 flex items-center justify-between border-b border-ax-subtle px-2 pb-3 md:hidden">
             <span className="text-sm font-semibold text-ax-body">Dashboard menu</span>

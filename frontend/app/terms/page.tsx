@@ -161,7 +161,7 @@ export default function TermsPage() {
 
       <div className="flex flex-1 w-full gap-6 px-4 pb-6 items-stretch">
         <div
-          className={`${sidebarOpen ? "w-60" : "w-16"} flex flex-col rounded-2xl border border-ax-subtle bg-ax-section p-3 transition-all duration-200`}
+          className={`${sidebarOpen ? "w-60" : "invisible w-0 -mr-6 -translate-x-4 overflow-hidden !border-0 !p-0 opacity-0"} flex flex-col rounded-2xl border border-ax-subtle bg-ax-section p-3 transition-all duration-200 whitespace-nowrap motion-reduce:transition-none`}
         >
           <nav className="mt-1 flex flex-col gap-4 text-sm text-ax-body">
             {/* Main section */}
