@@ -32,20 +32,31 @@ test("recent activity list stays inside its card", async ({ page }) => {
   expect(listViewport.y + listViewport.height).toBeLessThanOrEqual(cardBox.y + cardBox.height + 1);
 });
 
-test("recent activity list scrolls when it is longer than the card", async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name === "mobile", "On phones the page itself scrolls instead");
+test("recent activity shows only entries that fit, without scrolling", async ({ page }, testInfo) => {
   await page.goto("/dashboard");
   await expect(page.getByText('title="Test stream 0"')).toBeVisible();
-  const scroller = page.getByRole("heading", { name: "Recent Activity" })
+  const list = page.getByRole("heading", { name: "Recent Activity" })
     .locator("xpath=ancestor::div[contains(@class,'border-ax-subtle') and contains(@class,'bg-ax-section')][1]")
-    .locator("ul")
-    .locator("xpath=..");
-  const { scrollHeight, clientHeight } = await scroller.evaluate((el) => ({
-    scrollHeight: el.scrollHeight,
-    clientHeight: el.clientHeight,
-  }));
-  expect(scrollHeight).toBeGreaterThan(clientHeight);
-  // And the last entry can be scrolled into view.
-  await page.getByText('title="Test stream 19"').scrollIntoViewIfNeeded();
-  await expect(page.getByText('title="Test stream 19"')).toBeInViewport();
+    .locator("ul");
+
+  // Nothing in the card can be scrolled.
+  const scrollable = await list.evaluate((ul) =>
+    [ul, ul.parentElement!].some((el) => el.scrollHeight > el.clientHeight && getComputedStyle(el).overflowY !== "hidden"),
+  );
+  expect(scrollable).toBe(false);
+
+  // Every visible row sits fully inside the list; the oldest entries are hidden.
+  const rows = await list.evaluate((ul) => {
+    const box = ul.getBoundingClientRect();
+    return Array.from(ul.children).map((li) => {
+      const r = li.getBoundingClientRect();
+      const shown = getComputedStyle(li).visibility === "visible" && getComputedStyle(li).display !== "none";
+      return { shown, inside: r.bottom <= box.bottom + 1 };
+    });
+  });
+  const shown = rows.filter((r) => r.shown);
+  expect(shown.length).toBeGreaterThan(0);
+  expect(shown.every((r) => r.inside)).toBe(true);
+  if (testInfo.project.name === "mobile") expect(shown.length).toBe(8);
+  await expect(page.getByText('title="Test stream 19"')).toBeHidden();
 });

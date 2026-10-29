@@ -99,6 +99,10 @@ export default function DashboardPage() {
   const [activityError, setActivityError] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const hasLoadedActivityRef = useRef(false);
+  // The activity card never scrolls: only entries that fit entirely inside it
+  // are shown, and anything older is hidden.
+  const activityListRef = useRef<HTMLUListElement | null>(null);
+  const [activityFitCount, setActivityFitCount] = useState(Infinity);
   const pathname = usePathname();
   const [chatStats, setChatStats] = useState<{
     msgs_per_min: number;
@@ -251,6 +255,32 @@ export default function DashboardPage() {
       window.clearInterval(intervalId);
     };
   }, [activeChannel]);
+
+  // Measure which activity rows fit in the card. Rows past that point are made
+  // invisible rather than removed, so they keep their place and the
+  // measurement stays stable.
+  // On phones the card grows with the page, so cap the list at 8 entries.
+  useEffect(() => {
+    const list = activityListRef.current;
+    if (!list) return;
+    const measure = () => {
+      if (!window.matchMedia("(min-width: 768px)").matches) {
+        setActivityFitCount(8);
+        return;
+      }
+      const rows = Array.from(list.children) as HTMLElement[];
+      let fit = 0;
+      for (const row of rows) {
+        if (row.offsetTop - list.offsetTop + row.offsetHeight > list.clientHeight) break;
+        fit += 1;
+      }
+      setActivityFitCount(fit);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(list);
+    return () => observer.disconnect();
+  }, [activity, loadingActivity, activityError]);
 
   // Poll chat stats (messages per minute + unique chatters) every 30 s
   useEffect(() => {
@@ -726,7 +756,7 @@ export default function DashboardPage() {
               </p>
             )}
             {activeChannel && (
-              <div className="flex flex-col pr-1 md:min-h-0 md:flex-1 md:overflow-y-auto md:overscroll-contain">
+              <div className="flex flex-col md:min-h-0 md:flex-1 md:overflow-hidden">
                 {loadingActivity && (
                   <p className="text-sm text-ax-secondary">Loading activity…</p>
                 )}
@@ -741,7 +771,7 @@ export default function DashboardPage() {
                   </p>
                 )}
                 {!loadingActivity && !activityError && activity.length > 0 && (
-                  <ul className="mt-1 text-sm divide-y divide-ax-subtle">
+                  <ul ref={activityListRef} className="mt-1 text-sm divide-y divide-ax-subtle md:min-h-0 md:flex-1 md:overflow-hidden">
                     {activity.map((item, idx) => {
                       const source = item.source?.toLowerCase();
                       const isTwitch = source === "twitch";
@@ -749,7 +779,9 @@ export default function DashboardPage() {
                       return (
                         <li
                           key={`${item.timestamp}-${idx}`}
-                          className="grid grid-cols-[4.5rem_3.25rem_1fr] items-baseline gap-x-3 px-1 py-2.5 sm:grid-cols-[5rem_3.5rem_1fr]"
+                          className={`grid grid-cols-[4.5rem_3.25rem_1fr] items-baseline gap-x-3 px-1 py-2.5 sm:grid-cols-[5rem_3.5rem_1fr] ${
+                            idx >= activityFitCount ? "max-md:hidden md:invisible" : ""
+                          }`}
                         >
                           <time
                             dateTime={item.timestamp}
