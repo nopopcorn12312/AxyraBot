@@ -5,6 +5,13 @@ import AxyraBotPFP from "./images/AxyraBotPFP.png";
 import NightbotBanner from "./images/NightbotBanner.png";
 import SteamelementsBanner from "./images/SteamelementsBanner.png";
 import FossabotBanner from "./images/FossabotBanner.png";
+// Imported (not referenced by path) so each screenshot gets a content-hashed
+// URL: replacing a file can never leave browsers showing the old copy.
+import ShotDashboard from "../public/AxyraDashboard.png";
+import ShotCommands from "../public/AxyraCommands.png";
+import ShotDiscord from "../public/AxyraDiscord.png";
+import ShotSpam from "../public/AxyraSpam.png";
+import ShotGiveaway from "../public/AxyraGiveaway.png";
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { exchangeLoginCode, revokeSession } from "./lib/session";
 import { bodyFont, displayFont, monoFont } from "./fonts";
@@ -77,11 +84,11 @@ const botReplies: Record<Rule, (user: string) => string> = {
 };
 
 const showcase = [
-  { id: "dashboard", label: "Dashboard", desc: "Twitch and AxyraBot activity, stream title and category, and chat stats on one screen.", src: "/AxyraDashboard.png", alt: "AxyraBot dashboard showing recent activity and stream details" },
-  { id: "commands", label: "Commands", desc: "Create, edit and permission custom commands without learning any syntax.", src: "/AxyraCommands.png", alt: "Custom and default commands manager" },
-  { id: "discord", label: "Discord", desc: "Go-live and mod alerts, birthday posts, ticket panels and role mappings for your server.", src: "/AxyraDiscord.png", alt: "Discord integration settings with channel notifications and role mappings" },
-  { id: "spam", label: "Spam filters", desc: "Choose what counts as spam and whether it's deleted, timed out or banned.", src: "/AxyraSpam.png", alt: "Spam filter configuration" },
-  { id: "giveaways", label: "Giveaways", desc: "Keyword or active-chatter entries, a subscriber multiplier and a fair winner pick.", src: "/AxyraGiveaway.png", alt: "Giveaway manager with entries and winner picker" },
+  { id: "dashboard", label: "Dashboard", desc: "Twitch and AxyraBot activity, stream title and category, and chat stats on one screen.", src: ShotDashboard, alt: "AxyraBot dashboard showing recent activity and stream details" },
+  { id: "commands", label: "Commands", desc: "Create, edit and permission custom commands without learning any syntax.", src: ShotCommands, alt: "Custom and default commands manager" },
+  { id: "discord", label: "Discord", desc: "Go-live and mod alerts, birthday posts, ticket panels and role mappings for your server.", src: ShotDiscord, alt: "Discord integration settings with channel notifications and role mappings" },
+  { id: "spam", label: "Spam filters", desc: "Choose what counts as spam and whether it's deleted, timed out or banned.", src: ShotSpam, alt: "Spam filter configuration" },
+  { id: "giveaways", label: "Giveaways", desc: "Keyword or active-chatter entries, a subscriber multiplier and a fair winner pick.", src: ShotGiveaway, alt: "Giveaway manager with entries and winner picker" },
 ];
 
 // Real command exchanges — replies match the bot's actual chat responses.
@@ -117,7 +124,8 @@ const faqs = [
 
 // Each section opens on a full-width hairline carrying a mono index, like a
 // page in a logbook. Heading sits in a left rail; content takes the rest.
-function Section({ id, index, label, title, intro, children }: { id: string; index: string; label: string; title: ReactNode; intro?: ReactNode; children: ReactNode }) {
+// `wide` stacks the content under the heading at full width (for screenshots).
+function Section({ id, index, label, title, intro, wide = false, children }: { id: string; index: string; label: string; title: ReactNode; intro?: ReactNode; wide?: boolean; children: ReactNode }) {
   return (
     <section id={id} aria-labelledby={`${id}-title`} className="scroll-mt-16 border-t border-ax-subtle">
       <div className={`${container} py-20 lg:py-28`}>
@@ -125,13 +133,13 @@ function Section({ id, index, label, title, intro, children }: { id: string; ind
           <Tally className="mr-2 align-middle" /><span className="text-ax-heading">{index}</span> — {label}
         </p>
         <div className="mt-8 grid gap-10 lg:grid-cols-12 lg:gap-x-8">
-          <div className="lg:col-span-4">
-            <h2 id={`${id}-title`} className="font-display text-[2rem] font-semibold leading-[1.05] tracking-[-0.02em] text-ax-heading sm:text-[2.5rem]">
+          <div className={wide ? "lg:col-span-12 lg:grid lg:grid-cols-12 lg:gap-x-8" : "lg:col-span-4"}>
+            <h2 id={`${id}-title`} className={`font-display text-[2rem] font-semibold leading-[1.05] tracking-[-0.02em] text-ax-heading sm:text-[2.5rem] ${wide ? "lg:col-span-6" : ""}`}>
               {title}
             </h2>
-            {intro && <div className="mt-5 max-w-sm leading-relaxed text-ax-body">{intro}</div>}
+            {intro && <div className={`mt-5 max-w-sm leading-relaxed text-ax-body ${wide ? "lg:col-span-5 lg:col-start-8 lg:mt-0 lg:self-end" : ""}`}>{intro}</div>}
           </div>
-          <div className="lg:col-span-8">{children}</div>
+          <div className={wide ? "lg:col-span-12" : "lg:col-span-8"}>{children}</div>
         </div>
       </div>
     </section>
@@ -350,6 +358,7 @@ function DashboardViewer() {
   };
 
   const item = showcase[active];
+  const zoomRef = useRef<HTMLDialogElement | null>(null);
 
   return (
     <div>
@@ -380,18 +389,45 @@ function DashboardViewer() {
       </div>
       <div role="tabpanel" id={`${baseId}-panel`} aria-labelledby={`${baseId}-tab-${item.id}`} className="pt-6">
         <p className="max-w-xl text-ax-body">{item.desc}</p>
-        <div className="mt-6 overflow-hidden rounded-md border border-ax-border bg-ax-section shadow-card">
+        <button
+          type="button"
+          onClick={() => zoomRef.current?.showModal()}
+          aria-label={`View full size: ${item.alt}`}
+          className={`group relative mt-6 block w-full cursor-zoom-in overflow-hidden rounded-md border border-ax-border bg-ax-section shadow-card ${focusRing}`}
+        >
           <Image
-            key={item.src}
+            key={item.id}
             src={item.src}
             alt={item.alt}
-            width={1920}
-            height={945}
-            sizes="(min-width: 1200px) 740px, 100vw"
+            quality={90}
+            sizes="(min-width: 1200px) 1104px, 100vw"
             className="h-auto w-full motion-safe:animate-fade-up"
           />
-        </div>
+          <span className="absolute bottom-3 right-3 rounded-[4px] border border-ax-border bg-ax-raised/90 px-2.5 py-1 font-code text-[11px] text-ax-body opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100">
+            Click to enlarge
+          </span>
+        </button>
       </div>
+
+      {/* Full-size view: the screenshot at its real resolution, scrollable on small screens. */}
+      <dialog
+        ref={zoomRef}
+        aria-label={item.alt}
+        onClick={(e) => { if (e.target === e.currentTarget) zoomRef.current?.close(); }}
+        className="m-auto max-h-[95vh] max-w-[95vw] overflow-auto rounded-md border border-ax-border bg-ax-section p-0 shadow-panel backdrop:bg-black/70"
+      >
+        <div className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-ax-border bg-ax-raised px-4 py-2.5">
+          <span className="font-code text-xs text-ax-body">{item.label}</span>
+          <button
+            type="button"
+            onClick={() => zoomRef.current?.close()}
+            className={`rounded-[4px] border border-ax-border px-2.5 py-1 font-code text-[11px] text-ax-body hover:border-ax-body hover:text-ax-heading ${focusRing}`}
+          >
+            Close
+          </button>
+        </div>
+        <Image src={item.src} alt="" quality={90} sizes="1920px" className="block h-auto w-[1200px] max-w-none lg:w-[min(1920px,95vw)]" />
+      </dialog>
     </div>
   );
 }
@@ -648,7 +684,8 @@ export default function HomePage() {
           index="01"
           label="Dashboard"
           title="Every setting your mods touch, on one screen."
-          intro="These are real screenshots of the AxyraBot dashboard — pick a page."
+          intro="These are real screenshots of the AxyraBot dashboard — pick a page, then click a screenshot to see it full size."
+          wide
         >
           <DashboardViewer />
         </Section>
