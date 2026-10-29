@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"crypto/hmac"
+	crand "crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
@@ -171,6 +172,8 @@ func startHTTPServer(clientID, clientSecret string) {
 	mux.HandleFunc("/birthdays/command-messages", withCORS(handleBirthdayCommandMessages))
 	mux.HandleFunc("/discord/settings", withCORS(handleDiscordSettings))
 	mux.HandleFunc("/discord/guilds", withCORS(handleDiscordGuilds))
+	mux.HandleFunc("/discord/auth/start", handleDiscordAuthStart)
+	mux.HandleFunc("/discord/auth/callback", handleDiscordAuthCallback)
 	mux.HandleFunc("/discord/channels", withCORS(handleDiscordChannels))
 	mux.HandleFunc("/discord/roles", withCORS(handleDiscordRoles))
 	mux.HandleFunc("/discord/role-mappings", withCORS(handleDiscordRoleMappings))
@@ -2089,9 +2092,9 @@ func handleRolesDelete(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleDiscordGuilds returns the list of Discord servers the bot is currently
-// in. When viewer_login and channel_login differ (an editor viewing someone
-// else's channel), only guilds the viewer is explicitly listed as a manager
-// of are returned.
+// in. Logged-in viewers only see guilds they can manage: ones where their
+// linked Discord account is the owner or has Administrator / Manage Server,
+// plus any guild they were explicitly granted access to as a manager.
 func handleDiscordGuilds(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -2111,40 +2114,233 @@ func handleDiscordGuilds(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Users with an active dashboard channel (editor) must be filtered to only guilds they manage.
-	// Viewer == Channel owner means they are logged into their own dashboard for THIS server,
-	// not a cross-server editor session — still requires filtering.
 	authorisedIDs, err := GetGuildsForManager(viewerLogin)
 	if err != nil {
 		log.Println("get guilds for manager:", err)
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{"guilds": []BotGuild{}})
-		return
 	}
-
-	if len(authorisedIDs) == 0 {
-		// No guild managerships registered for this user — they must log into Discord first,
-		// then the bot owner/admin can grant them access to specific servers via /addmod.
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{"guilds": []BotGuild{}})
-		return
-	}
-
 	allowed := make(map[string]bool, len(authorisedIDs))
 	for _, id := range authorisedIDs {
 		allowed[id] = true
 	}
-	var filtered []BotGuild
+
+	discordUserID, err := GetDiscordUserID(viewerLogin)
+	if err != nil {
+		log.Println("get discord user link:", err)
+	}
+
+	filtered := []BotGuild{}
 	for _, g := range allGuilds {
-		if allowed[g.ID] {
+		if allowed[g.ID] || UserCanManageGuild(g.ID, discordUserID) {
 			filtered = append(filtered, g)
 		}
 	}
-	if filtered == nil {
-		filtered = []BotGuild{}
-	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]any{"guilds": filtered})
+	json.NewEncoder(w).Encode(map[string]any{
+		"guilds":         filtered,
+		"discord_linked": discordUserID != "",
+	})
+}
+
+// discordBotInvitePermissions matches the permission set the dashboard has
+// always requested when inviting the bot.
+const discordBotInvitePermissions = "3097326905453782"
+
+type discordOAuthState struct {
+	login    string
+	redirect string
+	expires  time.Time
+}
+
+var (
+	discordOAuthStatesMu sync.Mutex
+	discordOAuthStates   = map[string]discordOAuthState{}
+)
+
+func discordOAuthClientID() string {
+	if id := strings.TrimSpace(os.Getenv("DISCORD_CLIENT_ID")); id != "" {
+		return id
+	}
+	// For current Discord apps the bot user ID is the application ID.
+	if discordSession != nil && discordSession.State != nil && discordSession.State.User != nil {
+		return discordSession.State.User.ID
+	}
+	return ""
+}
+
+func getDiscordRedirectURI(r *http.Request) string {
+	if u := os.Getenv("DISCORD_OAUTH_REDIRECT"); u != "" {
+		return u
+	}
+	scheme := "https"
+	if r.TLS == nil && r.Header.Get("X-Forwarded-Proto") != "https" {
+		scheme = "http"
+	}
+	return scheme + "://" + r.Host + "/discord/auth/callback"
+}
+
+// safeFrontendRedirect only allows redirects back to our own frontend so the
+// OAuth flow can't be used as an open redirect.
+func safeFrontendRedirect(raw string) string {
+	fallback := getFrontendBaseURL() + "/discord/settings"
+	if raw == "" {
+		return fallback
+	}
+	dest, err := url.Parse(raw)
+	if err != nil {
+		return fallback
+	}
+	base, err := url.Parse(getFrontendBaseURL())
+	if err != nil || !strings.EqualFold(dest.Host, base.Host) {
+		if dest.Hostname() != "localhost" && dest.Hostname() != "127.0.0.1" {
+			return fallback
+		}
+	}
+	return dest.String()
+}
+
+// handleDiscordAuthStart sends the user to Discord to link their account.
+// With invite=1 the same consent screen also adds the bot to a server, so
+// one click both installs the bot and lets us see which servers they manage.
+// GET ?login=<twitch login>&redirect=<frontend url>&invite=1
+func handleDiscordAuthStart(w http.ResponseWriter, r *http.Request) {
+	clientID := discordOAuthClientID()
+	if clientID == "" {
+		http.Error(w, "discord oauth not configured", http.StatusServiceUnavailable)
+		return
+	}
+	login := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("login")))
+	if login == "" {
+		http.Error(w, "missing login", http.StatusBadRequest)
+		return
+	}
+
+	nonce := make([]byte, 24)
+	if _, err := crand.Read(nonce); err != nil {
+		http.Error(w, "failed to start discord login", http.StatusInternalServerError)
+		return
+	}
+	state := base64.RawURLEncoding.EncodeToString(nonce)
+	discordOAuthStatesMu.Lock()
+	now := time.Now()
+	for k, v := range discordOAuthStates {
+		if now.After(v.expires) {
+			delete(discordOAuthStates, k)
+		}
+	}
+	discordOAuthStates[state] = discordOAuthState{
+		login:    login,
+		redirect: safeFrontendRedirect(r.URL.Query().Get("redirect")),
+		expires:  now.Add(10 * time.Minute),
+	}
+	discordOAuthStatesMu.Unlock()
+
+	q := url.Values{}
+	q.Set("client_id", clientID)
+	q.Set("redirect_uri", getDiscordRedirectURI(r))
+	q.Set("response_type", "code")
+	q.Set("state", state)
+	if r.URL.Query().Get("invite") == "1" {
+		q.Set("scope", "identify bot applications.commands")
+		q.Set("permissions", discordBotInvitePermissions)
+	} else {
+		q.Set("scope", "identify")
+	}
+	http.Redirect(w, r, "https://discord.com/oauth2/authorize?"+q.Encode(), http.StatusFound)
+}
+
+// handleDiscordAuthCallback finishes the Discord OAuth flow: it links the
+// Discord account to the Twitch login and, when the bot was just added,
+// records the inviter as a manager of that server.
+func handleDiscordAuthCallback(w http.ResponseWriter, r *http.Request) {
+	state := r.URL.Query().Get("state")
+	discordOAuthStatesMu.Lock()
+	st, ok := discordOAuthStates[state]
+	delete(discordOAuthStates, state)
+	discordOAuthStatesMu.Unlock()
+	if !ok || time.Now().After(st.expires) {
+		http.Error(w, "invalid or expired state", http.StatusBadRequest)
+		return
+	}
+
+	redirectWith := func(key, value string) {
+		dest, err := url.Parse(st.redirect)
+		if err != nil {
+			http.Error(w, "bad redirect", http.StatusInternalServerError)
+			return
+		}
+		q := dest.Query()
+		q.Set(key, value)
+		dest.RawQuery = q.Encode()
+		http.Redirect(w, r, dest.String(), http.StatusFound)
+	}
+
+	code := r.URL.Query().Get("code")
+	if code == "" {
+		// User cancelled on the Discord consent screen.
+		redirectWith("discord_error", r.URL.Query().Get("error"))
+		return
+	}
+
+	v := url.Values{}
+	v.Set("client_id", discordOAuthClientID())
+	v.Set("client_secret", os.Getenv("DISCORD_CLIENT_SECRET"))
+	v.Set("grant_type", "authorization_code")
+	v.Set("code", code)
+	v.Set("redirect_uri", getDiscordRedirectURI(r))
+	resp, err := http.PostForm("https://discord.com/api/oauth2/token", v)
+	if err != nil {
+		log.Println("discord token exchange failed:", err)
+		redirectWith("discord_error", "token_exchange")
+		return
+	}
+	defer resp.Body.Close()
+	var tok struct {
+		AccessToken string `json:"access_token"`
+		Guild       *struct {
+			ID string `json:"id"`
+		} `json:"guild"`
+	}
+	if resp.StatusCode != http.StatusOK || json.NewDecoder(resp.Body).Decode(&tok) != nil || tok.AccessToken == "" {
+		log.Printf("discord token exchange: status %d", resp.StatusCode)
+		redirectWith("discord_error", "token_exchange")
+		return
+	}
+
+	req, _ := http.NewRequest(http.MethodGet, "https://discord.com/api/users/@me", nil)
+	req.Header.Set("Authorization", "Bearer "+tok.AccessToken)
+	meResp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Println("discord /users/@me failed:", err)
+		redirectWith("discord_error", "user_lookup")
+		return
+	}
+	defer meResp.Body.Close()
+	var me struct {
+		ID string `json:"id"`
+	}
+	if meResp.StatusCode != http.StatusOK || json.NewDecoder(meResp.Body).Decode(&me) != nil || me.ID == "" {
+		log.Printf("discord /users/@me: status %d", meResp.StatusCode)
+		redirectWith("discord_error", "user_lookup")
+		return
+	}
+
+	if err := SetDiscordUserLink(st.login, me.ID); err != nil {
+		log.Println("save discord user link:", err)
+		redirectWith("discord_error", "db")
+		return
+	}
+
+	// The token response names the guild the bot was just added to. Discord
+	// only lets users with Manage Server do that, so they get dashboard access.
+	if tok.Guild != nil && tok.Guild.ID != "" {
+		if err := AddDiscordGuildManager(tok.Guild.ID, st.login); err != nil {
+			log.Println("add discord guild manager after invite:", err)
+		}
+		WaitForBotGuild(tok.Guild.ID, 5*time.Second)
+		redirectWith("discord_guild", tok.Guild.ID)
+		return
+	}
+	redirectWith("discord_linked", "1")
 }
 
 // handleDiscordGuildManagers manages per-guild dashboard access for Twitch editors.

@@ -236,6 +236,8 @@ export default function DiscordSettingsPage() {
   // Discord state
   const [guilds, setGuilds] = useState<Guild[]>([]);
   const [loadingGuilds, setLoadingGuilds] = useState(true);
+  const [discordLinked, setDiscordLinked] = useState(false);
+  const [discordAuthError, setDiscordAuthError] = useState<string | null>(null);
   const [selectedGuildId, setSelectedGuildId] = useState("");
   const [guildChannels, setGuildChannels] = useState<Channel[]>([]);
   const [loadingChannels, setLoadingChannels] = useState(false);
@@ -428,10 +430,39 @@ export default function DiscordSettingsPage() {
     if (channelLogin) params.set("channel_login", channelLogin);
     fetch(`${backendUrl}/discord/guilds?${params}`)
       .then((r) => (r.ok ? r.json() : { guilds: [] }))
-      .then((data) => setGuilds(data.guilds ?? []))
+      .then((data) => {
+        setGuilds(data.guilds ?? []);
+        setDiscordLinked(Boolean(data.discord_linked));
+      })
       .catch(() => setGuilds([]))
       .finally(() => setLoadingGuilds(false));
   }, [viewerLogin, channelLogin]);
+
+  // Handle the redirect back from Discord OAuth: select the server the bot was
+  // just added to, surface errors, then strip the params from the URL.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const addedGuild = params.get("discord_guild");
+    const error = params.get("discord_error");
+    if (!addedGuild && error === null && !params.has("discord_linked")) return;
+    if (addedGuild) {
+      setSelectedGuildId(addedGuild);
+      window.localStorage.setItem("axyra.discord.selectedGuild", addedGuild);
+    }
+    if (error !== null) {
+      setDiscordAuthError(
+        error === "access_denied" || error === ""
+          ? "Discord sign-in was cancelled."
+          : "Couldn't connect your Discord account. Please try again.",
+      );
+    }
+    params.delete("discord_guild");
+    params.delete("discord_error");
+    params.delete("discord_linked");
+    const qs = params.toString();
+    window.history.replaceState(null, "", window.location.pathname + (qs ? `?${qs}` : ""));
+  }, []);
 
   // Load the birthday lists this user can choose as an announcement source:
   // their own channel, any channel they're an Editor for, and any custom
@@ -1058,9 +1089,17 @@ export default function DiscordSettingsPage() {
   const primaryHref = isLoggedIn ? "/dashboard" : connectUrl;
   const primaryLabel = isLoggedIn ? "Dashboard" : "Login with Twitch";
 
-  const inviteUrl = discordClientId
-    ? `https://discord.com/api/oauth2/authorize?client_id=${discordClientId}&permissions=3097326905453782&scope=bot%20applications.commands`
-    : null;
+  // Both links go through the backend so it learns the user's Discord account
+  // (and, for invites, which server the bot was added to) before sending them back.
+  const discordReturnUrl = typeof window !== "undefined" ? `${window.location.origin}/discord/settings` : `${redirectTarget}/discord/settings`;
+  const discordAuthUrl = (invite: boolean) => {
+    const params = new URLSearchParams({ login: viewerLogin ?? "", redirect: discordReturnUrl });
+    if (invite) params.set("invite", "1");
+    return `${backendUrl}/discord/auth/start?${params}`;
+  };
+  const inviteUrl = viewerLogin
+    ? discordAuthUrl(true)
+    : `https://discord.com/api/oauth2/authorize?client_id=${discordClientId}&permissions=3097326905453782&scope=bot%20applications.commands`;
 
   const botInSelectedGuild = guilds.some((g) => g.id === selectedGuildId);
   const channelSelectClass = "rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-accent/60 max-w-sm disabled:opacity-50 disabled:cursor-not-allowed";
@@ -1239,14 +1278,23 @@ export default function DiscordSettingsPage() {
                 </p>
               </div>
               <a
-                href={inviteUrl ?? `https://discord.com/api/oauth2/authorize?client_id=${discordClientId}&permissions=3097326905453782&scope=bot%20applications.commands`}
-                target="_blank"
-                rel="noopener noreferrer"
+                href={inviteUrl}
                 className="inline-flex items-center gap-2 rounded-lg bg-[#5865F2] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#4752c4] transition shadow-lg"
               >
                 <img src="/DiscordLogo.png" alt="Discord" className="h-5 w-5 brightness-0 invert" />
                 Add to Discord
               </a>
+              {viewerLogin && (
+                <p className="text-sm text-slate-400">
+                  {discordLinked
+                    ? "Your Discord account is connected, but you aren't an admin in any server AxyraBot is in. "
+                    : "AxyraBot already in your server? "}
+                  <a href={discordAuthUrl(false)} className="font-medium text-[#8b95f7] hover:underline">
+                    {discordLinked ? "Switch Discord account" : "Sign in with Discord"}
+                  </a>
+                </p>
+              )}
+              {discordAuthError && <p className="text-sm text-red-400">{discordAuthError}</p>}
             </div>
           )}
 
@@ -1269,9 +1317,7 @@ export default function DiscordSettingsPage() {
                 <div className="flex items-center gap-3">
                   {/* Add to Discord — always shown here, single instance */}
                   <a
-                    href={inviteUrl ?? `https://discord.com/api/oauth2/authorize?client_id=${discordClientId}&permissions=3097326905453782&scope=bot%20applications.commands`}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    href={inviteUrl}
                     className="inline-flex items-center gap-2 rounded-lg bg-[#5865F2] px-3 py-2 text-sm font-medium text-white hover:bg-[#4752c4] transition shadow-lg"
                   >
                     <img src="/DiscordLogo.png" alt="Discord" className="h-5 w-5 shrink-0 brightness-0 invert" />

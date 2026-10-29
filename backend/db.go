@@ -944,6 +944,11 @@ func EnsureSchema() error {
 	 added_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
 	 PRIMARY KEY (guild_id, twitch_login)
 	);
+	CREATE TABLE IF NOT EXISTS discord_user_links (
+	 twitch_login    TEXT NOT NULL PRIMARY KEY,
+	 discord_user_id TEXT NOT NULL,
+	 linked_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+	);
 	CREATE TABLE IF NOT EXISTS discord_welcome_settings (
 	 guild_id           TEXT NOT NULL PRIMARY KEY,
 	 welcome_channel_id TEXT NOT NULL DEFAULT '',
@@ -1879,6 +1884,33 @@ func GetDiscordGuildManagers(guildID string) ([]string, error) {
 		}
 	}
 	return logins, nil
+}
+
+// SetDiscordUserLink records which Discord account belongs to a Twitch user.
+func SetDiscordUserLink(twitchLogin, discordUserID string) error {
+	if db == nil {
+		return fmt.Errorf("db not initialized")
+	}
+	_, err := db.Exec(`
+		INSERT INTO discord_user_links (twitch_login, discord_user_id)
+		VALUES ($1, $2)
+		ON CONFLICT (twitch_login) DO UPDATE SET discord_user_id = EXCLUDED.discord_user_id, linked_at = now()
+	`, strings.ToLower(twitchLogin), discordUserID)
+	return err
+}
+
+// GetDiscordUserID returns the linked Discord user ID for a Twitch user, or ""
+// if they have not linked a Discord account.
+func GetDiscordUserID(twitchLogin string) (string, error) {
+	if db == nil {
+		return "", fmt.Errorf("db not initialized")
+	}
+	var id string
+	err := db.QueryRow(`SELECT discord_user_id FROM discord_user_links WHERE twitch_login=$1`, strings.ToLower(twitchLogin)).Scan(&id)
+	if err == sql.ErrNoRows {
+		return "", nil
+	}
+	return id, err
 }
 
 // GetGuildsForManager returns the guild IDs that a Twitch user is a manager of.

@@ -1916,3 +1916,96 @@ func GetGuildAllChannels(guildID string) ([]GuildChannelWithType, error) {
 	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
 	return out, nil
 }
+
+// manageGuildCacheTTL bounds how long a permission lookup is reused so the
+// dashboard doesn't hit the Discord REST API for every guild on every load,
+// while still picking up role changes within a minute.
+const manageGuildCacheTTL = time.Minute
+
+type manageGuildCacheEntry struct {
+	allowed bool
+	expires time.Time
+}
+
+var (
+	manageGuildCacheMu sync.Mutex
+	manageGuildCache   = map[string]manageGuildCacheEntry{}
+)
+
+// UserCanManageGuild reports whether the Discord user owns the guild or holds
+// a role with Administrator or Manage Server (the permission Discord requires
+// to add a bot). Only guilds the bot is in can be checked.
+func UserCanManageGuild(guildID, userID string) bool {
+	if discordSession == nil || guildID == "" || userID == "" {
+		return false
+	}
+	key := guildID + ":" + userID
+	manageGuildCacheMu.Lock()
+	if e, ok := manageGuildCache[key]; ok && time.Now().Before(e.expires) {
+		manageGuildCacheMu.Unlock()
+		return e.allowed
+	}
+	manageGuildCacheMu.Unlock()
+
+	allowed := computeUserCanManageGuild(guildID, userID)
+
+	manageGuildCacheMu.Lock()
+	manageGuildCache[key] = manageGuildCacheEntry{allowed: allowed, expires: time.Now().Add(manageGuildCacheTTL)}
+	manageGuildCacheMu.Unlock()
+	return allowed
+}
+
+func computeUserCanManageGuild(guildID, userID string) bool {
+	guild, err := discordSession.State.Guild(guildID)
+	if err != nil {
+		if guild, err = discordSession.Guild(guildID); err != nil {
+			return false
+		}
+	}
+	if guild.OwnerID == userID {
+		return true
+	}
+
+	member, err := discordSession.State.Member(guildID, userID)
+	if err != nil {
+		// Not cached — fall back to REST. A 404 means they aren't in the server.
+		if member, err = discordSession.GuildMember(guildID, userID); err != nil {
+			return false
+		}
+	}
+
+	roles := guild.Roles
+	if len(roles) == 0 {
+		if roles, err = discordSession.GuildRoles(guildID); err != nil {
+			return false
+		}
+	}
+	memberRoles := make(map[string]bool, len(member.Roles)+1)
+	memberRoles[guildID] = true // @everyone role shares the guild's ID
+	for _, id := range member.Roles {
+		memberRoles[id] = true
+	}
+	var perms int64
+	for _, role := range roles {
+		if memberRoles[role.ID] {
+			perms |= role.Permissions
+		}
+	}
+	return perms&discordgo.PermissionAdministrator != 0 || perms&discordgo.PermissionManageGuild != 0
+}
+
+// WaitForBotGuild blocks until the bot's state includes the guild or the
+// timeout passes. Used after an invite, since the GuildCreate event can land
+// a moment after Discord redirects the user back to us.
+func WaitForBotGuild(guildID string, timeout time.Duration) {
+	if discordSession == nil || guildID == "" {
+		return
+	}
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		if _, err := discordSession.State.Guild(guildID); err == nil {
+			return
+		}
+		time.Sleep(250 * time.Millisecond)
+	}
+}
