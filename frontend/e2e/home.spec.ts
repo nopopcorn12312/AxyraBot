@@ -62,7 +62,7 @@ test("chat demo filters can be toggled and the demo paused", async ({ page }) =>
 test("chat demo removes a caught message and the bot replies", async ({ page }) => {
   await page.goto("/");
   const chat = page.getByRole("list", { name: "Example chat messages" });
-  // The script includes a link-spam message within the first few lines.
-  await expect(chat.getByText(/links aren't allowed here/)).toBeVisible({ timeout: 10_000 });
+  // The chat starts with history, so several link-spam replies can be on screen; check the newest.
+  await expect(chat.getByText(/links aren't allowed here/).last()).toBeVisible({ timeout: 10_000 });
   await expect(chat.getByText("removed").first()).toBeVisible();
 });

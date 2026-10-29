@@ -203,15 +203,15 @@ function ModConsole() {
     if (caught && msg.rule) {
       next.push({ key: keyRef.current++, user: "AxyraBot", color: "#FFFFFF", text: botReplies[msg.rule](msg.user), bot: true });
       const tag = rules.find((r) => r.id === msg.rule)!.tag;
-      setLog((prev) => [{ key: keyRef.current++, time: clock(step * 7), user: msg.user, tag }, ...prev].slice(0, 6));
+      setLog((prev) => [{ key: keyRef.current++, time: clock(step * 7), user: msg.user, tag }, ...prev].slice(0, 14));
     }
-    setLines((prev) => [...prev, ...next].slice(-7));
+    setLines((prev) => [...prev, ...next].slice(-16));
     setStats((s) => ({ seen: s.seen + 1, removed: s.removed + (caught ? 1 : 0) }));
   };
 
-  // Seed a few lines so the console is never empty, then keep chat flowing.
+  // Seed enough history that both the chat and the mod log start full, then keep chat flowing.
   useEffect(() => {
-    for (let i = 0; i < 4; i++) pushNext();
+    for (let i = 0; i < 24; i++) pushNext();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -264,7 +264,7 @@ function ModConsole() {
         {/* Chat */}
         <div className="flex h-[340px] flex-col border-b border-ax-subtle md:row-span-2 md:h-[400px] md:border-b-0 md:border-r lg:row-span-1">
           <p className={`${paneLabel} px-4 pt-3`}>Chat</p>
-          <ul className="flex flex-1 flex-col justify-end gap-2.5 overflow-hidden px-4 pb-4 pt-2 text-[13.5px] leading-snug" aria-label="Example chat messages">
+          <ul className="flex min-h-0 flex-1 flex-col justify-end gap-2.5 overflow-hidden px-4 pb-4 pt-2 text-[13.5px] leading-snug [mask-image:linear-gradient(to_bottom,transparent,black_2.5rem)]" aria-label="Example chat messages">
             {lines.map((line) => (
               <li key={line.key} className={`motion-safe:animate-fade-up ${line.bot ? "border-l-2 border-ax-accent pl-3" : ""}`}>
                 <span className="font-semibold" style={{ color: line.color }}>
@@ -306,20 +306,23 @@ function ModConsole() {
         </div>
 
         {/* Mod log */}
-        <div className="min-h-[180px]">
+        {/* The log fills whatever height the row gives it; entries past the bottom are clipped. */}
+        <div className="flex h-[240px] flex-col md:h-auto md:min-h-[180px]">
           <p className={`${paneLabel} px-4 pt-3`}>Mod log</p>
           {log.length === 0 ? (
             <p className="px-4 py-6 text-sm text-ax-muted">Nothing removed yet.</p>
           ) : (
-            <ol className="px-4 pb-4 pt-2 font-code text-[12px]" aria-label="Example mod log">
-              {log.map((e) => (
-                <li key={e.key} className="grid grid-cols-[auto_auto_1fr] items-baseline gap-x-3 border-b border-ax-subtle py-2 last:border-0 motion-safe:animate-fade-up">
-                  <span className="tabular-nums text-ax-muted">{e.time}</span>
-                  <span className="text-ax-body">{e.tag}</span>
-                  <span className="truncate text-ax-body">{e.user}</span>
-                </li>
-              ))}
-            </ol>
+            <div className="relative flex-1">
+              <ol className="absolute inset-0 overflow-hidden px-4 pb-4 pt-2 font-code text-[12px] [mask-image:linear-gradient(to_top,transparent,black_2.5rem)]" aria-label="Example mod log">
+                {log.map((e) => (
+                  <li key={e.key} className="grid grid-cols-[auto_auto_1fr] items-baseline gap-x-3 border-b border-ax-subtle py-2 last:border-0 motion-safe:animate-fade-up">
+                    <span className="tabular-nums text-ax-muted">{e.time}</span>
+                    <span className="text-ax-body">{e.tag}</span>
+                    <span className="truncate text-ax-body">{e.user}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
           )}
         </div>
       </div>
