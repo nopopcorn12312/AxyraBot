@@ -257,6 +257,7 @@ func main() {
 					log.Println("failed to ensure blocked_terms table:", err)
 				}
 				go StartChatTimerScheduler()
+				go StartDiscordYouTubeNotifier()
 				if err := EnsureTicketTables(); err != nil {
 					log.Println("failed to ensure ticket tables:", err)
 				}

@@ -158,6 +158,16 @@ const variableGroups: { id: string; title: string; intro: string; rows: [string,
     ],
   },
   {
+    id: "variables-youtube",
+    title: "YouTube uploads (Discord)",
+    intro: "Used in the Discord message AxyraBot posts when your YouTube channel uploads a new video.",
+    rows: [
+      ["$(channel)", <>Your YouTube channel&apos;s name.</>, ["YouTube uploads"]],
+      ["$(title)", <>The video&apos;s title.</>, ["YouTube uploads"]],
+      ["$(url)", <>A link to the video.</>, ["YouTube uploads"]],
+    ],
+  },
+  {
     id: "variables-modlog",
     title: "Moderation log (Discord)",
     intro: "Used in the Discord alert AxyraBot posts when it deletes a message, times someone out or bans someone in your Twitch chat. A line whose variables are all empty is left out, so \"Message: $(message)\" only shows for deleted messages.",
@@ -381,6 +391,7 @@ export function DocsContent() {
         </P>
         <Bullets>
           <li><strong className="text-ax-heading">Notifications</strong>: a post when you go live, a birthday post, and alerts when AxyraBot moderates your Twitch chat. Each message can be customized with <a href="#variables" className={pageLink}>variables</a>.</li>
+          <li><strong className="text-ax-heading">YouTube uploads</strong>: paste your YouTube channel&apos;s link and pick a Discord channel, and AxyraBot posts there when you upload a new video, Short or stream. It checks every 5 minutes, so a post can take a few minutes to appear. Videos already on your channel aren&apos;t announced, and Community posts aren&apos;t included.</li>
           <li><strong className="text-ax-heading">Welcome messages</strong> for new members, with an optional image banner. Use <Code>$(user)</Code>, <Code>$(username)</Code> and <Code>$(server)</Code>.</li>
           <li><strong className="text-ax-heading">Moderation log</strong>: choose which server events (bans, deleted messages, role changes and more) get logged to a channel. A deleted message is logged with who sent it, what it said and who deleted it. Messages people delete themselves aren&apos;t logged.</li>
           <li><strong className="text-ax-heading">Role mappings, reaction roles and tickets</strong> to organize your server. When a ticket is closed, the person who opened it loses access and the channel is kept as a record, moved into a category you choose.</li>

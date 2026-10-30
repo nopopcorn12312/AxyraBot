@@ -11,7 +11,7 @@ import { responsiveSidebarClassName, useResponsiveSidebar } from "../../hooks/us
 import { useRequireAuth } from "../../hooks/useRequireAuth";
 import { revokeSession } from "../../lib/session";
 import NavIcon from "../../components/NavIcon";
-import { BotOff, Cake, Check, Dices, Gavel, Gift, Image as ImageIcon, Info, Pencil, Settings, Shield, ShieldCheck, SmilePlus, Tag, Ticket, UserCog, X, type LucideIcon } from "lucide-react";
+import { BotOff, Cake, Check, Dices, Gavel, Gift, Image as ImageIcon, Info, Pencil, Settings, Shield, ShieldCheck, SmilePlus, Tag, Ticket, UserCog, Video, X, type LucideIcon } from "lucide-react";
 
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://your-backend.onrender.com";
 const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL;
@@ -339,20 +339,28 @@ export default function DiscordSettingsPage() {
   const [addManagerInput, setAddManagerInput] = useState("");
   const [addingManager, setAddingManager] = useState(false);
   const [removingManager, setRemovingManager] = useState<string | null>(null);
-  type NotifType = "live" | "mod" | "birthday";
+  type NotifType = "live" | "mod" | "birthday" | "youtube";
   type Templates = Record<NotifType, string>;
   const defaultTemplates: Templates = {
     live:     "🔴 **$(channel) is now live!**\n🎮 $(game)\n📺 $(title)\nhttps://twitch.tv/$(channel)",
     // Same as discordDefaultModTemplate in backend/discord.go. Lines whose variables are empty are left out.
     mod:      "$(emoji) **[$(channel)]** `$(target)` was $(verb) by `$(moderator)`\nMessage: $(message)\nReason: $(reason)",
     birthday: "🎂 Happy Birthday to **$(names)** in **$(channel)**'s community! 🎉",
+    // Same as discordDefaultYouTubeTemplate in backend/discord_youtube.go.
+    youtube:  "📺 **$(channel)** posted a new video!\n$(title)\n$(url)",
   };
   const templateVars: Record<NotifType, { name: string; desc: string }[]> = {
     live:     [{ name: "$(channel)", desc: "Your Twitch username" }, { name: "$(title)", desc: "Stream title" }, { name: "$(game)", desc: "Game / category" }],
     mod:      [{ name: "$(channel)", desc: "Your Twitch username" }, { name: "$(target)", desc: "The moderated user" }, { name: "$(moderator)", desc: "Who took the action" }, { name: "$(action)", desc: "Raw action: ban / timeout / delete" }, { name: "$(verb)", desc: "Past-tense verb (banned, timed out…)" }, { name: "$(emoji)", desc: "Action emoji" }, { name: "$(message)", desc: "The deleted chat message" }, { name: "$(reason)", desc: "Reason text" }],
     birthday: [{ name: "$(names)", desc: "Comma-separated birthday names" }, { name: "$(channel)", desc: "Your Twitch username" }],
+    youtube:  [{ name: "$(channel)", desc: "Your YouTube channel's name" }, { name: "$(title)", desc: "Video title" }, { name: "$(url)", desc: "Link to the video" }],
   };
-  const [templates, setTemplates] = useState<Templates>({ live: "", mod: "", birthday: "" });
+  const [templates, setTemplates] = useState<Templates>({ live: "", mod: "", birthday: "", youtube: "" });
+  // YouTube upload notifications. `youtubeSaved` is what the server last
+  // confirmed, so saving only contacts YouTube when something actually changed.
+  const [youtubeInput, setYoutubeInput] = useState("");
+  const [youtubeDiscordChannelId, setYoutubeDiscordChannelId] = useState("");
+  const [youtubeSaved, setYoutubeSaved] = useState({ input: "", discordChannelId: "", name: "" });
   const [editingNotif, setEditingNotif] = useState<NotifType | null>(null);
   const [editDraft, setEditDraft] = useState("");
   const [savingTemplate, setSavingTemplate] = useState(false);
@@ -599,15 +607,33 @@ export default function DiscordSettingsPage() {
 
   // Load saved notification templates when channelLogin + selectedGuildId are set
   useEffect(() => {
-    setTemplates({ live: "", mod: "", birthday: "" });
+    setTemplates({ live: "", mod: "", birthday: "", youtube: "" });
     if (!channelLogin || !selectedGuildId) return;
     fetch(`${backendUrl}/discord/notification-templates?login=${encodeURIComponent(channelLogin)}&guild_id=${encodeURIComponent(selectedGuildId)}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
-        if (data) setTemplates({ live: data.live ?? "", mod: data.mod ?? "", birthday: data.birthday ?? "" });
+        if (data) setTemplates({ live: data.live ?? "", mod: data.mod ?? "", birthday: data.birthday ?? "", youtube: data.youtube ?? "" });
       })
       .catch(() => {});
   }, [channelLogin, selectedGuildId]);
+
+  // Load YouTube upload notification settings when selected guild changes
+  useEffect(() => {
+    setYoutubeInput("");
+    setYoutubeDiscordChannelId("");
+    setYoutubeSaved({ input: "", discordChannelId: "", name: "" });
+    if (!selectedGuildId) return;
+    fetch(`${backendUrl}/discord/youtube?guild_id=${encodeURIComponent(selectedGuildId)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!data) return;
+        const input = data.youtube_channel_id ? `https://www.youtube.com/channel/${data.youtube_channel_id}` : "";
+        setYoutubeInput(input);
+        setYoutubeDiscordChannelId(data.discord_channel_id ?? "");
+        setYoutubeSaved({ input, discordChannelId: data.discord_channel_id ?? "", name: data.youtube_name ?? "" });
+      })
+      .catch(() => {});
+  }, [selectedGuildId]);
 
   // Load guild module settings when selected guild changes
   useEffect(() => {
@@ -790,6 +816,21 @@ export default function DiscordSettingsPage() {
             welcome_banner_enabled: welcomeBannerEnabled,
           }),
         });
+      }
+      if (selectedGuildId && (youtubeInput.trim() !== youtubeSaved.input || youtubeDiscordChannelId !== youtubeSaved.discordChannelId)) {
+        const youtubeRes = await fetch(`${backendUrl}/discord/youtube`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ guild_id: selectedGuildId, youtube_channel: youtubeInput, discord_channel_id: youtubeDiscordChannelId }),
+        });
+        if (!youtubeRes.ok) {
+          // The server explains what to fix, e.g. a channel it couldn't find.
+          const reason = (await youtubeRes.text()).trim();
+          setSaveError(reason && youtubeRes.status < 500 ? reason.charAt(0).toUpperCase() + reason.slice(1) : "Couldn't save the YouTube settings. Please try again.");
+          return;
+        }
+        const data = await youtubeRes.json();
+        setYoutubeSaved({ input: youtubeInput.trim(), discordChannelId: data.discord_channel_id ?? "", name: data.youtube_name ?? "" });
       }
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
@@ -1578,6 +1619,37 @@ export default function DiscordSettingsPage() {
                               <option value="">Disabled</option>
                               {guildChannels.map((c) => <option key={c.id} value={c.id}>#{c.name}</option>)}
                             </select>
+                          </div>
+
+                          <div className="flex flex-col gap-1.5">
+                            <div className="flex items-center gap-2">
+                              <label htmlFor="youtube-discord-channel" className="flex items-center gap-2 font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-ax-secondary">
+                                <Video aria-hidden="true" strokeWidth={1.75} size={16} className="shrink-0 text-ax-secondary" /> YouTube Uploads
+                              </label>
+                              <button type="button" onClick={() => { setEditingNotif("youtube"); setEditDraft(templates.youtube || defaultTemplates.youtube); setTemplateSaveSuccess(false); setTemplateSaveError(null); }} className="text-xs text-ax-accent-text hover:underline">Edit message</button>
+                            </div>
+                            <p className="text-xs text-ax-muted">Posted in this channel when your YouTube channel uploads a new video, Short or stream. New videos can take a few minutes to appear.</p>
+                            <select id="youtube-discord-channel" value={youtubeDiscordChannelId} onChange={(e) => setYoutubeDiscordChannelId(e.target.value)} className={channelSelectClass}>
+                              <option value="">Disabled</option>
+                              {guildChannels.map((c) => <option key={c.id} value={c.id}>#{c.name}</option>)}
+                            </select>
+                            <label htmlFor="youtube-channel" className="mt-1 text-xs font-medium text-ax-secondary">Your YouTube channel</label>
+                            <input
+                              id="youtube-channel"
+                              type="text"
+                              value={youtubeInput}
+                              onChange={(e) => setYoutubeInput(e.target.value)}
+                              placeholder="youtube.com/@yourname"
+                              autoComplete="off"
+                              spellCheck={false}
+                              className={`${channelSelectClass} w-full placeholder:text-ax-muted`}
+                            />
+                            {youtubeSaved.name && youtubeInput.trim() === youtubeSaved.input && (
+                              <p className="inline-flex items-center gap-1.5 text-xs text-emerald-300">
+                                <Check aria-hidden="true" strokeWidth={1.75} size={14} className="shrink-0" />
+                                Connected to {youtubeSaved.name}
+                              </p>
+                            )}
                           </div>
 
                           <section className="flex flex-col gap-2 border-t border-ax-subtle pt-4">
@@ -2565,6 +2637,7 @@ export default function DiscordSettingsPage() {
                 {editingNotif === "live" && "Edit Live Notification"}
                 {editingNotif === "mod" && "Edit Mod Alert"}
                 {editingNotif === "birthday" && "Edit Birthday Announcement"}
+                {editingNotif === "youtube" && "Edit YouTube Upload Message"}
               </p>
               <p className="text-xs text-ax-muted">Customize the Discord message. Leave blank to use the default.</p>
             </div>

@@ -192,6 +192,7 @@ func startHTTPServer(clientID, clientSecret string) {
 	mux.HandleFunc("/discord/reaction-roles", withAuth(authChannel, handleDiscordReactionRoles))
 	mux.HandleFunc("/discord/reaction-roles/send", withAuth(authChannel, handleDiscordReactionRolesSend))
 	mux.HandleFunc("/discord/welcome-settings", withAuth(authChannel, handleDiscordWelcomeSettings))
+	mux.HandleFunc("/discord/youtube", withAuth(authChannel, handleDiscordYouTube))
 	mux.HandleFunc("/github/webhook", handleGitHubWebhook)
 
 	// Optional Nightbot OAuth integration for importing commands without
@@ -2608,7 +2609,7 @@ func handleDiscordChannels(w http.ResponseWriter, r *http.Request) {
 // GET  ?login=&guild_id=   → {"live":"...","mod":"...","birthday":"..."}
 // POST {login, guild_id, templates:{live,mod,birthday}}
 func handleDiscordNotificationTemplates(w http.ResponseWriter, r *http.Request) {
-	validTypes := map[string]bool{"live": true, "mod": true, "birthday": true}
+	validTypes := map[string]bool{"live": true, "mod": true, "birthday": true, "youtube": true}
 	switch r.Method {
 	case http.MethodGet:
 		login := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("login")))
