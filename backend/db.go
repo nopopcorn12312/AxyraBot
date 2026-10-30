@@ -2989,24 +2989,16 @@ func DeleteSpamFilter(broadcasterLogin string, id int64) error {
 type DiscordTicketConfig struct {
 	GuildID        string
 	PanelChannelID string   // channel where the ticket open button is posted
-	LogChannelID   string   // optional channel to log ticket open/close
 	CategoryID     string   // optional category to create ticket channels under
 	SupportRoleIDs []string // roles that can see and respond to tickets
 	PanelMessageID string   // ID of the bot's panel message (for re-use)
 	PanelTitle     string
 	PanelBody      string
 	ButtonLabel    string
-	// What happens to a ticket's channel when it's closed: "keep" removes the
-	// person who opened it and keeps the channel as a record (moved into
-	// ClosedCategoryID when set), "delete" deletes the channel.
-	ClosedAction     string
+	// Closed tickets are kept as a record, without the person who opened
+	// them; they're moved into this category when it's set.
 	ClosedCategoryID string
 }
-
-const (
-	ticketClosedKeep   = "keep"
-	ticketClosedDelete = "delete"
-)
 
 // EnsureTicketTables creates tables if they don't exist.
 func EnsureTicketTables() error {
@@ -3017,7 +3009,7 @@ func EnsureTicketTables() error {
 	CREATE TABLE IF NOT EXISTS discord_ticket_config (
 		guild_id          TEXT PRIMARY KEY,
 		panel_channel_id  TEXT NOT NULL DEFAULT '',
-		log_channel_id    TEXT NOT NULL DEFAULT '',
+		log_channel_id    TEXT NOT NULL DEFAULT '', -- no longer used: tickets aren't logged
 		category_id       TEXT NOT NULL DEFAULT '',
 		support_role_ids  TEXT NOT NULL DEFAULT '',
 		panel_message_id  TEXT NOT NULL DEFAULT '',
@@ -3040,7 +3032,6 @@ func EnsureTicketTables() error {
 	);
 	CREATE INDEX IF NOT EXISTS discord_tickets_guild_idx ON discord_tickets(guild_id);
 	CREATE INDEX IF NOT EXISTS discord_tickets_channel_idx ON discord_tickets(channel_id);
-	ALTER TABLE discord_ticket_config ADD COLUMN IF NOT EXISTS closed_action TEXT NOT NULL DEFAULT 'keep';
 	ALTER TABLE discord_ticket_config ADD COLUMN IF NOT EXISTS closed_category_id TEXT NOT NULL DEFAULT '';
 	`)
 	return err
@@ -3054,17 +3045,16 @@ func GetTicketConfig(guildID string) (*DiscordTicketConfig, error) {
 	var c DiscordTicketConfig
 	var rolesCSV string
 	err := db.QueryRow(`
-		SELECT guild_id, panel_channel_id, log_channel_id, category_id,
+		SELECT guild_id, panel_channel_id, category_id,
 		       support_role_ids, panel_message_id, panel_title, panel_body, button_label,
-		       closed_action, closed_category_id
+		       closed_category_id
 		FROM discord_ticket_config WHERE guild_id=$1
-	`, guildID).Scan(&c.GuildID, &c.PanelChannelID, &c.LogChannelID, &c.CategoryID,
+	`, guildID).Scan(&c.GuildID, &c.PanelChannelID, &c.CategoryID,
 		&rolesCSV, &c.PanelMessageID, &c.PanelTitle, &c.PanelBody, &c.ButtonLabel,
-		&c.ClosedAction, &c.ClosedCategoryID)
+		&c.ClosedCategoryID)
 	if err == sql.ErrNoRows {
 		return &DiscordTicketConfig{GuildID: guildID, PanelTitle: "Support Tickets",
-			PanelBody: "Click the button below to open a support ticket.", ButtonLabel: "🎫 Open Ticket",
-			ClosedAction: ticketClosedKeep}, nil
+			PanelBody: "Click the button below to open a support ticket.", ButtonLabel: "🎫 Open Ticket"}, nil
 	}
 	if err != nil {
 		return nil, err
@@ -3081,27 +3071,22 @@ func SaveTicketConfig(c *DiscordTicketConfig) error {
 		return fmt.Errorf("db not initialized")
 	}
 	rolesCSV := strings.Join(c.SupportRoleIDs, ",")
-	if c.ClosedAction != ticketClosedDelete {
-		c.ClosedAction = ticketClosedKeep
-	}
 	_, err := db.Exec(`
 		INSERT INTO discord_ticket_config
-		  (guild_id, panel_channel_id, log_channel_id, category_id, support_role_ids,
-		   panel_message_id, panel_title, panel_body, button_label, closed_action, closed_category_id)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+		  (guild_id, panel_channel_id, category_id, support_role_ids,
+		   panel_message_id, panel_title, panel_body, button_label, closed_category_id)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
 		ON CONFLICT (guild_id) DO UPDATE SET
 		  panel_channel_id = EXCLUDED.panel_channel_id,
-		  log_channel_id   = EXCLUDED.log_channel_id,
 		  category_id      = EXCLUDED.category_id,
 		  support_role_ids = EXCLUDED.support_role_ids,
 		  panel_message_id = EXCLUDED.panel_message_id,
 		  panel_title      = EXCLUDED.panel_title,
 		  panel_body       = EXCLUDED.panel_body,
 		  button_label     = EXCLUDED.button_label,
-		  closed_action    = EXCLUDED.closed_action,
 		  closed_category_id = EXCLUDED.closed_category_id
-	`, c.GuildID, c.PanelChannelID, c.LogChannelID, c.CategoryID, rolesCSV,
-		c.PanelMessageID, c.PanelTitle, c.PanelBody, c.ButtonLabel, c.ClosedAction, c.ClosedCategoryID)
+	`, c.GuildID, c.PanelChannelID, c.CategoryID, rolesCSV,
+		c.PanelMessageID, c.PanelTitle, c.PanelBody, c.ButtonLabel, c.ClosedCategoryID)
 	return err
 }
 

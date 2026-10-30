@@ -266,10 +266,8 @@ export default function DiscordSettingsPage() {
 
   // Ticket system state
   const [ticketPanelChannelId, setTicketPanelChannelId] = useState("");
-  const [ticketLogChannelId, setTicketLogChannelId] = useState("");
   const [ticketCategoryId, setTicketCategoryId] = useState("");
-  // What happens to a closed ticket's channel (see backend planTicketClose).
-  const [ticketClosedAction, setTicketClosedAction] = useState<"keep" | "delete">("keep");
+  // Category closed tickets are moved into (see backend planTicketClose).
   const [ticketClosedCategoryId, setTicketClosedCategoryId] = useState("");
   const [ticketSupportRoleIds, setTicketSupportRoleIds] = useState<string[]>([]);
   const [ticketPanelTitle, setTicketPanelTitle] = useState("Support Tickets");
@@ -654,9 +652,7 @@ export default function DiscordSettingsPage() {
   // Load ticket config when guild changes
   useEffect(() => {
     setTicketPanelChannelId("");
-    setTicketLogChannelId("");
     setTicketCategoryId("");
-    setTicketClosedAction("keep");
     setTicketClosedCategoryId("");
     setTicketSupportRoleIds([]);
     setTicketPanelTitle("Support Tickets");
@@ -670,9 +666,7 @@ export default function DiscordSettingsPage() {
       .then((data) => {
         if (data) {
           setTicketPanelChannelId(data.panel_channel_id ?? "");
-          setTicketLogChannelId(data.log_channel_id ?? "");
           setTicketCategoryId(data.category_id ?? "");
-          setTicketClosedAction(data.closed_action === "delete" ? "delete" : "keep");
           setTicketClosedCategoryId(data.closed_category_id ?? "");
           setTicketSupportRoleIds(data.support_role_ids ?? []);
           setTicketPanelTitle(data.panel_title ?? "Support Tickets");
@@ -763,9 +757,7 @@ export default function DiscordSettingsPage() {
           body: JSON.stringify({
             guild_id: selectedGuildId,
             panel_channel_id: ticketPanelChannelId,
-            log_channel_id: ticketLogChannelId,
             category_id: ticketCategoryId,
-            closed_action: ticketClosedAction,
             closed_category_id: ticketClosedCategoryId,
             support_role_ids: ticketSupportRoleIds,
             panel_title: ticketPanelTitle,
@@ -871,17 +863,7 @@ export default function DiscordSettingsPage() {
     }
   };
 
-  // Where closed tickets go. One select covers "keep in place", each category,
-  // and deleting the channel.
-  const closedTicketValue = ticketClosedAction === "delete" ? "__delete" : ticketClosedCategoryId || "__keep";
-  const onClosedTicketChange = (value: string) => {
-    if (value === "__delete") {
-      setTicketClosedAction("delete");
-      return;
-    }
-    setTicketClosedAction("keep");
-    setTicketClosedCategoryId(value === "__keep" ? "" : value);
-  };
+  // Where closed tickets go: left in place, or moved into a category.
   const closedTicketPicker = (selectClass: string, id: string) => (
     <div className="flex flex-col gap-1.5">
       <label htmlFor={id} className="font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-ax-secondary">Closed Tickets</label>
@@ -889,14 +871,10 @@ export default function DiscordSettingsPage() {
         When a ticket is closed, the person who opened it loses access and the channel is renamed to <span className="whitespace-nowrap">closed-0001</span> and kept as a record.
         Choose where those channels go.
       </p>
-      <select id={id} value={closedTicketValue} onChange={(e) => onClosedTicketChange(e.target.value)} className={selectClass}>
-        <option value="__keep">Keep it where it is</option>
+      <select id={id} value={ticketClosedCategoryId} onChange={(e) => setTicketClosedCategoryId(e.target.value)} className={selectClass}>
+        <option value="">Keep it where it is</option>
         {guildCategories.map((c) => <option key={c.id} value={c.id}>Move to {c.name}</option>)}
-        <option value="__delete">Delete the channel instead</option>
       </select>
-      {ticketClosedAction === "delete" && (
-        <p className="text-xs text-amber-200">Closed tickets will be deleted after 5 seconds, so only the log entry remains.</p>
-      )}
     </div>
   );
 
@@ -912,9 +890,7 @@ export default function DiscordSettingsPage() {
         body: JSON.stringify({
           guild_id: selectedGuildId,
           panel_channel_id: ticketPanelChannelId,
-          log_channel_id: ticketLogChannelId,
           category_id: ticketCategoryId,
-          closed_action: ticketClosedAction,
           closed_category_id: ticketClosedCategoryId,
           support_role_ids: ticketSupportRoleIds,
           panel_title: ticketPanelTitle,
@@ -2175,20 +2151,6 @@ export default function DiscordSettingsPage() {
                           </select>
                         </div>
 
-                        {/* Log channel */}
-                        <div className="flex flex-col gap-1.5">
-                          <label className="font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-ax-secondary">Log Channel <span className="font-normal text-ax-muted">(optional)</span></label>
-                          <p className="text-xs text-ax-muted">Opened and closed tickets are logged here, with a link to each ticket&apos;s channel.</p>
-                          <select
-                            value={ticketLogChannelId}
-                            onChange={(e) => setTicketLogChannelId(e.target.value)}
-                            className={channelSelectClass}
-                          >
-                            <option value="">Disabled</option>
-                            {guildChannels.map((c) => <option key={c.id} value={c.id}>#{c.name}</option>)}
-                          </select>
-                        </div>
-
                         {/* Category */}
                         <div className="flex flex-col gap-1.5">
                           <label className="font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-ax-secondary">Category <span className="font-normal text-ax-muted">(optional)</span></label>
@@ -2561,9 +2523,7 @@ export default function DiscordSettingsPage() {
                       body: JSON.stringify({
                         guild_id: selectedGuildId,
                         panel_channel_id: ticketPanelChannelId,
-                        log_channel_id: ticketLogChannelId,
                         category_id: ticketCategoryId,
-                        closed_action: ticketClosedAction,
                         closed_category_id: ticketClosedCategoryId,
                         support_role_ids: ticketSupportRoleIds,
                         panel_title: ticketPanelTitle,

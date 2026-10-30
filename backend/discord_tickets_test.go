@@ -38,38 +38,14 @@ func TestBuildTicketOpenedMessageWithoutSupportRoles(t *testing.T) {
 }
 
 func TestPlanTicketCloseKeepsChannelAndRemovesOpener(t *testing.T) {
-	plan := planTicketClose(&DiscordTicketConfig{ClosedAction: ticketClosedKeep, ClosedCategoryID: "archive-cat"}, "opener", 7)
-	if plan.Delete || plan.RemoveUserID != "opener" || plan.NewName != "closed-0007" || plan.MoveTo != "archive-cat" {
+	plan := planTicketClose(&DiscordTicketConfig{ClosedCategoryID: "archive-cat"}, "opener", 7)
+	if plan.RemoveUserID != "opener" || plan.NewName != "closed-0007" || plan.MoveTo != "archive-cat" {
 		t.Fatalf("plan = %+v", plan)
 	}
-	// No category chosen: the channel stays where it is.
-	if plan := planTicketClose(&DiscordTicketConfig{ClosedAction: ticketClosedKeep}, "opener", 7); plan.Delete || plan.MoveTo != "" || plan.RemoveUserID != "opener" {
-		t.Fatalf("plan without category = %+v", plan)
-	}
-	// Servers with no ticket config at all also keep the channel.
-	if plan := planTicketClose(nil, "opener", 7); plan.Delete {
-		t.Fatal("tickets should be kept by default")
-	}
-}
-
-func TestPlanTicketCloseCanStillDelete(t *testing.T) {
-	if plan := planTicketClose(&DiscordTicketConfig{ClosedAction: ticketClosedDelete, ClosedCategoryID: "archive-cat"}, "opener", 7); !plan.Delete {
-		t.Fatalf("plan = %+v, want delete", plan)
-	}
-}
-
-func TestBuildTicketClosedLogLinksToKeptChannel(t *testing.T) {
-	embed := buildTicketClosedLog(12, "opener", "closer", "ticket-chan", "archive-cat", false)
-	if embed.Title != "🔒 Ticket #0012 closed" || len(embed.Fields) != 3 {
-		t.Fatalf("embed = %+v", embed)
-	}
-	if embed.Fields[0].Value != "<@opener>" || embed.Fields[1].Value != "<@closer>" {
-		t.Fatalf("people fields = %q, %q", embed.Fields[0].Value, embed.Fields[1].Value)
-	}
-	if embed.Fields[2].Value != "<#ticket-chan> (moved to <#archive-cat>)" {
-		t.Fatalf("ticket field = %q", embed.Fields[2].Value)
-	}
-	if got := buildTicketClosedLog(12, "o", "c", "chan", "", true).Fields[2].Value; got != "Channel deleted" {
-		t.Fatalf("deleted ticket field = %q", got)
+	// No category chosen, or no ticket config at all: the channel stays where it is.
+	for _, cfg := range []*DiscordTicketConfig{{}, nil} {
+		if plan := planTicketClose(cfg, "opener", 7); plan.MoveTo != "" || plan.RemoveUserID != "opener" {
+			t.Fatalf("plan without category = %+v", plan)
+		}
 	}
 }

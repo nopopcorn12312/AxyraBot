@@ -33,28 +33,27 @@ test("choose where closed tickets go and save it", async ({ page }) => {
       return route.fulfill({ body: "ok" });
     }
     return route.fulfill({
-      json: { guild_id: "g1", panel_channel_id: "c1", log_channel_id: "", category_id: "cat-open", support_role_ids: [], closed_action: "keep", closed_category_id: "" },
+      json: { guild_id: "g1", panel_channel_id: "c1", category_id: "cat-open", support_role_ids: [], closed_category_id: "" },
     });
   });
 
   await page.goto("/discord/settings");
   const picker = page.locator("#ticket-closed-location");
-  await expect(picker).toHaveValue("__keep");
-  await expect(picker.locator("option")).toHaveText(["Keep it where it is", "Move to Open Tickets", "Move to Closed Tickets", "Delete the channel instead"]);
+  await expect(picker).toHaveValue("");
+  await expect(picker.locator("option")).toHaveText(["Keep it where it is", "Move to Open Tickets", "Move to Closed Tickets"]);
+  // Ticket logging is gone, so there's no log channel to pick.
+  await expect(page.getByText("Log Channel", { exact: false })).toHaveCount(0);
 
   await picker.selectOption({ label: "Move to Closed Tickets" });
   await page.getByRole("button", { name: "Save Config" }).click();
-  await expect.poll(() => saved).toMatchObject({ closed_action: "keep", closed_category_id: "cat-closed" });
-
-  await picker.selectOption({ label: "Delete the channel instead" });
-  await expect(page.getByText("Closed tickets will be deleted after 5 seconds")).toBeVisible();
-  await page.getByRole("button", { name: "Save Config" }).click();
-  await expect.poll(() => saved).toMatchObject({ closed_action: "delete" });
+  await expect.poll(() => saved).toMatchObject({ closed_category_id: "cat-closed" });
+  expect(saved).not.toHaveProperty("log_channel_id");
+  expect(saved).not.toHaveProperty("closed_action");
 });
 
 test("loads the saved closed-ticket category", async ({ page }) => {
   await page.route(/\/discord\/tickets\/config/, (route) =>
-    route.fulfill({ json: { guild_id: "g1", panel_channel_id: "c1", closed_action: "keep", closed_category_id: "cat-closed", support_role_ids: [] } }),
+    route.fulfill({ json: { guild_id: "g1", panel_channel_id: "c1", closed_category_id: "cat-closed", support_role_ids: [] } }),
   );
   await page.goto("/discord/settings");
   await expect(page.locator("#ticket-closed-location")).toHaveValue("cat-closed");

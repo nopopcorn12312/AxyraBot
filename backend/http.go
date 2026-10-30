@@ -3683,14 +3683,12 @@ func handleDiscordTicketConfig(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(map[string]any{
 			"guild_id":           cfg.GuildID,
 			"panel_channel_id":   cfg.PanelChannelID,
-			"log_channel_id":     cfg.LogChannelID,
 			"category_id":        cfg.CategoryID,
 			"support_role_ids":   cfg.SupportRoleIDs,
 			"panel_message_id":   cfg.PanelMessageID,
 			"panel_title":        cfg.PanelTitle,
 			"panel_body":         cfg.PanelBody,
 			"button_label":       cfg.ButtonLabel,
-			"closed_action":      cfg.ClosedAction,
 			"closed_category_id": cfg.ClosedCategoryID,
 		})
 
@@ -3698,14 +3696,12 @@ func handleDiscordTicketConfig(w http.ResponseWriter, r *http.Request) {
 		var body struct {
 			GuildID        string   `json:"guild_id"`
 			PanelChannelID string   `json:"panel_channel_id"`
-			LogChannelID   string   `json:"log_channel_id"`
 			CategoryID     string   `json:"category_id"`
 			SupportRoleIDs []string `json:"support_role_ids"`
 			PanelTitle     string   `json:"panel_title"`
 			PanelBody      string   `json:"panel_body"`
 			ButtonLabel    string   `json:"button_label"`
-			// Optional: when left out, the current closed-ticket setting is kept.
-			ClosedAction     *string `json:"closed_action"`
+			// Optional: when left out, the current closed-ticket category is kept.
 			ClosedCategoryID *string `json:"closed_category_id"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -3720,11 +3716,7 @@ func handleDiscordTicketConfig(w http.ResponseWriter, r *http.Request) {
 		if body.ClosedCategoryID != nil {
 			closedCategoryID = strings.TrimSpace(*body.ClosedCategoryID)
 		}
-		if !requireGuildChannels(w, body.GuildID, body.PanelChannelID, body.LogChannelID, body.CategoryID, closedCategoryID) {
-			return
-		}
-		if body.ClosedAction != nil && *body.ClosedAction != ticketClosedKeep && *body.ClosedAction != ticketClosedDelete {
-			http.Error(w, "closed_action must be keep or delete", http.StatusBadRequest)
+		if !requireGuildChannels(w, body.GuildID, body.PanelChannelID, body.CategoryID, closedCategoryID) {
 			return
 		}
 		if !requireGrantableRoles(w, body.GuildID, true, body.SupportRoleIDs...) {
@@ -3745,7 +3737,6 @@ func handleDiscordTicketConfig(w http.ResponseWriter, r *http.Request) {
 		cfg := &DiscordTicketConfig{
 			GuildID:        body.GuildID,
 			PanelChannelID: body.PanelChannelID,
-			LogChannelID:   body.LogChannelID,
 			CategoryID:     body.CategoryID,
 			SupportRoleIDs: body.SupportRoleIDs,
 			PanelTitle:     body.PanelTitle,
@@ -3753,14 +3744,10 @@ func handleDiscordTicketConfig(w http.ResponseWriter, r *http.Request) {
 			ButtonLabel:    body.ButtonLabel,
 		}
 		// Preserve the existing panel_message_id (don't overwrite it from the form),
-		// and the closed-ticket setting when this save doesn't include it.
+		// and the closed-ticket category when this save doesn't include it.
 		if existing, err := GetTicketConfig(body.GuildID); err == nil {
 			cfg.PanelMessageID = existing.PanelMessageID
-			cfg.ClosedAction = existing.ClosedAction
 			cfg.ClosedCategoryID = existing.ClosedCategoryID
-		}
-		if body.ClosedAction != nil {
-			cfg.ClosedAction = *body.ClosedAction
 		}
 		if body.ClosedCategoryID != nil {
 			cfg.ClosedCategoryID = closedCategoryID

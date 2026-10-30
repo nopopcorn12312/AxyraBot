@@ -2552,16 +2552,6 @@ func handleTicketCreate(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		AllowedMentions: allowedMentions,
 	})
 
-	// Log if configured.
-	if cfg.LogChannelID != "" {
-		logEmbed := &discordgo.MessageEmbed{
-			Title:       "🎫 Ticket Opened",
-			Description: fmt.Sprintf("<@%s> opened <#%s> (Ticket #%04d)", user.ID, ch.ID, ticketNum),
-			Color:       0x57F287,
-		}
-		_, _ = s.ChannelMessageSendEmbed(cfg.LogChannelID, logEmbed)
-	}
-
 	// Edit the ephemeral reply.
 	_, _ = s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 		Content: strPtr(fmt.Sprintf("✅ Your ticket has been created: <#%s>", ch.ID)),
@@ -2606,20 +2596,6 @@ func handleTicketClose(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	cfg, _ := GetTicketConfig(guildID)
 	plan := planTicketClose(cfg, ticket.UserID, ticket.TicketNumber)
 
-	if plan.Delete {
-		postTicketClosedLog(s, cfg, ticket.TicketNumber, ticket.UserID, closer.ID, channelID, "", true)
-		_, _ = s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Content: strPtr("🔒 Ticket closed. This channel will be deleted in 5 seconds."),
-		})
-		go func() {
-			time.Sleep(5 * time.Second)
-			if _, err := s.ChannelDelete(channelID); err != nil {
-				log.Println("[tickets] delete channel:", err)
-			}
-		}()
-		return
-	}
-
 	// Keep the channel as a record: take the opener out, rename it, and move
 	// it to the closed-tickets category when one is set.
 	if err := s.ChannelPermissionDelete(channelID, plan.RemoveUserID); err != nil {
@@ -2652,7 +2628,6 @@ func handleTicketClose(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		}},
 		AllowedMentions: &discordgo.MessageAllowedMentions{},
 	})
-	postTicketClosedLog(s, cfg, ticket.TicketNumber, ticket.UserID, closer.ID, channelID, movedTo, false)
 
 	reply := "🔒 Ticket closed. The person who opened it has been removed and the channel is kept as a record."
 	if movedTo != "" {
@@ -2663,50 +2638,17 @@ func handleTicketClose(s *discordgo.Session, i *discordgo.InteractionCreate) {
 
 // ticketClosePlan is what closing a ticket does to its channel.
 type ticketClosePlan struct {
-	Delete       bool   // delete the channel (the old behaviour)
 	RemoveUserID string // member whose access is removed
 	NewName      string // channel name once closed
 	MoveTo       string // category to move into; empty keeps it where it is
 }
 
 func planTicketClose(cfg *DiscordTicketConfig, openerID string, ticketNumber int) ticketClosePlan {
-	if cfg != nil && cfg.ClosedAction == ticketClosedDelete {
-		return ticketClosePlan{Delete: true}
-	}
 	plan := ticketClosePlan{RemoveUserID: openerID, NewName: fmt.Sprintf("closed-%04d", ticketNumber)}
 	if cfg != nil {
 		plan.MoveTo = strings.TrimSpace(cfg.ClosedCategoryID)
 	}
 	return plan
-}
-
-// postTicketClosedLog records a closed ticket in the log channel, linking to
-// the kept channel so the whole conversation can be read later.
-func postTicketClosedLog(s *discordgo.Session, cfg *DiscordTicketConfig, ticketNumber int, openerID, closerID, channelID, movedTo string, deleted bool) {
-	if cfg == nil || cfg.LogChannelID == "" {
-		return
-	}
-	_, _ = s.ChannelMessageSendEmbed(cfg.LogChannelID, buildTicketClosedLog(ticketNumber, openerID, closerID, channelID, movedTo, deleted))
-}
-
-func buildTicketClosedLog(ticketNumber int, openerID, closerID, channelID, movedTo string, deleted bool) *discordgo.MessageEmbed {
-	record := fmt.Sprintf("<#%s>", channelID)
-	switch {
-	case deleted:
-		record = "Channel deleted"
-	case movedTo != "":
-		record = fmt.Sprintf("<#%s> (moved to <#%s>)", channelID, movedTo)
-	}
-	return &discordgo.MessageEmbed{
-		Title: fmt.Sprintf("🔒 Ticket #%04d closed", ticketNumber),
-		Color: 0xED4245,
-		Fields: []*discordgo.MessageEmbedField{
-			{Name: "Opened by", Value: fmt.Sprintf("<@%s>", openerID), Inline: true},
-			{Name: "Closed by", Value: fmt.Sprintf("<@%s>", closerID), Inline: true},
-			{Name: "Ticket", Value: record, Inline: false},
-		},
-		Timestamp: time.Now().UTC().Format(time.RFC3339),
-	}
 }
 
 // userPingsOnly lets a message ping the users it names but never @everyone,
