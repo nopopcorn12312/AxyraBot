@@ -9,6 +9,10 @@ const nextConfig = {
       { protocol: "https", hostname: "cdn.discordapp.com" },
     ],
   },
+  // The docs used to live at /api-docs; keep old links working.
+  async redirects() {
+    return [{ source: "/api-docs", destination: "/docs", permanent: true }];
+  },
 };
 
 export default nextConfig;

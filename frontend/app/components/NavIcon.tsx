@@ -28,7 +28,7 @@ const icons = {
   roles: UserCog,
   privacy: ShieldCheck,
   terms: ScrollText,
-  apiDocs: BookOpen,
+  docs: BookOpen,
   menu: Menu,
   import: Import,
   chevronDown: ChevronDown,

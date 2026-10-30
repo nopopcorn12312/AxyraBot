@@ -582,7 +582,7 @@ export default function HomePage() {
             ))}
           </nav>
           <div ref={menuRef} className="relative ml-auto flex shrink-0 items-center gap-4 md:ml-0">
-            <a href="/api-docs" className={`hidden text-sm text-ax-secondary transition hover:text-ax-heading lg:inline ${focusRing}`}>Docs</a>
+            <a href="/docs" className={`hidden text-sm text-ax-secondary transition hover:text-ax-heading lg:inline ${focusRing}`}>Docs</a>
             {isLoggedIn ? (
               <>
                 <a href="/dashboard" className={`hidden text-sm font-medium text-ax-heading sm:inline ${focusRing}`}>Dashboard</a>
@@ -624,7 +624,7 @@ export default function HomePage() {
         {mobileNavOpen && (
           <nav id="mobile-nav" aria-label="Mobile" className="border-t border-ax-subtle md:hidden">
             <div className={container}>
-              {[...navLinks, { href: "/api-docs", label: "Docs" }, { href: supportUrl, label: "Support" }].map((l) => (
+              {[...navLinks, { href: "/docs", label: "Docs" }, { href: supportUrl, label: "Support" }].map((l) => (
                 <a key={l.href} href={l.href} {...externalProps(l.href)} onClick={() => setMobileNavOpen(false)} className="block border-b border-ax-subtle py-3.5 text-[15px] text-ax-body last:border-0">
                   {l.label}
                 </a>
@@ -845,7 +845,7 @@ export default function HomePage() {
           </div>
           {[
             { title: "Product", links: [["Dashboard", "/dashboard"], ["Commands", "/commands"], ["Moderation", "/moderation"], ["Modules", "/modules"]] },
-            { title: "Resources", links: [["API docs", "/api-docs"], ["Import commands", "/import"], ["Support Discord", supportUrl]] },
+            { title: "Resources", links: [["Docs", "/docs"], ["Import commands", "/import"], ["Support Discord", supportUrl]] },
             { title: "Legal", links: [["Terms of Service", "/terms"], ["Privacy Policy", "/privacy"]] },
           ].map((col) => (
             <div key={col.title} className="md:col-span-2">

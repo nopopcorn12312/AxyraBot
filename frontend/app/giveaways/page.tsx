@@ -482,13 +482,13 @@ export default function GiveawaysPage() {
  }`}>
                     <NavIcon name="terms" />{sidebarOpen ? <span>Terms</span> : <span className="sr-only">Terms</span>}
                   </Link>
-                  <Link href="/api-docs" aria-current={pathname === "/api-docs" ? "page" : undefined}
+                  <Link href="/docs" aria-current={pathname === "/docs" ? "page" : undefined}
  className={`group flex items-center gap-3 rounded-md py-2 text-left font-medium transition ${sidebarOpen ? "px-3" : "justify-center px-0"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ax-focus ${
- pathname === "/api-docs"
+ pathname === "/docs"
  ? "bg-ax-raised text-ax-heading shadow-[inset_3px_0_0_0_#38BDF8]"
  : "text-ax-body hover:bg-ax-raised/60 hover:text-ax-heading"
  }`}>
-                    <NavIcon name="apiDocs" />{sidebarOpen ? <span>API Docs</span> : <span className="sr-only">API Docs</span>}
+                    <NavIcon name="docs" />{sidebarOpen ? <span>Docs</span> : <span className="sr-only">Docs</span>}
                   </Link>
                 </>
               )}
