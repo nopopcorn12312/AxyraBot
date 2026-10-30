@@ -168,6 +168,8 @@ func startHTTPServer(clientID, clientSecret string) {
 	mux.HandleFunc("/birthdays/lists", withAuth(authChannel, handleBirthdayLists))
 	mux.HandleFunc("/user/avatar", withAuth(authAnyUser, handleUserAvatar(clientID, clientSecret)))
 	mux.HandleFunc("/modules/settings", withAuth(authChannel, handleModuleSettings))
+	mux.HandleFunc("/timers", withAuth(authChannel, handleChatTimers))
+	mux.HandleFunc("/timers/delete", withAuth(authChannel, handleChatTimersDelete))
 	mux.HandleFunc("/birthdays/list", withAuth(authChannel, handleBirthdaysList))
 	mux.HandleFunc("/birthdays/add", withAuth(authChannel, handleBirthdaysAdd))
 	mux.HandleFunc("/birthdays/delete", withAuth(authChannel, handleBirthdaysDelete))

@@ -10,6 +10,7 @@ import { usePersistentSectionState } from "../hooks/usePersistentSectionState";
 import { useRequireAuth } from "../hooks/useRequireAuth";
 import { revokeSession } from "../lib/session";
 import NavIcon from "../components/NavIcon";
+import TimersSection from "./TimersSection";
 import { responsiveSidebarClassName, useResponsiveSidebar } from "../hooks/useResponsiveSidebar";
 
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://your-backend.onrender.com";
@@ -1208,6 +1209,7 @@ export default function ModulesPage() {
               </>
             )}
           </div>
+          {login && <TimersSection login={login} />}
         </div>
       </div>
     </main>

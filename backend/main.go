@@ -256,6 +256,7 @@ func main() {
 				if err := EnsureBlockedTermsTable(); err != nil {
 					log.Println("failed to ensure blocked_terms table:", err)
 				}
+				go StartChatTimerScheduler()
 				if err := EnsureTicketTables(); err != nil {
 					log.Println("failed to ensure ticket tables:", err)
 				}
@@ -680,6 +681,7 @@ func handleChatMessageEvent(channelLogin, chatterLogin, chatterID, messageID, me
 	channelLogin = strings.ToLower(channelLogin)
 	log.Printf("[CHAT] channel=%s user=%s msgID=%s msg=%q", channelLogin, chatterLogin, messageID, message)
 	recordChatEvent(channelLogin, chatterLogin)
+	recordTimerActivity(channelLogin, chatterLogin, time.Now())
 
 	// ── Blocked term enforcement ──────────────────────────────────────────────
 	if db != nil && strings.ToLower(chatterLogin) != strings.ToLower(channelLogin) {

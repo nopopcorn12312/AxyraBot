@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import AxyraBotPFP from "./images/AxyraBotPFP.png";
 import SessionFetch from "./components/SessionFetch";
+import TermsNotice from "./components/TermsNotice";
 import { bodyFont, displayFont, monoFont } from "./fonts";
 import "../styles/globals.css";
 
@@ -24,6 +25,7 @@ export default function RootLayout({
       <body>
         <SessionFetch />
         {children}
+        <TermsNotice />
       </body>
     </html>
   );
