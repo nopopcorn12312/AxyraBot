@@ -160,12 +160,13 @@ const variableGroups: { id: string; title: string; intro: string; rows: [string,
   {
     id: "variables-modlog",
     title: "Moderation log (Discord)",
-    intro: "Used in the Discord message AxyraBot posts when it moderates someone in your Twitch chat.",
+    intro: "Used in the Discord alert AxyraBot posts when it deletes a message, times someone out or bans someone in your Twitch chat. A line whose variables are all empty is left out, so \"Message: $(message)\" only shows for deleted messages.",
     rows: [
-      ["$(target)", <>The person who was moderated.</>, ["Discord mod alert"]],
-      ["$(moderator)", <>Who (or which AxyraBot setting) took the action.</>, ["Discord mod alert"]],
+      ["$(target)", <>The person who was moderated: for a deleted message, who sent it.</>, ["Discord mod alert"]],
+      ["$(message)", <>The chat message that was deleted, exactly as it was typed. Empty for bans and timeouts.</>, ["Discord mod alert"]],
+      ["$(moderator)", <>Who took the action. For automatic actions, that&apos;s AxyraBot.</>, ["Discord mod alert"]],
       ["$(action)", <>The action: <Code>ban</Code>, <Code>timeout</Code> or <Code>delete</Code>.</>, ["Discord mod alert"]],
-      ["$(verb)", <>The action as words: &ldquo;banned&rdquo;, &ldquo;timed out&rdquo; or &ldquo;had their message deleted&rdquo;.</>, ["Discord mod alert"]],
+      ["$(verb)", <>The action as words: &ldquo;banned&rdquo;, &ldquo;timed out&rdquo; or &ldquo;moderated (message deleted)&rdquo;, so it reads well after &ldquo;was&rdquo;.</>, ["Discord mod alert"]],
       ["$(emoji)", <>An emoji for the action: 🔨 ban, ⏱️ timeout, 🗑️ delete.</>, ["Discord mod alert"]],
       ["$(reason)", <>Why it happened, for example &ldquo;Blocked term: …&rdquo;.</>, ["Discord mod alert"]],
     ],
@@ -381,7 +382,7 @@ export function DocsContent() {
         <Bullets>
           <li><strong className="text-ax-heading">Notifications</strong>: a post when you go live, a birthday post, and alerts when AxyraBot moderates your Twitch chat. Each message can be customized with <a href="#variables" className={pageLink}>variables</a>.</li>
           <li><strong className="text-ax-heading">Welcome messages</strong> for new members, with an optional image banner. Use <Code>$(user)</Code>, <Code>$(username)</Code> and <Code>$(server)</Code>.</li>
-          <li><strong className="text-ax-heading">Moderation log</strong>: choose which server events (bans, deleted messages, role changes and more) get logged to a channel.</li>
+          <li><strong className="text-ax-heading">Moderation log</strong>: choose which server events (bans, deleted messages, role changes and more) get logged to a channel. A deleted message is logged with who sent it, what it said and who deleted it. Messages people delete themselves aren&apos;t logged.</li>
           <li><strong className="text-ax-heading">Role mappings, reaction roles and tickets</strong> to organize your server.</li>
           <li><strong className="text-ax-heading">Modules</strong>: turn whole groups of slash commands on or off for the server.</li>
         </Bullets>

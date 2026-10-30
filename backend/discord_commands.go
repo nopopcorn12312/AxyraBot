@@ -56,6 +56,7 @@ type discordModLogRecord struct {
 	Title       string
 	Description string
 	ActorID     string
+	ActorLabel  string // field name for ActorID; "Moderator" when empty
 	Reason      string
 }
 
@@ -93,8 +94,12 @@ func postDiscordModLog(s *discordgo.Session, guildID string, record discordModLo
 		Timestamp:   time.Now().UTC().Format(time.RFC3339),
 	}
 	if record.ActorID != "" {
+		label := record.ActorLabel
+		if label == "" {
+			label = "Moderator"
+		}
 		embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
-			Name: "Moderator", Value: fmt.Sprintf("<@%s>", record.ActorID), Inline: true,
+			Name: label, Value: fmt.Sprintf("<@%s>", record.ActorID), Inline: true,
 		})
 	}
 	if strings.TrimSpace(record.Reason) != "" {

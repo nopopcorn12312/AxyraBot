@@ -699,7 +699,7 @@ func handleChatMessageEvent(channelLogin, chatterLogin, chatterID, messageID, me
 						if err := deleteHelixMessage(channelLogin, messageID); err != nil {
 							log.Println("blocked term delete message error:", err)
 						} else {
-							go PostDiscordModAlert(channelLogin, "AxyraBot's Moderation Settings", chatterLogin, "delete", fmt.Sprintf("Blocked term: %s", bt.Term))
+							go PostDiscordModAlert(channelLogin, twitchBotDisplayName(), chatterLogin, "delete", fmt.Sprintf("Blocked term: %s", bt.Term), message)
 						}
 					case "timeout":
 						secs := bt.TimeoutSeconds
@@ -797,7 +797,7 @@ func handleChatMessageEvent(channelLogin, chatterLogin, chatterID, messageID, me
 					if err := deleteHelixMessage(channelLogin, messageID); err != nil {
 						log.Println("spam filter delete message error:", err)
 					} else {
-						go PostDiscordModAlert(channelLogin, "AxyraBot's Moderation Settings", chatterLogin, "delete", fmt.Sprintf("Spam filter: %s", triggerReason))
+						go PostDiscordModAlert(channelLogin, twitchBotDisplayName(), chatterLogin, "delete", fmt.Sprintf("Spam filter: %s", triggerReason), message)
 					}
 				case "timeout":
 					secs := triggeredFilter.TimeoutSeconds
@@ -2075,7 +2075,7 @@ func timeoutUser(channelLogin, targetLogin string, seconds int, reason string) e
 		b, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("helix bans status %s: %s", resp.Status, string(b))
 	}
-	go PostDiscordModAlert(channelLogin, "AxyraBot's Moderation Settings", targetLogin, "timeout", reason)
+	go PostDiscordModAlert(channelLogin, twitchBotDisplayName(), targetLogin, "timeout", reason, "")
 	return nil
 }
 
@@ -2251,7 +2251,7 @@ func banUser(channelLogin, targetLogin, reason string) error {
 		b, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("helix ban status %s: %s", resp.Status, string(b))
 	}
-	go PostDiscordModAlert(channelLogin, "AxyraBot's Moderation Settings", targetLogin, "ban", reason)
+	go PostDiscordModAlert(channelLogin, twitchBotDisplayName(), targetLogin, "ban", reason, "")
 	return nil
 }
 
@@ -3121,6 +3121,14 @@ func getAIResponse(channelLogin, chatterLogin, prompt string) (string, error) {
 }
 
 // active channel helpers
+// twitchBotDisplayName is how the bot names itself in mod alerts.
+func twitchBotDisplayName() string {
+	if name := strings.TrimSpace(os.Getenv("TWITCH_BOT_USERNAME")); name != "" {
+		return name
+	}
+	return "AxyraBot"
+}
+
 func isActiveChannel(ch string) bool {
 	ch = strings.ToLower(ch)
 	activeMu.Lock()

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -52,6 +53,9 @@ func InitDiscord() {
 		registerSlashCommands(s, s.State.User.ID, g.Guild.ID)
 	})
 	discordSession.AddHandler(discordInteractionHandler)
+	discordSession.AddHandler(discordMessageCacheHandler)
+	discordSession.AddHandler(discordMessageEditCacheHandler)
+	discordSession.AddHandler(discordMessageDeleteHandler)
 	discordSession.AddHandler(discordMessageHandler)
 	discordSession.AddHandler(discordExtendedMessageHandler)
 	discordSession.AddHandler(discordGuildMemberAddHandler)
@@ -173,11 +177,11 @@ func discordAuditLogRecords(entry *discordgo.AuditLogEntry) []discordModLogRecor
 	case discordgo.AuditLogActionMemberDisconnect:
 		return []discordModLogRecord{makeRecord(discordModLogVoiceDisconnect, "Member disconnected from voice", target)}
 	case discordgo.AuditLogActionMessageDelete:
-		channel := "unknown channel"
-		if entry.Options != nil && entry.Options.ChannelID != "" {
-			channel = fmt.Sprintf("<#%s>", entry.Options.ChannelID)
+		channelID := ""
+		if entry.Options != nil {
+			channelID = entry.Options.ChannelID
 		}
-		return []discordModLogRecord{makeRecord(discordModLogMessageDelete, "Message deleted", fmt.Sprintf("A message by %s was deleted in %s", target, channel))}
+		return []discordModLogRecord{discordMessageDeleteRecord(nil, channelID, entry.TargetID, actorID, reason)}
 	case discordgo.AuditLogActionMessageBulkDelete:
 		channel, count := "unknown channel", "multiple"
 		if entry.Options != nil {
@@ -209,7 +213,13 @@ func discordGuildAuditLogEntryCreateHandler(s *discordgo.Session, event *discord
 	if event == nil || event.AuditLogEntry == nil {
 		return
 	}
-	for _, record := range discordAuditLogRecords(event.AuditLogEntry) {
+	entry := event.AuditLogEntry
+	if entry.ActionType != nil && *entry.ActionType == discordgo.AuditLogActionMessageDelete {
+		// Waits briefly to pair the entry with the deleted message's text.
+		go logAuditedMessageDelete(s, event.GuildID, entry)
+		return
+	}
+	for _, record := range discordAuditLogRecords(entry) {
 		postDiscordModLog(s, event.GuildID, record)
 	}
 }
@@ -1106,6 +1116,8 @@ func deleteHoneypotMessagesInChannel(s *discordgo.Session, channelID, userID str
 			if message.Author == nil || message.Author.ID != userID {
 				continue
 			}
+			// The ban is what gets logged; one log line per cleaned-up message would flood the mod log.
+			noteDiscordBotDeletion(message.ID, "Honeypot clean-up", true)
 			if err := s.ChannelMessageDelete(channelID, message.ID); err != nil {
 				log.Printf("[honeypot] failed to delete message %s: %v", message.ID, err)
 				continue
@@ -1650,16 +1662,23 @@ func PostDiscordLiveNotification(broadcasterLogin, title, game string) {
 	}
 }
 
-// PostDiscordModAlert sends a ban or timeout alert to every Discord server the
-// broadcaster has configured for mod alerts.
-func PostDiscordModAlert(broadcasterLogin, moderator, target, action, reason string) {
-	if discordSession == nil {
-		return
+// discordDefaultModTemplate is the default Twitch mod alert. The dashboard
+// shows the same text (frontend/app/discord/settings/page.tsx).
+const discordDefaultModTemplate = "$(emoji) **[$(channel)]** `$(target)` was $(verb) by `$(moderator)`\nMessage: $(message)\nReason: $(reason)"
+
+// withDeletedMessageLine makes sure deletion alerts show the deleted text,
+// even with custom templates saved before $(message) existed.
+func withDeletedMessageLine(tmpl, action string) string {
+	if action == "delete" && !strings.Contains(tmpl, "$(message)") {
+		return tmpl + "\nMessage: $(message)"
 	}
-	all, err := GetAllDiscordSettingsForBroadcaster(broadcasterLogin)
-	if err != nil || len(all) == 0 {
-		return
-	}
+	return tmpl
+}
+
+// discordModAlertTemplate returns the default alert text and the values for
+// its variables. A broadcaster's custom "mod" template, when set, replaces the
+// default text but uses the same variables.
+func discordModAlertTemplate(broadcasterLogin, moderator, target, action, reason, message string) (string, map[string]string) {
 	emoji := "🔨"
 	verb := action + "ed"
 	switch action {
@@ -1671,22 +1690,46 @@ func PostDiscordModAlert(broadcasterLogin, moderator, target, action, reason str
 		verb = "timed out"
 	case "delete":
 		emoji = "🗑️"
-		verb = "had their message deleted"
+		// Reads correctly in templates written as "$(target) was $(verb)".
+		verb = "moderated (message deleted)"
 	}
-	defaultModTmpl := "$(emoji) **[$(channel)]** `$(target)` was $(verb) by `$(moderator)`"
-	if reason != "" {
-		defaultModTmpl += "\nReason: $(reason)"
+	// Lines whose variables are empty are dropped when rendering, so bans and
+	// timeouts (no message) and actions without a reason stay tidy.
+	defaultModTmpl := discordDefaultModTemplate
+	quoted := ""
+	if strings.TrimSpace(message) != "" {
+		quoted = discordEscapeMarkdown(truncateRunes(message, discordLoggedTextMax))
 	}
 	modVars := map[string]string{
 		"channel": broadcasterLogin, "moderator": moderator, "target": target,
-		"action": action, "verb": verb, "emoji": emoji, "reason": reason,
+		"action": action, "verb": verb, "emoji": emoji, "reason": reason, "message": quoted,
 	}
+	return defaultModTmpl, modVars
+}
+
+// PostDiscordModAlert sends a ban, timeout or message-deletion alert for the
+// broadcaster's Twitch chat to every Discord server set up for mod alerts.
+// message is the chat message that was deleted (empty for bans and timeouts).
+func PostDiscordModAlert(broadcasterLogin, moderator, target, action, reason, message string) {
+	if discordSession == nil {
+		return
+	}
+	all, err := GetAllDiscordSettingsForBroadcaster(broadcasterLogin)
+	if err != nil || len(all) == 0 {
+		return
+	}
+	defaultModTmpl, modVars := discordModAlertTemplate(broadcasterLogin, moderator, target, action, reason, message)
 	for _, settings := range all {
 		if settings.ModChannelID == "" || !ChannelInGuild(settings.GuildID, settings.ModChannelID) {
 			continue
 		}
-		msg := renderDiscordTemplate(broadcasterLogin, settings.GuildID, "mod", defaultModTmpl, modVars)
-		if _, err := discordSession.ChannelMessageSend(settings.ModChannelID, msg); err != nil {
+		tmpl := withDeletedMessageLine(loadDiscordTemplate(broadcasterLogin, settings.GuildID, "mod", defaultModTmpl), action)
+		msg := fillDiscordTemplate(tmpl, modVars)
+		// The alert quotes chat text, so it must never ping anyone (@everyone included).
+		if _, err := discordSession.ChannelMessageSendComplex(settings.ModChannelID, &discordgo.MessageSend{
+			Content:         msg,
+			AllowedMentions: &discordgo.MessageAllowedMentions{Parse: []discordgo.AllowedMentionType{}},
+		}); err != nil {
 			log.Println("[Discord] failed to post mod alert:", err)
 		}
 	}
@@ -1769,14 +1812,45 @@ func PostDiscordBirthdayAnnouncementForSource(sourceLogin, names string) {
 // the DB it is used; otherwise defaultTmpl is used. If no custom template is
 // stored (empty string), the default is returned with substitution applied.
 func renderDiscordTemplate(broadcasterLogin, guildID, notificationType, defaultTmpl string, vars map[string]string) string {
-	tmpl := defaultTmpl
+	return fillDiscordTemplate(loadDiscordTemplate(broadcasterLogin, guildID, notificationType, defaultTmpl), vars)
+}
+
+// loadDiscordTemplate returns the broadcaster's custom template, or defaultTmpl.
+func loadDiscordTemplate(broadcasterLogin, guildID, notificationType, defaultTmpl string) string {
 	if stored, err := GetDiscordNotificationTemplate(broadcasterLogin, guildID, notificationType); err == nil && strings.TrimSpace(stored) != "" {
-		tmpl = stored
+		return stored
 	}
-	for k, v := range vars {
-		tmpl = strings.ReplaceAll(tmpl, "$("+k+")", v)
+	return defaultTmpl
+}
+
+var discordTemplateVar = regexp.MustCompile(`\$\([a-z_.]+\)`)
+
+// fillDiscordTemplate substitutes the variables. A line that uses variables
+// which are all empty (e.g. "Reason: $(reason)" with no reason) is left out.
+func fillDiscordTemplate(tmpl string, vars map[string]string) string {
+	// Each line is filled in one pass, so values that contain text like
+	// "$(channel)" (a quoted chat message, say) are never expanded again.
+	lines := strings.Split(tmpl, "\n")
+	out := lines[:0]
+	for _, line := range lines {
+		used, filled := 0, 0
+		line = discordTemplateVar.ReplaceAllStringFunc(line, func(token string) string {
+			v, ok := vars[token[2:len(token)-1]]
+			if !ok {
+				return token
+			}
+			used++
+			if strings.TrimSpace(v) != "" {
+				filled++
+			}
+			return v
+		})
+		if used > 0 && filled == 0 {
+			continue
+		}
+		out = append(out, line)
 	}
-	return tmpl
+	return strings.Join(out, "\n")
 }
 
 // PostOwnerAnnouncement sends a message to the owner's global announcement

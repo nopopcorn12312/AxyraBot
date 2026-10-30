@@ -342,12 +342,13 @@ export default function DiscordSettingsPage() {
   type Templates = Record<NotifType, string>;
   const defaultTemplates: Templates = {
     live:     "🔴 **$(channel) is now live!**\n🎮 $(game)\n📺 $(title)\nhttps://twitch.tv/$(channel)",
-    mod:      "$(emoji) **[$(channel)]** `$(target)` was $(verb) by `$(moderator)`\nReason: $(reason)",
+    // Same as discordDefaultModTemplate in backend/discord.go. Lines whose variables are empty are left out.
+    mod:      "$(emoji) **[$(channel)]** `$(target)` was $(verb) by `$(moderator)`\nMessage: $(message)\nReason: $(reason)",
     birthday: "🎂 Happy Birthday to **$(names)** in **$(channel)**'s community! 🎉",
   };
   const templateVars: Record<NotifType, { name: string; desc: string }[]> = {
     live:     [{ name: "$(channel)", desc: "Your Twitch username" }, { name: "$(title)", desc: "Stream title" }, { name: "$(game)", desc: "Game / category" }],
-    mod:      [{ name: "$(channel)", desc: "Your Twitch username" }, { name: "$(target)", desc: "The moderated user" }, { name: "$(moderator)", desc: "Who took the action" }, { name: "$(action)", desc: "Raw action: ban / timeout / delete" }, { name: "$(verb)", desc: "Past-tense verb (banned, timed out…)" }, { name: "$(emoji)", desc: "Action emoji" }, { name: "$(reason)", desc: "Reason text" }],
+    mod:      [{ name: "$(channel)", desc: "Your Twitch username" }, { name: "$(target)", desc: "The moderated user" }, { name: "$(moderator)", desc: "Who took the action" }, { name: "$(action)", desc: "Raw action: ban / timeout / delete" }, { name: "$(verb)", desc: "Past-tense verb (banned, timed out…)" }, { name: "$(emoji)", desc: "Action emoji" }, { name: "$(message)", desc: "The deleted chat message" }, { name: "$(reason)", desc: "Reason text" }],
     birthday: [{ name: "$(names)", desc: "Comma-separated birthday names" }, { name: "$(channel)", desc: "Your Twitch username" }],
   };
   const [templates, setTemplates] = useState<Templates>({ live: "", mod: "", birthday: "" });
