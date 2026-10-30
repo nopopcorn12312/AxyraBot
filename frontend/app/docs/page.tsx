@@ -86,7 +86,7 @@ export default function DocsPage() {
   const primaryLabel = isLoggedIn ? "Dashboard" : "Login with Twitch";
 
   return (
-    <main className="min-h-screen flex flex-col bg-ax-bg">
+    <main className="min-h-screen flex flex-col bg-ax-bg md:h-screen md:overflow-hidden">
       <header className="w-full flex h-14 shrink-0 items-center justify-between border-b border-ax-subtle px-4 md:px-5">
         <div className="flex items-center gap-4 flex-1">
           {isLoggedIn && (
@@ -431,21 +431,9 @@ export default function DocsPage() {
 
         )}
 
-        <div className="flex min-w-0 flex-1 gap-8">
-          <article className="min-w-0 flex-1 rounded-md border border-ax-subtle bg-ax-section p-5 sm:p-8">
-            {/* On smaller screens the contents list sits at the top of the page. */}
-            <details className="mb-8 rounded-md border border-ax-subtle xl:hidden">
-              <summary className="cursor-pointer px-4 py-2.5 text-sm font-medium text-ax-body">On this page</summary>
-              <ul className="grid gap-1 border-t border-ax-subtle px-4 py-3 text-sm sm:grid-cols-2">
-                {docsSections.map((s) => (
-                  <li key={s.id}>
-                    <a href={`#${s.id}`} className="text-ax-body hover:text-ax-heading hover:underline">{s.label}</a>
-                  </li>
-                ))}
-              </ul>
-            </details>
-            <DocsContent />
-          </article>
+        {/* On larger screens only this area scrolls; the header and sidebar stay put. */}
+        <div className="min-w-0 flex-1 scroll-smooth md:-my-6 md:-mr-4 md:min-h-0 md:overflow-y-auto md:py-6 md:pr-4">
+        <div className="flex gap-8">
           <nav aria-label="On this page" className="hidden w-48 shrink-0 xl:block">
             <div className="sticky top-6">
               <p className="mb-3 font-mono text-[11px] uppercase tracking-[0.08em] text-ax-secondary">On this page</p>
@@ -460,6 +448,21 @@ export default function DocsPage() {
               </ul>
             </div>
           </nav>
+          <article className="min-w-0 flex-1 rounded-md border border-ax-subtle bg-ax-section p-5 sm:p-8">
+            {/* On smaller screens the contents list sits at the top of the page. */}
+            <details className="mb-8 rounded-md border border-ax-subtle xl:hidden">
+              <summary className="cursor-pointer px-4 py-2.5 text-sm font-medium text-ax-body">On this page</summary>
+              <ul className="grid gap-1 border-t border-ax-subtle px-4 py-3 text-sm sm:grid-cols-2">
+                {docsSections.map((s) => (
+                  <li key={s.id}>
+                    <a href={`#${s.id}`} className="text-ax-body hover:text-ax-heading hover:underline">{s.label}</a>
+                  </li>
+                ))}
+              </ul>
+            </details>
+            <DocsContent />
+          </article>
+        </div>
         </div>
       </div>
     </main>

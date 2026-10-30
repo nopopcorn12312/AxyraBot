@@ -22,8 +22,12 @@ for (const path of pages) {
     if (testInfo.project.name === "mobile") {
       // Closed by default on phones, so content gets the full width.
       await expect(sidebarLink).toBeHidden();
-      await menuButton.click();
-      await expect(sidebarLink).toBeVisible();
+      // On a cold dev server the page may still be loading its scripts, and an
+      // early tap does nothing, so tap until the drawer opens.
+      await expect(async () => {
+        await menuButton.click();
+        await expect(sidebarLink).toBeVisible({ timeout: 1000 });
+      }).toPass();
       await page.getByRole("button", { name: "Close", exact: true }).click();
       await expect(sidebarLink).toBeHidden();
       // No sideways scrolling.

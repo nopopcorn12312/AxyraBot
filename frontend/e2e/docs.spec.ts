@@ -32,6 +32,9 @@ test("signed-in sidebar says Docs", async ({ page }, testInfo) => {
   });
   await page.route(/your-backend\.onrender\.com|localhost:8080/, (route) => route.fulfill({ json: {} }));
   await page.goto("/dashboard");
+  // Wait for the page to read the stored login (it then stops asking to
+  // connect), so the menu button is live before it's pressed.
+  await expect(page.getByText("Connect with Twitch to see recent activity")).toHaveCount(0);
   if (testInfo.project.name === "mobile") await page.getByRole("button", { name: /toggle navigation|open dashboard menu/i }).click();
   const link = page.getByRole("link", { name: "Docs", exact: true });
   await expect(link).toHaveAttribute("href", "/docs");
