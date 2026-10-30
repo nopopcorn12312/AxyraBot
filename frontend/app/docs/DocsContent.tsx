@@ -383,7 +383,7 @@ export function DocsContent() {
           <li><strong className="text-ax-heading">Notifications</strong>: a post when you go live, a birthday post, and alerts when AxyraBot moderates your Twitch chat. Each message can be customized with <a href="#variables" className={pageLink}>variables</a>.</li>
           <li><strong className="text-ax-heading">Welcome messages</strong> for new members, with an optional image banner. Use <Code>$(user)</Code>, <Code>$(username)</Code> and <Code>$(server)</Code>.</li>
           <li><strong className="text-ax-heading">Moderation log</strong>: choose which server events (bans, deleted messages, role changes and more) get logged to a channel. A deleted message is logged with who sent it, what it said and who deleted it. Messages people delete themselves aren&apos;t logged.</li>
-          <li><strong className="text-ax-heading">Role mappings, reaction roles and tickets</strong> to organize your server.</li>
+          <li><strong className="text-ax-heading">Role mappings, reaction roles and tickets</strong> to organize your server. When a ticket is closed, the person who opened it loses access and the channel is kept as a record (moved to a category you choose), or deleted if you prefer. The log channel links to it.</li>
           <li><strong className="text-ax-heading">Modules</strong>: turn whole groups of slash commands on or off for the server.</li>
         </Bullets>
         <H3>Slash commands</H3>

@@ -2604,28 +2604,109 @@ func handleTicketClose(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	_ = CloseTicketRecord(channelID, closer.ID, closer.Username)
 
 	cfg, _ := GetTicketConfig(guildID)
+	plan := planTicketClose(cfg, ticket.UserID, ticket.TicketNumber)
 
-	// Log if configured.
-	if cfg != nil && cfg.LogChannelID != "" {
-		logEmbed := &discordgo.MessageEmbed{
-			Title:       "🔒 Ticket Closed",
-			Description: fmt.Sprintf("<@%s> closed <#%s> (Ticket #%04d, opened by <@%s>)", closer.ID, channelID, ticket.TicketNumber, ticket.UserID),
-			Color:       0xED4245, // red
-		}
-		_, _ = s.ChannelMessageSendEmbed(cfg.LogChannelID, logEmbed)
+	if plan.Delete {
+		postTicketClosedLog(s, cfg, ticket.TicketNumber, ticket.UserID, closer.ID, channelID, "", true)
+		_, _ = s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+			Content: strPtr("🔒 Ticket closed. This channel will be deleted in 5 seconds."),
+		})
+		go func() {
+			time.Sleep(5 * time.Second)
+			if _, err := s.ChannelDelete(channelID); err != nil {
+				log.Println("[tickets] delete channel:", err)
+			}
+		}()
+		return
 	}
 
-	_, _ = s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-		Content: strPtr("🔒 Ticket closed. This channel will be deleted in 5 seconds."),
-	})
-
-	// Delete channel after a short delay.
-	go func() {
-		time.Sleep(5 * time.Second)
-		if _, err := s.ChannelDelete(channelID); err != nil {
-			log.Println("[tickets] delete channel:", err)
+	// Keep the channel as a record: take the opener out, rename it, and move
+	// it to the closed-tickets category when one is set.
+	if err := s.ChannelPermissionDelete(channelID, plan.RemoveUserID); err != nil {
+		log.Println("[tickets] remove opener from channel:", err)
+	}
+	movedTo := ""
+	edit := &discordgo.ChannelEdit{Name: plan.NewName}
+	if plan.MoveTo != "" && ChannelInGuild(guildID, plan.MoveTo) {
+		edit.ParentID = plan.MoveTo
+	}
+	if _, err := s.ChannelEditComplex(channelID, edit); err != nil && edit.ParentID != "" {
+		// Most likely the category is full (Discord allows 50 channels per
+		// category); keep the ticket where it is rather than lose it.
+		log.Println("[tickets] move closed ticket:", err)
+		if _, err := s.ChannelEditComplex(channelID, &discordgo.ChannelEdit{Name: plan.NewName}); err != nil {
+			log.Println("[tickets] rename closed ticket:", err)
 		}
-	}()
+	} else if err != nil {
+		log.Println("[tickets] rename closed ticket:", err)
+	} else {
+		movedTo = edit.ParentID
+	}
+
+	_, _ = s.ChannelMessageSendComplex(channelID, &discordgo.MessageSend{
+		Embeds: []*discordgo.MessageEmbed{{
+			Title:       "🔒 Ticket closed",
+			Description: fmt.Sprintf("Closed by <@%s>. <@%s> no longer has access; this channel is kept as a record of the ticket.", closer.ID, ticket.UserID),
+			Color:       0xED4245,
+			Timestamp:   time.Now().UTC().Format(time.RFC3339),
+		}},
+		AllowedMentions: &discordgo.MessageAllowedMentions{},
+	})
+	postTicketClosedLog(s, cfg, ticket.TicketNumber, ticket.UserID, closer.ID, channelID, movedTo, false)
+
+	reply := "🔒 Ticket closed. The person who opened it has been removed and the channel is kept as a record."
+	if movedTo != "" {
+		reply = fmt.Sprintf("🔒 Ticket closed. The person who opened it has been removed and the channel was moved to <#%s>.", movedTo)
+	}
+	_, _ = s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{Content: strPtr(reply)})
+}
+
+// ticketClosePlan is what closing a ticket does to its channel.
+type ticketClosePlan struct {
+	Delete       bool   // delete the channel (the old behaviour)
+	RemoveUserID string // member whose access is removed
+	NewName      string // channel name once closed
+	MoveTo       string // category to move into; empty keeps it where it is
+}
+
+func planTicketClose(cfg *DiscordTicketConfig, openerID string, ticketNumber int) ticketClosePlan {
+	if cfg != nil && cfg.ClosedAction == ticketClosedDelete {
+		return ticketClosePlan{Delete: true}
+	}
+	plan := ticketClosePlan{RemoveUserID: openerID, NewName: fmt.Sprintf("closed-%04d", ticketNumber)}
+	if cfg != nil {
+		plan.MoveTo = strings.TrimSpace(cfg.ClosedCategoryID)
+	}
+	return plan
+}
+
+// postTicketClosedLog records a closed ticket in the log channel, linking to
+// the kept channel so the whole conversation can be read later.
+func postTicketClosedLog(s *discordgo.Session, cfg *DiscordTicketConfig, ticketNumber int, openerID, closerID, channelID, movedTo string, deleted bool) {
+	if cfg == nil || cfg.LogChannelID == "" {
+		return
+	}
+	_, _ = s.ChannelMessageSendEmbed(cfg.LogChannelID, buildTicketClosedLog(ticketNumber, openerID, closerID, channelID, movedTo, deleted))
+}
+
+func buildTicketClosedLog(ticketNumber int, openerID, closerID, channelID, movedTo string, deleted bool) *discordgo.MessageEmbed {
+	record := fmt.Sprintf("<#%s>", channelID)
+	switch {
+	case deleted:
+		record = "Channel deleted"
+	case movedTo != "":
+		record = fmt.Sprintf("<#%s> (moved to <#%s>)", channelID, movedTo)
+	}
+	return &discordgo.MessageEmbed{
+		Title: fmt.Sprintf("🔒 Ticket #%04d closed", ticketNumber),
+		Color: 0xED4245,
+		Fields: []*discordgo.MessageEmbedField{
+			{Name: "Opened by", Value: fmt.Sprintf("<@%s>", openerID), Inline: true},
+			{Name: "Closed by", Value: fmt.Sprintf("<@%s>", closerID), Inline: true},
+			{Name: "Ticket", Value: record, Inline: false},
+		},
+		Timestamp: time.Now().UTC().Format(time.RFC3339),
+	}
 }
 
 // userPingsOnly lets a message ping the users it names but never @everyone,

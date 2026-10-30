@@ -268,6 +268,9 @@ export default function DiscordSettingsPage() {
   const [ticketPanelChannelId, setTicketPanelChannelId] = useState("");
   const [ticketLogChannelId, setTicketLogChannelId] = useState("");
   const [ticketCategoryId, setTicketCategoryId] = useState("");
+  // What happens to a closed ticket's channel (see backend planTicketClose).
+  const [ticketClosedAction, setTicketClosedAction] = useState<"keep" | "delete">("keep");
+  const [ticketClosedCategoryId, setTicketClosedCategoryId] = useState("");
   const [ticketSupportRoleIds, setTicketSupportRoleIds] = useState<string[]>([]);
   const [ticketPanelTitle, setTicketPanelTitle] = useState("Support Tickets");
   const [ticketPanelBody, setTicketPanelBody] = useState("Click the button below to open a support ticket.");
@@ -653,6 +656,8 @@ export default function DiscordSettingsPage() {
     setTicketPanelChannelId("");
     setTicketLogChannelId("");
     setTicketCategoryId("");
+    setTicketClosedAction("keep");
+    setTicketClosedCategoryId("");
     setTicketSupportRoleIds([]);
     setTicketPanelTitle("Support Tickets");
     setTicketPanelBody("Click the button below to open a support ticket.");
@@ -667,6 +672,8 @@ export default function DiscordSettingsPage() {
           setTicketPanelChannelId(data.panel_channel_id ?? "");
           setTicketLogChannelId(data.log_channel_id ?? "");
           setTicketCategoryId(data.category_id ?? "");
+          setTicketClosedAction(data.closed_action === "delete" ? "delete" : "keep");
+          setTicketClosedCategoryId(data.closed_category_id ?? "");
           setTicketSupportRoleIds(data.support_role_ids ?? []);
           setTicketPanelTitle(data.panel_title ?? "Support Tickets");
           setTicketPanelBody(data.panel_body ?? "Click the button below to open a support ticket.");
@@ -758,6 +765,8 @@ export default function DiscordSettingsPage() {
             panel_channel_id: ticketPanelChannelId,
             log_channel_id: ticketLogChannelId,
             category_id: ticketCategoryId,
+            closed_action: ticketClosedAction,
+            closed_category_id: ticketClosedCategoryId,
             support_role_ids: ticketSupportRoleIds,
             panel_title: ticketPanelTitle,
             panel_body: ticketPanelBody,
@@ -862,6 +871,35 @@ export default function DiscordSettingsPage() {
     }
   };
 
+  // Where closed tickets go. One select covers "keep in place", each category,
+  // and deleting the channel.
+  const closedTicketValue = ticketClosedAction === "delete" ? "__delete" : ticketClosedCategoryId || "__keep";
+  const onClosedTicketChange = (value: string) => {
+    if (value === "__delete") {
+      setTicketClosedAction("delete");
+      return;
+    }
+    setTicketClosedAction("keep");
+    setTicketClosedCategoryId(value === "__keep" ? "" : value);
+  };
+  const closedTicketPicker = (selectClass: string, id: string) => (
+    <div className="flex flex-col gap-1.5">
+      <label htmlFor={id} className="font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-ax-secondary">Closed Tickets</label>
+      <p className="max-w-xl text-xs text-ax-muted">
+        When a ticket is closed, the person who opened it loses access and the channel is renamed to <span className="whitespace-nowrap">closed-0001</span> and kept as a record.
+        Choose where those channels go.
+      </p>
+      <select id={id} value={closedTicketValue} onChange={(e) => onClosedTicketChange(e.target.value)} className={selectClass}>
+        <option value="__keep">Keep it where it is</option>
+        {guildCategories.map((c) => <option key={c.id} value={c.id}>Move to {c.name}</option>)}
+        <option value="__delete">Delete the channel instead</option>
+      </select>
+      {ticketClosedAction === "delete" && (
+        <p className="text-xs text-amber-200">Closed tickets will be deleted after 5 seconds, so only the log entry remains.</p>
+      )}
+    </div>
+  );
+
   const handleSaveTicketConfig = async () => {
     if (!selectedGuildId) return;
     setSavingTicketConfig(true);
@@ -876,6 +914,8 @@ export default function DiscordSettingsPage() {
           panel_channel_id: ticketPanelChannelId,
           log_channel_id: ticketLogChannelId,
           category_id: ticketCategoryId,
+          closed_action: ticketClosedAction,
+          closed_category_id: ticketClosedCategoryId,
           support_role_ids: ticketSupportRoleIds,
           panel_title: ticketPanelTitle,
           panel_body: ticketPanelBody,
@@ -2138,7 +2178,7 @@ export default function DiscordSettingsPage() {
                         {/* Log channel */}
                         <div className="flex flex-col gap-1.5">
                           <label className="font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-ax-secondary">Log Channel <span className="font-normal text-ax-muted">(optional)</span></label>
-                          <p className="text-xs text-ax-muted">Ticket open/close events will be logged here.</p>
+                          <p className="text-xs text-ax-muted">Opened and closed tickets are logged here, with a link to each ticket&apos;s channel.</p>
                           <select
                             value={ticketLogChannelId}
                             onChange={(e) => setTicketLogChannelId(e.target.value)}
@@ -2162,6 +2202,8 @@ export default function DiscordSettingsPage() {
                             {guildCategories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                           </select>
                         </div>
+
+                        {closedTicketPicker(channelSelectClass, "ticket-closed-location")}
 
                         {/* Support roles */}
                         <div className="flex flex-col gap-1.5">
@@ -2434,7 +2476,7 @@ export default function DiscordSettingsPage() {
           <div className="flex items-center justify-between px-5 py-4 border-b border-ax-subtle">
             <div className="flex flex-col gap-0.5">
               <p className="flex items-center gap-2 text-sm font-semibold text-ax-body"><Ticket aria-hidden="true" strokeWidth={1.75} size={16} className="shrink-0 text-ax-secondary" /> Ticket Channel Settings</p>
-              <p className="text-xs text-ax-muted">Choose the category and roles attached to every created ticket channel.</p>
+              <p className="text-xs text-ax-muted">Choose where ticket channels are created, where closed tickets go, and which roles can see them.</p>
             </div>
             <button type="button" onClick={() => setEditingTicketRoles(false)} className="rounded-md p-1.5 text-ax-secondary hover:text-ax-body hover:bg-ax-raised transition">
               <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4"><path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" /></svg>
@@ -2455,6 +2497,8 @@ export default function DiscordSettingsPage() {
                 {guildCategories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
+
+            {closedTicketPicker("rounded-md border border-ax-border bg-ax-section px-3 py-2 text-sm text-ax-body focus:outline-none focus:ring-2 focus:ring-accent/60 w-full", "ticket-closed-location-modal")}
 
             {/* Support roles */}
             <div className="flex flex-col gap-1.5">
@@ -2519,6 +2563,8 @@ export default function DiscordSettingsPage() {
                         panel_channel_id: ticketPanelChannelId,
                         log_channel_id: ticketLogChannelId,
                         category_id: ticketCategoryId,
+                        closed_action: ticketClosedAction,
+                        closed_category_id: ticketClosedCategoryId,
                         support_role_ids: ticketSupportRoleIds,
                         panel_title: ticketPanelTitle,
                         panel_body: ticketPanelBody,
