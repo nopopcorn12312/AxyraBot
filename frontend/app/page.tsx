@@ -646,7 +646,7 @@ export default function HomePage() {
             <h1 id="hero-title" className="font-display text-[3.4rem] font-semibold leading-[0.92] tracking-[-0.045em] text-ax-heading sm:text-[5.5rem] lg:col-span-6 lg:text-[6.25rem] xl:col-span-7 xl:text-[7.5rem]">
               Keep chat
               <br />
-              good
+              easy
             </h1>
             <div className="lg:col-span-6 lg:pb-3 xl:col-span-5">
               <p className="max-w-md text-lg leading-relaxed text-ax-body">
